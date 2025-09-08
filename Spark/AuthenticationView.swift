@@ -9,6 +9,7 @@ struct AuthenticationView: View {
     @State private var showingEmailEntry = false
     @State private var currentNonce: String?
     @State private var appleSignInCoordinator: AppleSignInCoordinator?
+    @State private var errorMessage: String?
     
     var body: some View {
         ZStack {
@@ -198,6 +199,16 @@ struct AuthenticationView: View {
                         .padding(.top, 8)
                     }
                     
+                    // Error message
+                    if let errorMessage = errorMessage {
+                        Text(errorMessage)
+                            .font(.custom("Satoshi-Regular", size: 12))
+                            .foregroundColor(.red)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 8)
+                    }
+                    
                     // Privacy links
                     HStack(spacing: 4) {
                         Link("Terms of Service", destination: URL(string: "https://spark-app.com/terms")!)
@@ -226,9 +237,15 @@ struct AuthenticationView: View {
     // MARK: - Authentication Actions
     
     private func signInWithGoogle() async {
-        // TODO: Implement Google Sign In
-        // For now, fallback to anonymous
-        await signInAsGuest()
+        do {
+            errorMessage = nil
+            try await firebaseManager.signInWithGoogle()
+        } catch {
+            DispatchQueue.main.async {
+                self.errorMessage = "Google Sign-In failed: \(error.localizedDescription)"
+            }
+            print("Google Sign-In failed: \(error.localizedDescription)")
+        }
     }
     
     private func signInAsGuest() async {

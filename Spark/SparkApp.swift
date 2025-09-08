@@ -1,11 +1,19 @@
 import SwiftUI
 import Firebase
+import GoogleSignIn
 
 @main
 struct SparkApp: App {
     init() {
         // Initialize Firebase
         FirebaseApp.configure()
+        
+        // Configure Google Sign In
+        if let path = Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist"),
+           let plist = NSDictionary(contentsOfFile: path),
+           let clientId = plist["CLIENT_ID"] as? String {
+            GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientId)
+        }
         
         // Initialize analytics when app launches
         AnalyticsManager.shared.initialize()
@@ -20,6 +28,9 @@ struct SparkApp: App {
                 }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
                     AnalyticsManager.shared.trackAppBackground()
+                }
+                .onOpenURL { url in
+                    GIDSignIn.sharedInstance.handle(url)
                 }
         }
     }

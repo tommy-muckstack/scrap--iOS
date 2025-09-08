@@ -2,6 +2,8 @@ import Foundation
 import FirebaseFirestore
 import FirebaseAuth
 import Combine
+import GoogleSignIn
+import UIKit
 
 // MARK: - Firebase Note Model
 struct FirebaseNote: Identifiable, Codable {
@@ -54,8 +56,66 @@ class FirebaseManager: ObservableObject {
         }
     }
     
+    func signInWithGoogle() async throws {
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first,
+              let rootViewController = window.rootViewController else {
+            throw FirebaseError.invalidData
+        }
+        
+        DispatchQueue.main.async {
+            self.isLoading = true
+        }
+        
+        do {
+            guard let clientID = FirebaseApp.app()?.options.clientID else {
+                throw FirebaseError.invalidData
+            }
+            
+            // Configure Google Sign In
+            let config = GIDConfiguration(clientID: clientID)
+            GIDSignIn.sharedInstance.configuration = config
+            
+            // Start the Google Sign In flow
+            let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController)
+            
+            guard let idToken = result.user.idToken?.tokenString else {
+                throw FirebaseError.invalidData
+            }
+            
+            let accessToken = result.user.accessToken.tokenString
+            let credential = GoogleAuthProvider.credential(withIDToken: idToken, accessToken: accessToken)
+            
+            // Sign in with Firebase
+            let authResult = try await auth.signIn(with: credential)
+            
+            DispatchQueue.main.async {
+                self.user = authResult.user
+                self.isAuthenticated = true
+                self.isLoading = false
+            }
+            
+            // Track successful Google sign in
+            AnalyticsManager.shared.trackEvent("auth_google_signin_success")
+            
+        } catch {
+            DispatchQueue.main.async {
+                self.isLoading = false
+            }
+            
+            // Track failed Google sign in
+            AnalyticsManager.shared.trackEvent("auth_google_signin_failed", properties: [
+                "error": error.localizedDescription
+            ])
+            
+            throw error
+        }
+    }
+    
     func signOut() throws {
         try auth.signOut()
+        GIDSignIn.sharedInstance.signOut()
+        
         DispatchQueue.main.async {
             self.user = nil
             self.isAuthenticated = false
