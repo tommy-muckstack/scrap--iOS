@@ -1,4 +1,4 @@
-FROM chromadb/chroma:latest
+FROM chromadb/chroma:0.4.15
 
 # Set environment variables
 ENV CHROMA_HOST=0.0.0.0
@@ -13,5 +13,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:8000/api/v1/heartbeat || exit 1
 
-# Start Chroma
-CMD ["uvicorn", "chromadb.app:app", "--host", "0.0.0.0", "--port", "8000"]
+# Start Chroma with the correct command
+CMD ["chroma", "run", "--host", "0.0.0.0", "--port", "8000"]
