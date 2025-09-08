@@ -1,0 +1,14 @@
+# Railway
+.railway
+
+# Environment
+.env
+.env.local
+
+# Logs
+*.log
+logs/
+
+# Runtime
+node_modules/
+.DS_Store
