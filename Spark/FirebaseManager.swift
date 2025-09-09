@@ -18,6 +18,7 @@ struct FirebaseNote: Identifiable, Codable {
     let createdAt: Date
     let updatedAt: Date
     let pineconeId: String? // Reference to vector in Pinecone
+    let creationType: String // "voice" or "text"
     
     var wrappedContent: String { content }
 }
@@ -245,11 +246,54 @@ class FirebaseManager: ObservableObject {
         }
     }
     
-    // MARK: - Notes Operations
-    func createNote(content: String, isTask: Bool, categories: [String] = []) async throws -> String {
-        guard let userId = user?.uid else {
+    func deleteAccount() async throws {
+        guard let user = user else {
             throw FirebaseError.notAuthenticated
         }
+        
+        let userId = user.uid
+        
+        // First, delete all user's notes
+        let snapshot = try await db.collection("notes")
+            .whereField("userId", isEqualTo: userId)
+            .getDocuments()
+        
+        // Delete all notes in batch
+        let batch = db.batch()
+        for document in snapshot.documents {
+            batch.deleteDocument(document.reference)
+        }
+        try await batch.commit()
+        
+        // Track account deletion
+        AnalyticsManager.shared.trackEvent("account_deleted", properties: [
+            "user_id": userId,
+            "notes_deleted": snapshot.documents.count
+        ])
+        
+        // Delete the user account
+        try await user.delete()
+        
+        // Sign out from Google
+        GIDSignIn.sharedInstance.signOut()
+        
+        // Clear local state
+        await MainActor.run {
+            self.user = nil
+            self.isAuthenticated = false
+        }
+    }
+    
+    // MARK: - Notes Operations
+    func createNote(content: String, isTask: Bool, categories: [String] = [], creationType: String = "text") async throws -> String {
+        print("🔥 FirebaseManager: createNote called with content: '\(content)' type: '\(creationType)'")
+        
+        guard let userId = user?.uid else {
+            print("❌ FirebaseManager: User not authenticated!")
+            throw FirebaseError.notAuthenticated
+        }
+        
+        print("✅ FirebaseManager: User authenticated with ID: \(userId)")
         
         let note = FirebaseNote(
             userId: userId,
@@ -258,15 +302,25 @@ class FirebaseManager: ObservableObject {
             categories: categories,
             createdAt: Date(),
             updatedAt: Date(),
-            pineconeId: nil // Will be updated after Pinecone insertion
+            pineconeId: nil, // Will be updated after Pinecone insertion
+            creationType: creationType
         )
         
-        let docRef = try db.collection("notes").addDocument(from: note)
+        print("📝 FirebaseManager: Created note object: \(note)")
+        print("🎯 FirebaseManager: Attempting to save to Firestore collection 'notes'...")
         
-        // Track analytics
-        AnalyticsManager.shared.trackItemCreated(isTask: isTask, contentLength: content.count)
-        
-        return docRef.documentID
+        do {
+            let docRef = try await db.collection("notes").addDocument(from: note)
+            print("🎉 FirebaseManager: Successfully saved note with ID: \(docRef.documentID)")
+            
+            // Track analytics
+            AnalyticsManager.shared.trackItemCreated(isTask: isTask, contentLength: content.count, creationType: creationType)
+            
+            return docRef.documentID
+        } catch let error {
+            print("💥 FirebaseManager: Failed to save note to Firestore: \(error)")
+            throw error
+        }
     }
     
     func updateNote(noteId: String, newContent: String) async throws {
@@ -290,7 +344,7 @@ class FirebaseManager: ObservableObject {
         
         let snapshot = try await db.collection("notes")
             .whereField("userId", isEqualTo: userId)
-            .order(by: "createdAt", descending: true)
+            .order(by: "updatedAt", descending: true)
             .limit(to: limit)
             .getDocuments()
         
@@ -325,7 +379,7 @@ class FirebaseManager: ObservableObject {
         
         listenerRegistration = db.collection("notes")
             .whereField("userId", isEqualTo: userId)
-            .order(by: "createdAt", descending: true)
+            .order(by: "updatedAt", descending: true)
             .addSnapshotListener { snapshot, error in
                 if let error = error {
                     print("Error fetching notes: \(error.localizedDescription)")

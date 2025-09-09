@@ -56,11 +56,12 @@ class AnalyticsManager: ObservableObject {
     }
     
     // MARK: - Spark-specific Events
-    func trackItemCreated(isTask: Bool, contentLength: Int) {
+    func trackItemCreated(isTask: Bool, contentLength: Int, creationType: String = "text") {
         trackEvent("item_created", properties: [
             "is_task": isTask,
             "content_length": contentLength,
-            "item_type": isTask ? "task" : "note"
+            "item_type": isTask ? "task" : "note",
+            "creation_type": creationType
         ])
     }
     
@@ -82,6 +83,81 @@ class AnalyticsManager: ObservableObject {
         trackEvent("search_performed", properties: [
             "query_length": query.count,
             "result_count": resultCount
+        ])
+    }
+    
+    // MARK: - Voice Recording Events
+    func trackVoiceRecordingStarted() {
+        trackEvent("voice_recording_started")
+    }
+    
+    func trackVoiceRecordingStopped(duration: TimeInterval, textLength: Int) {
+        trackEvent("voice_recording_stopped", properties: [
+            "duration_seconds": Int(duration),
+            "transcribed_text_length": textLength
+        ])
+    }
+    
+    func trackVoicePermissionDenied() {
+        trackEvent("voice_permission_denied")
+    }
+    
+    // MARK: - Note Editing Events
+    func trackNoteEditOpened(noteId: String) {
+        trackEvent("note_edit_opened", properties: [
+            "note_id": noteId
+        ])
+    }
+    
+    func trackNoteEditSaved(noteId: String, contentLength: Int) {
+        trackEvent("note_edit_saved", properties: [
+            "note_id": noteId,
+            "content_length": contentLength
+        ])
+    }
+    
+    func trackNoteShared(noteId: String) {
+        trackEvent("note_shared", properties: [
+            "note_id": noteId
+        ])
+    }
+    
+    // MARK: - Text Processing Events
+    func trackArrowConversion() {
+        trackEvent("text_arrow_converted")
+    }
+    
+    func trackBulletPointCreated() {
+        trackEvent("text_bullet_created")
+    }
+    
+    // MARK: - UI Interaction Events
+    func trackAccountDrawerOpened() {
+        trackEvent("account_drawer_opened")
+    }
+    
+    func trackAccountDrawerClosed() {
+        trackEvent("account_drawer_closed")
+    }
+    
+    func trackNewNoteStarted(method: String) {
+        trackEvent("new_note_started", properties: [
+            "method": method // "text" or "voice"
+        ])
+    }
+    
+    func trackNoteSaved(method: String, contentLength: Int) {
+        trackEvent("note_saved", properties: [
+            "method": method, // "button" or "auto"
+            "content_length": contentLength
+        ])
+    }
+    
+    // MARK: - Error Events
+    func trackError(errorType: String, errorMessage: String) {
+        trackEvent("error_occurred", properties: [
+            "error_type": errorType,
+            "error_message": errorMessage
         ])
     }
     
