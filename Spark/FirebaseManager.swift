@@ -4,6 +4,8 @@ import FirebaseAuth
 import Combine
 import GoogleSignIn
 import UIKit
+import AuthenticationServices
+import CryptoKit
 
 // MARK: - Firebase Note Model
 struct FirebaseNote: Identifiable, Codable {
@@ -31,6 +33,7 @@ class FirebaseManager: ObservableObject {
     @Published var isLoading = false
     
     private var listenerRegistration: ListenerRegistration?
+    private var currentNonce: String?
     
     init() {
         // Listen for auth state changes
@@ -110,6 +113,123 @@ class FirebaseManager: ObservableObject {
             
             throw error
         }
+    }
+    
+    func signInWithApple(authorization: ASAuthorization) async throws {
+        DispatchQueue.main.async {
+            self.isLoading = true
+        }
+        
+        do {
+            guard let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential else {
+                throw FirebaseError.invalidData
+            }
+            
+            guard let nonce = currentNonce else {
+                throw FirebaseError.invalidData
+            }
+            
+            guard let appleIDToken = appleIDCredential.identityToken else {
+                throw FirebaseError.invalidData
+            }
+            
+            guard let idTokenString = String(data: appleIDToken, encoding: .utf8) else {
+                throw FirebaseError.invalidData
+            }
+            
+            // Create Firebase credential
+            let credential = OAuthProvider.credential(
+                withProviderID: "apple.com",
+                idToken: idTokenString,
+                rawNonce: nonce
+            )
+            
+            // Sign in with Firebase
+            let authResult = try await auth.signIn(with: credential)
+            
+            // Save user display name if it's their first time
+            if let fullName = appleIDCredential.fullName {
+                let displayName = PersonNameComponentsFormatter.localizedString(
+                    from: fullName,
+                    style: .default
+                )
+                
+                if !displayName.isEmpty {
+                    let changeRequest = authResult.user.createProfileChangeRequest()
+                    changeRequest.displayName = displayName
+                    try await changeRequest.commitChanges()
+                }
+            }
+            
+            DispatchQueue.main.async {
+                self.user = authResult.user
+                self.isAuthenticated = true
+                self.isLoading = false
+            }
+            
+            // Track successful Apple sign in
+            AnalyticsManager.shared.trackEvent("auth_apple_signin_success")
+            
+        } catch {
+            DispatchQueue.main.async {
+                self.isLoading = false
+            }
+            
+            // Track failed Apple sign in
+            AnalyticsManager.shared.trackEvent("auth_apple_signin_failed", properties: [
+                "error": error.localizedDescription
+            ])
+            
+            throw error
+        }
+    }
+    
+    func generateNonce() -> String {
+        let nonce = randomNonceString()
+        currentNonce = nonce
+        return nonce
+    }
+    
+    private func randomNonceString(length: Int = 32) -> String {
+        precondition(length > 0)
+        let charset: [Character] =
+            Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
+        var result = ""
+        var remainingLength = length
+        
+        while remainingLength > 0 {
+            let randoms: [UInt8] = (0 ..< 16).map { _ in
+                var random: UInt8 = 0
+                let errorCode = SecRandomCopyBytes(kSecRandomDefault, 1, &random)
+                if errorCode != errSecSuccess {
+                    fatalError("Unable to generate nonce. SecRandomCopyBytes failed with OSStatus \(errorCode)")
+                }
+                return random
+            }
+            
+            randoms.forEach { random in
+                if remainingLength == 0 {
+                    return
+                }
+                
+                if random < charset.count {
+                    result.append(charset[Int(random)])
+                    remainingLength -= 1
+                }
+            }
+        }
+        
+        return result
+    }
+    
+    func sha256(_ input: String) -> String {
+        let inputData = Data(input.utf8)
+        let hashedData = SHA256.hash(data: inputData)
+        let hashString = hashedData.compactMap {
+            String(format: "%02x", $0)
+        }.joined()
+        
+        return hashString
     }
     
     func signOut() throws {

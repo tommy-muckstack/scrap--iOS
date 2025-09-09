@@ -7,7 +7,6 @@ import AuthenticationServices
 struct AuthenticationView: View {
     @ObservedObject private var firebaseManager = FirebaseManager.shared
     @State private var showingEmailEntry = false
-    @State private var currentNonce: String?
     @State private var appleSignInCoordinator: AppleSignInCoordinator?
     @State private var errorMessage: String?
     
@@ -258,11 +257,41 @@ struct AuthenticationView: View {
     }
     
     private func performAppleSignIn() {
-        // TODO: Implement Apple Sign In
-        // For now, fallback to anonymous
-        Task {
-            await signInAsGuest()
+        errorMessage = nil
+        
+        let nonce = firebaseManager.generateNonce()
+        
+        let appleIDProvider = ASAuthorizationAppleIDProvider()
+        let request = appleIDProvider.createRequest()
+        request.requestedScopes = [.fullName, .email]
+        request.nonce = firebaseManager.sha256(nonce)
+        
+        let authController = ASAuthorizationController(authorizationRequests: [request])
+        
+        appleSignInCoordinator = AppleSignInCoordinator { result in
+            Task {
+                switch result {
+                case .success(let authorization):
+                    do {
+                        try await firebaseManager.signInWithApple(authorization: authorization)
+                    } catch {
+                        DispatchQueue.main.async {
+                            self.errorMessage = "Apple Sign-In failed: \(error.localizedDescription)"
+                        }
+                    }
+                case .failure(let error):
+                    DispatchQueue.main.async {
+                        if (error as NSError).code != ASAuthorizationError.canceled.rawValue {
+                            self.errorMessage = "Apple Sign-In failed: \(error.localizedDescription)"
+                        }
+                    }
+                }
+            }
         }
+        
+        authController.delegate = appleSignInCoordinator
+        authController.presentationContextProvider = appleSignInCoordinator
+        authController.performRequests()
     }
 }
 
@@ -471,7 +500,7 @@ struct EmailAuthView: View {
 }
 
 // MARK: - Apple Sign In Coordinator
-private class AppleSignInCoordinator: NSObject, ASAuthorizationControllerDelegate {
+private class AppleSignInCoordinator: NSObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
     let completion: (Result<ASAuthorization, Error>) -> Void
     
     init(completion: @escaping (Result<ASAuthorization, Error>) -> Void) {
@@ -484,6 +513,14 @@ private class AppleSignInCoordinator: NSObject, ASAuthorizationControllerDelegat
     
     func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
         completion(.failure(error))
+    }
+    
+    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first else {
+            return ASPresentationAnchor()
+        }
+        return window
     }
 }
 
