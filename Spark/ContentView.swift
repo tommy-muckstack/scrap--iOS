@@ -281,7 +281,7 @@ struct ItemRowSimple: View {
                     GentleLightning.Sound.Haptic.swoosh.trigger()
                 } label: {
                     Circle()
-                        .strokeBorder(item.isCompleted ? GentleLightning.Context.accentColor(isTask: item.isTask) : GentleLightning.Colors.textSecondary.opacity(0.3), lineWidth: 2)
+                        .stroke(item.isCompleted ? GentleLightning.Context.accentColor(isTask: item.isTask) : GentleLightning.Colors.textSecondary.opacity(0.3), lineWidth: 2)
                         .background(
                             Circle()
                                 .fill(item.isCompleted ? GentleLightning.Context.accentColor(isTask: item.isTask) : Color.clear)

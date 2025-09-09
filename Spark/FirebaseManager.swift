@@ -1,6 +1,7 @@
 import Foundation
-import FirebaseFirestore
-import FirebaseAuth
+@preconcurrency import FirebaseFirestore
+@preconcurrency import FirebaseAuth
+@preconcurrency import FirebaseCore
 import Combine
 import GoogleSignIn
 import UIKit
@@ -33,14 +34,16 @@ class FirebaseManager: ObservableObject {
     @Published var isLoading = false
     
     private var listenerRegistration: ListenerRegistration?
+    private var authStateListener: AuthStateDidChangeListenerHandle?
     private var currentNonce: String?
     
     init() {
         // Listen for auth state changes
-        auth.addStateDidChangeListener { [weak self] _, user in
+        authStateListener = auth.addStateDidChangeListener { [weak self] _, user in
             DispatchQueue.main.async {
-                self?.user = user
-                self?.isAuthenticated = user != nil
+                guard let self = self else { return }
+                self.user = user
+                self.isAuthenticated = user != nil
                 
                 // Update analytics user ID when auth state changes
                 if let user = user, let email = user.email {
@@ -133,11 +136,9 @@ class FirebaseManager: ObservableObject {
             }
             
             // Create Firebase credential
-            let credential = OAuthProvider.credential(
-                withProviderID: "apple.com",
-                idToken: idTokenString,
-                rawNonce: nonce
-            )
+            let credential = OAuthProvider.credential(withProviderID: "apple.com",
+                                                    idToken: idTokenString,
+                                                    rawNonce: nonce)
             
             // Sign in with Firebase
             let authResult = try await auth.signIn(with: credential)
@@ -335,6 +336,9 @@ class FirebaseManager: ObservableObject {
     
     deinit {
         stopListening()
+        if let authStateListener = authStateListener {
+            auth.removeStateDidChangeListener(authStateListener)
+        }
     }
 }
 

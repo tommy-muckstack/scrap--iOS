@@ -96,8 +96,11 @@ struct AuthenticationView: View {
                         .frame(height: 52)
                         .background(
                             RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.large)
-                                .stroke(GentleLightning.Colors.textSecondary.opacity(0.3), lineWidth: 1)
                                 .fill(GentleLightning.Colors.surface)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.large)
+                                        .stroke(GentleLightning.Colors.textSecondary.opacity(0.3), lineWidth: 1)
+                                )
                                 .shadow(color: GentleLightning.Colors.shadowLight, radius: 8, x: 0, y: 2)
                         )
                     }
@@ -121,8 +124,11 @@ struct AuthenticationView: View {
                         .frame(height: 52)
                         .background(
                             RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.large)
-                                .stroke(GentleLightning.Colors.textSecondary.opacity(0.3), lineWidth: 1)
                                 .fill(GentleLightning.Colors.surface)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.large)
+                                        .stroke(GentleLightning.Colors.textSecondary.opacity(0.3), lineWidth: 1)
+                                )
                                 .shadow(color: GentleLightning.Colors.shadowLight, radius: 8, x: 0, y: 2)
                         )
                     }
@@ -146,8 +152,11 @@ struct AuthenticationView: View {
                         .frame(height: 52)
                         .background(
                             RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.large)
-                                .stroke(GentleLightning.Colors.textSecondary.opacity(0.3), lineWidth: 1)
                                 .fill(GentleLightning.Colors.surface)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.large)
+                                        .stroke(GentleLightning.Colors.textSecondary.opacity(0.3), lineWidth: 1)
+                                )
                                 .shadow(color: GentleLightning.Colors.shadowLight, radius: 8, x: 0, y: 2)
                         )
                     }
