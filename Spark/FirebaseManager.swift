@@ -57,28 +57,20 @@ class FirebaseManager: ObservableObject {
     
     // MARK: - Authentication
     
+    @MainActor
     func signInWithGoogle() async throws {
         print("FirebaseManager: Starting Google Sign-In")
         
-        let rootViewController = await MainActor.run {
-            guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                  let window = windowScene.windows.first,
-                  let rootViewController = window.rootViewController else {
-                return nil
-            }
-            return rootViewController
-        }
-        
-        guard let rootViewController = rootViewController else {
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first,
+              let rootViewController = window.rootViewController else {
             print("FirebaseManager: Failed to get root view controller")
             throw FirebaseError.invalidData
         }
         
         print("FirebaseManager: Got root view controller: \(rootViewController)")
         
-        await MainActor.run {
-            self.isLoading = true
-        }
+        self.isLoading = true
         
         do {
             guard let clientID = FirebaseApp.app()?.options.clientID else {
@@ -94,7 +86,7 @@ class FirebaseManager: ObservableObject {
             
             print("FirebaseManager: Google Sign-In configured")
             
-            // Start the Google Sign In flow
+            // Start the Google Sign In flow on main thread
             print("FirebaseManager: Starting Google Sign-In flow...")
             let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController)
             print("FirebaseManager: Google Sign-In completed successfully")
@@ -109,19 +101,15 @@ class FirebaseManager: ObservableObject {
             // Sign in with Firebase
             let authResult = try await auth.signIn(with: credential)
             
-            await MainActor.run {
-                self.user = authResult.user
-                self.isAuthenticated = true
-                self.isLoading = false
-            }
+            self.user = authResult.user
+            self.isAuthenticated = true
+            self.isLoading = false
             
             // Track successful Google sign in with analytics user ID update
             AnalyticsManager.shared.trackUserSignedIn(method: "google", email: authResult.user.email)
             
         } catch {
-            await MainActor.run {
-                self.isLoading = false
-            }
+            self.isLoading = false
             
             // Track failed Google sign in
             AnalyticsManager.shared.trackEvent("auth_google_signin_failed", properties: [
@@ -132,10 +120,9 @@ class FirebaseManager: ObservableObject {
         }
     }
     
+    @MainActor
     func signInWithApple(authorization: ASAuthorization) async throws {
-        await MainActor.run {
-            self.isLoading = true
-        }
+        self.isLoading = true
         
         do {
             guard let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential else {
@@ -178,19 +165,15 @@ class FirebaseManager: ObservableObject {
                 }
             }
             
-            await MainActor.run {
-                self.user = authResult.user
-                self.isAuthenticated = true
-                self.isLoading = false
-            }
+            self.user = authResult.user
+            self.isAuthenticated = true
+            self.isLoading = false
             
             // Track successful Apple sign in with analytics user ID update
             AnalyticsManager.shared.trackUserSignedIn(method: "apple", email: authResult.user.email)
             
         } catch {
-            await MainActor.run {
-                self.isLoading = false
-            }
+            self.isLoading = false
             
             // Track failed Apple sign in
             AnalyticsManager.shared.trackEvent("auth_apple_signin_failed", properties: [
@@ -278,7 +261,7 @@ class FirebaseManager: ObservableObject {
             pineconeId: nil // Will be updated after Pinecone insertion
         )
         
-        let docRef = try await db.collection("notes").addDocument(from: note)
+        let docRef = try db.collection("notes").addDocument(from: note)
         
         // Track analytics
         AnalyticsManager.shared.trackItemCreated(isTask: isTask, contentLength: content.count)

@@ -19,12 +19,12 @@ struct GentleLightning {
     }
     
     struct Typography {
-        static let hero = Font.custom("Office Notes", size: 36)
-        static let body = Font.custom("Office Notes", size: 17)
-        static let bodyInput = Font.custom("Office Notes", size: 18)
-        static let title = Font.custom("Office Notes", size: 22)
-        static let caption = Font.custom("Office Notes", size: 14)
-        static let small = Font.custom("Office Notes", size: 12)
+        static let hero = Font.custom("Hadley", size: 36)
+        static let body = Font.custom("Hadley", size: 17)
+        static let bodyInput = Font.custom("Hadley", size: 18)
+        static let title = Font.custom("Hadley", size: 22)
+        static let caption = Font.custom("Hadley", size: 14)
+        static let small = Font.custom("Hadley", size: 12)
     }
     
     struct Layout {
@@ -121,14 +121,8 @@ class FirebaseDataManager: ObservableObject {
     }
     
     func createItem(from text: String) {
-        let isTask = text.lowercased().contains("todo") || 
-                    text.lowercased().contains("task") || 
-                    text.lowercased().contains("remind") ||
-                    text.lowercased().contains("call") ||
-                    text.lowercased().contains("buy")
-        
-        // Create optimistic local item
-        let newItem = SparkItem(content: text, isTask: isTask)
+        // Create optimistic local item - always a note, never a task
+        let newItem = SparkItem(content: text, isTask: false)
         items.insert(newItem, at: 0)
         
         // Save to Firebase
@@ -137,7 +131,7 @@ class FirebaseDataManager: ObservableObject {
                 let categories = await categorizeText(text)
                 let firebaseId = try await firebaseManager.createNote(
                     content: text, 
-                    isTask: isTask, 
+                    isTask: false, 
                     categories: categories
                 )
                 
@@ -157,16 +151,6 @@ class FirebaseDataManager: ObservableObject {
         }
     }
     
-    func toggleComplete(_ item: SparkItem) {
-        item.isCompleted.toggle()
-        
-        // Track item completion
-        if item.isCompleted {
-            AnalyticsManager.shared.trackItemCompleted(isTask: item.isTask)
-        }
-        
-        // TODO: Update completion status in Firebase when we add that field
-    }
     
     func deleteItem(_ item: SparkItem) {
         // Track item deletion before removing
@@ -212,8 +196,7 @@ class FirebaseDataManager: ObservableObject {
 // MARK: - Content View Model
 class ContentViewModel: ObservableObject {
     @Published var inputText = ""
-    @Published var placeholderText = "What's on your mind?"
-    @Published var showingAllNotes = false
+    @Published var placeholderText = "Just start typing..."
 }
 
 // MARK: - Input Field
@@ -255,11 +238,7 @@ struct InputField: View {
         }
         .padding(.horizontal, GentleLightning.Layout.Padding.lg)
         .padding(.vertical, GentleLightning.Layout.Padding.lg)
-        .background(
-            RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.large)
-                .fill(GentleLightning.Colors.surface)
-                .shadow(color: GentleLightning.Colors.shadowLight, radius: 10, x: 0, y: 4)
-        )
+        .background(Color.white)
     }
 }
 
@@ -278,40 +257,15 @@ struct ItemRowSimple: View {
     
     var body: some View {
         HStack(spacing: 12) {
-            if item.isTask {
-                Button {
-                    withAnimation(GentleLightning.Animation.elastic) {
-                        dataManager.toggleComplete(item)
-                    }
-                    GentleLightning.Sound.Haptic.swoosh.trigger()
-                } label: {
-                    Circle()
-                        .stroke(item.isCompleted ? GentleLightning.Context.accentColor(isTask: item.isTask) : GentleLightning.Colors.textSecondary.opacity(0.3), lineWidth: 2)
-                        .background(
-                            Circle()
-                                .fill(item.isCompleted ? GentleLightning.Context.accentColor(isTask: item.isTask) : Color.clear)
-                        )
-                        .overlay(
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundColor(.white)
-                                .scaleEffect(item.isCompleted ? 1 : 0.001)
-                                .opacity(item.isCompleted ? 1 : 0)
-                        )
-                        .frame(width: 22, height: 22)
-                }
-                .buttonStyle(PlainButtonStyle())
-            } else {
-                Circle()
-                    .fill(GentleLightning.Context.accentColor(isTask: item.isTask).opacity(0.2))
-                    .frame(width: 6, height: 6)
-                    .padding(.horizontal, 8)
-            }
+            // Simple bullet point for notes
+            Circle()
+                .fill(GentleLightning.Colors.accentIdea.opacity(0.3))
+                .frame(width: 6, height: 6)
+                .padding(.horizontal, 8)
             
             Text(item.wrappedContent)
                 .font(GentleLightning.Typography.body)
-                .foregroundColor(item.isCompleted ? GentleLightning.Colors.textSecondary : GentleLightning.Colors.textPrimary)
-                .strikethrough(item.isCompleted, color: GentleLightning.Colors.textSecondary)
+                .foregroundColor(GentleLightning.Colors.textPrimary)
                 .lineLimit(nil)
                 .multilineTextAlignment(.leading)
             
@@ -346,65 +300,19 @@ struct ContentView: View {
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Header
+                // Header - empty for clean design
                 HStack {
-                    Text("Spark")
-                        .font(GentleLightning.Typography.hero)
-                        .foregroundColor(GentleLightning.Colors.textPrimary)
-                    
-                    Spacer()
-                    
-                    HStack(spacing: 12) {
-                        // Subtle "view all notes" toggle
-                        if !dataManager.items.isEmpty {
-                        Button(action: {
-                            withAnimation(GentleLightning.Animation.gentle) {
-                                viewModel.showingAllNotes.toggle()
-                            }
-                            AnalyticsManager.shared.trackEvent("notes_view_toggled", properties: [
-                                "showing_all": viewModel.showingAllNotes
-                            ])
-                        }) {
-                            HStack(spacing: 4) {
-                                Text(viewModel.showingAllNotes ? "Hide" : "View all")
-                                    .font(GentleLightning.Typography.caption)
-                                    .foregroundColor(GentleLightning.Colors.textSecondary)
-                                Image(systemName: viewModel.showingAllNotes ? "eye.slash" : "eye")
-                                    .font(.system(size: 12, weight: .medium))
-                                    .foregroundColor(GentleLightning.Colors.accentNeutral.opacity(0.7))
-                            }
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(
-                                Capsule()
-                                    .fill(GentleLightning.Colors.surface.opacity(0.6))
-                                    .shadow(color: GentleLightning.Colors.shadowLight, radius: 2, x: 0, y: 1)
-                            )
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .transition(.scale.combined(with: .opacity))
-                        }
-                        
-                        // Sign out button
-                        Button(action: {
-                            do {
-                                try FirebaseManager.shared.signOut()
-                            } catch {
-                                print("Sign out error: \(error)")
-                            }
-                        }) {
-                            Image(systemName: "person.crop.circle")
-                                .font(.system(size: 20, weight: .medium))
-                                .foregroundColor(GentleLightning.Colors.textSecondary)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                    }
+                    // Empty header for clean design
                 }
                 .padding(.horizontal, GentleLightning.Layout.Padding.xl)
                 .padding(.top, GentleLightning.Layout.Padding.xl)
                 .padding(.bottom, GentleLightning.Layout.Padding.lg)
                 
-                // Input Field
+                // Large spacer to push input field lower
+                Spacer()
+                Spacer()
+                
+                // Input Field - positioned lower on screen
                 InputField(text: $viewModel.inputText, 
                           placeholder: viewModel.placeholderText,
                           onCommit: {
@@ -414,62 +322,62 @@ struct ContentView: View {
                     }
                 })
                 .padding(.horizontal, GentleLightning.Layout.Padding.xl)
-                .padding(.bottom, GentleLightning.Layout.Padding.xl)
                 
-                // Items List or minimal view
-                if viewModel.showingAllNotes {
-                    ScrollView {
-                        LazyVStack(spacing: GentleLightning.Layout.Spacing.comfortable) {
-                            if dataManager.items.isEmpty {
-                                EmptyStateView()
-                                    .padding(.top, 60)
-                            } else {
-                                ForEach(dataManager.items) { item in
-                                    ItemRowSimple(item: item, dataManager: dataManager)
-                                        .transition(.asymmetric(
-                                            insertion: .move(edge: .top).combined(with: .opacity),
-                                            removal: .move(edge: .leading).combined(with: .opacity)
-                                        ))
-                                }
-                            }
-                        }
-                        .padding(.horizontal, GentleLightning.Layout.Padding.xl)
-                        .padding(.bottom, GentleLightning.Layout.Padding.xl)
-                    }
-                } else {
-                    // Show only recent items (last 3) in minimal mode
-                    ScrollView {
-                        LazyVStack(spacing: GentleLightning.Layout.Spacing.comfortable) {
-                            if dataManager.items.isEmpty {
-                                EmptyStateView()
-                                    .padding(.top, 60)
-                            } else {
-                                ForEach(Array(dataManager.items.prefix(3))) { item in
-                                    ItemRowSimple(item: item, dataManager: dataManager)
-                                        .transition(.asymmetric(
-                                            insertion: .move(edge: .top).combined(with: .opacity),
-                                            removal: .move(edge: .leading).combined(with: .opacity)
-                                        ))
-                                }
-                                
-                                if dataManager.items.count > 3 {
-                                    HStack {
-                                        Spacer()
-                                        Text("\(dataManager.items.count - 3) more notes")
-                                            .font(GentleLightning.Typography.small)
-                                            .foregroundColor(GentleLightning.Colors.textSecondary.opacity(0.6))
-                                        Spacer()
-                                    }
-                                    .padding(.top, 8)
-                                }
-                            }
-                        }
-                        .padding(.horizontal, GentleLightning.Layout.Padding.xl)
-                        .padding(.bottom, GentleLightning.Layout.Padding.xl)
-                    }
-                }
-                
+                // Smaller spacer below
                 Spacer()
+                    .frame(maxHeight: 100)
+                
+                // Items List - always show recent items (last 3)
+                ScrollView {
+                    LazyVStack(spacing: GentleLightning.Layout.Spacing.comfortable) {
+                        if dataManager.items.isEmpty {
+                            EmptyStateView()
+                                .padding(.top, 60)
+                        } else {
+                            ForEach(Array(dataManager.items.prefix(3))) { item in
+                                ItemRowSimple(item: item, dataManager: dataManager)
+                                    .transition(.asymmetric(
+                                        insertion: .move(edge: .top).combined(with: .opacity),
+                                        removal: .move(edge: .leading).combined(with: .opacity)
+                                    ))
+                            }
+                            
+                            if dataManager.items.count > 3 {
+                                HStack {
+                                    Spacer()
+                                    Text("\(dataManager.items.count - 3) more notes")
+                                        .font(GentleLightning.Typography.small)
+                                        .foregroundColor(GentleLightning.Colors.textSecondary.opacity(0.6))
+                                    Spacer()
+                                }
+                                .padding(.top, 8)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, GentleLightning.Layout.Padding.xl)
+                    .padding(.bottom, GentleLightning.Layout.Padding.xl)
+                }
+            }
+            
+            // Logout button positioned at bottom of screen, behind keyboard
+            VStack {
+                Spacer()
+                
+                Button(action: {
+                    do {
+                        try FirebaseManager.shared.signOut()
+                    } catch {
+                        print("Sign out error: \(error)")
+                    }
+                }) {
+                    Text("Logout")
+                        .font(GentleLightning.Typography.body)
+                        .foregroundColor(GentleLightning.Colors.textSecondary)
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 24)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .padding(.bottom, 50) // Position behind keyboard area
             }
         }
     }

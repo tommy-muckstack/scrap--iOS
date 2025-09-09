@@ -50,12 +50,13 @@
     <true/>
     <key>UIAppFonts</key>
     <array>
+        <string>Hadley.otf</string>
+        <string>Office Notes.otf</string>
+        <string>Office Notes.ttf</string>
         <string>Satoshi-Regular.otf</string>
         <string>Satoshi-Medium.otf</string>
         <string>Satoshi-Bold.otf</string>
         <string>Satoshi-Variable.ttf</string>
-        <string>Office Notes.otf</string>
-        <string>Office Notes.ttf</string>
     </array>
     <key>NSMicrophoneUsageDescription</key>
     <string>Spark uses your microphone to transcribe voice notes, making it easy to capture your thoughts hands-free.</string>
@@ -69,6 +70,14 @@
             <key>CFBundleURLSchemes</key>
             <array>
                 <string>com.googleusercontent.apps.520567341698-h372oqpma77ge4o0v42pssnh20iesk91</string>
+            </array>
+        </dict>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>BundleID</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>com.muckstack.spark</string>
             </array>
         </dict>
     </array>
