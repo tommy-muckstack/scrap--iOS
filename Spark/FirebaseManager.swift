@@ -136,9 +136,11 @@ class FirebaseManager: ObservableObject {
             }
             
             // Create Firebase credential
-            let credential = OAuthProvider.credential(withProviderID: "apple.com",
-                                                    idToken: idTokenString,
-                                                    rawNonce: nonce)
+            let credential = OAuthProvider.credential(
+                providerID: AuthProviderID.apple,
+                idToken: idTokenString,
+                rawNonce: nonce
+            )
             
             // Sign in with Firebase
             let authResult = try await auth.signIn(with: credential)
