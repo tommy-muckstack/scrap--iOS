@@ -1,5 +1,6 @@
 import Foundation
 import AmplitudeSwift
+import UIKit
 
 class AnalyticsManager: ObservableObject {
     static let shared = AnalyticsManager()
@@ -14,8 +15,39 @@ class AnalyticsManager: ObservableObject {
             )
         )
         
+        // Set initial user ID to device ID
+        setUserIdToDeviceId()
+        
         // Track app launch
         trackEvent("app_launched")
+    }
+    
+    // MARK: - User Identification
+    func setUserIdToDeviceId() {
+        let deviceId = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
+        amplitude?.setUserId(userId: deviceId)
+    }
+    
+    func setUserIdToEmail(_ email: String) {
+        amplitude?.setUserId(userId: email)
+    }
+    
+    func trackUserSignedIn(method: String, email: String?) {
+        // Update user ID to email if available
+        if let email = email {
+            setUserIdToEmail(email)
+        }
+        
+        trackEvent("user_signed_in", properties: [
+            "sign_in_method": method
+        ])
+    }
+    
+    func trackUserSignedOut() {
+        // Reset user ID back to device ID
+        setUserIdToDeviceId()
+        
+        trackEvent("user_signed_out")
     }
     
     // MARK: - Event Tracking

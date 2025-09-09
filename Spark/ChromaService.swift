@@ -6,7 +6,7 @@ struct ChromaCollection: Codable {
     let metadata: [String: String]?
 }
 
-struct ChromaDocument: Codable {
+struct ChromaDocument {
     let ids: [String]
     let embeddings: [[Double]]
     let metadatas: [[String: Any]]
@@ -29,6 +29,7 @@ struct ChromaMetadata: Codable {
 }
 
 // MARK: - Chroma Service
+@MainActor
 class ChromaService: ObservableObject {
     static let shared = ChromaService()
     
@@ -43,7 +44,7 @@ class ChromaService: ObservableObject {
         // Railway Chroma deployment URL
         self.baseURL = "https://spark-ios-production.up.railway.app"
         
-        Task {
+        Task { @MainActor in
             await initializeCollection()
         }
     }
@@ -57,15 +58,11 @@ class ChromaService: ObservableObject {
                 try await createCollection()
             }
             
-            DispatchQueue.main.async {
-                self.isConnected = true
-                self.error = nil
-            }
+            self.isConnected = true
+            self.error = nil
         } catch {
-            DispatchQueue.main.async {
-                self.isConnected = false
-                self.error = "Failed to connect to Chroma: \(error.localizedDescription)"
-            }
+            self.isConnected = false
+            self.error = "Failed to connect to Chroma: \(error.localizedDescription)"
         }
     }
     

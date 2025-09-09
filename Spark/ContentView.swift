@@ -105,23 +105,9 @@ class FirebaseDataManager: ObservableObject {
     private let firebaseManager = FirebaseManager.shared
     
     init() {
-        // Auto sign in anonymously when manager is created
+        // Start listening for data when manager is created
         Task {
-            await signInIfNeeded()
             await startListening()
-        }
-    }
-    
-    private func signInIfNeeded() async {
-        if !firebaseManager.isAuthenticated {
-            do {
-                try await firebaseManager.signInAnonymously()
-                print("✅ Signed in anonymously")
-            } catch {
-                DispatchQueue.main.async {
-                    self.error = "Authentication failed: \(error.localizedDescription)"
-                }
-            }
         }
     }
     
@@ -237,10 +223,6 @@ struct InputField: View {
     
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: "sparkles")
-                .font(.system(size: 20, weight: .medium))
-                .foregroundColor(GentleLightning.Colors.textSecondary)
-            
             TextField(placeholder, text: $text)
                 .font(GentleLightning.Typography.bodyInput)
                 .foregroundColor(GentleLightning.Colors.textPrimary)
@@ -367,8 +349,9 @@ struct ContentView: View {
                     
                     Spacer()
                     
-                    // Subtle "view all notes" toggle
-                    if !dataManager.items.isEmpty {
+                    HStack(spacing: 12) {
+                        // Subtle "view all notes" toggle
+                        if !dataManager.items.isEmpty {
                         Button(action: {
                             withAnimation(GentleLightning.Animation.gentle) {
                                 viewModel.showingAllNotes.toggle()
@@ -395,6 +378,21 @@ struct ContentView: View {
                         }
                         .buttonStyle(PlainButtonStyle())
                         .transition(.scale.combined(with: .opacity))
+                        }
+                        
+                        // Sign out button
+                        Button(action: {
+                            do {
+                                try FirebaseManager.shared.signOut()
+                            } catch {
+                                print("Sign out error: \(error)")
+                            }
+                        }) {
+                            Image(systemName: "person.crop.circle")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(GentleLightning.Colors.textSecondary)
+                        }
+                        .buttonStyle(PlainButtonStyle())
                     }
                 }
                 .padding(.horizontal, GentleLightning.Layout.Padding.xl)

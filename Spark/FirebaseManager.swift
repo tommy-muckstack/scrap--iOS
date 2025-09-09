@@ -41,23 +41,18 @@ class FirebaseManager: ObservableObject {
             DispatchQueue.main.async {
                 self?.user = user
                 self?.isAuthenticated = user != nil
+                
+                // Update analytics user ID when auth state changes
+                if let user = user, let email = user.email {
+                    AnalyticsManager.shared.setUserIdToEmail(email)
+                } else {
+                    AnalyticsManager.shared.setUserIdToDeviceId()
+                }
             }
         }
     }
     
     // MARK: - Authentication
-    func signInAnonymously() async throws {
-        DispatchQueue.main.async {
-            self.isLoading = true
-        }
-        
-        let result = try await auth.signInAnonymously()
-        DispatchQueue.main.async {
-            self.user = result.user
-            self.isAuthenticated = true
-            self.isLoading = false
-        }
-    }
     
     func signInWithGoogle() async throws {
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
@@ -98,8 +93,8 @@ class FirebaseManager: ObservableObject {
                 self.isLoading = false
             }
             
-            // Track successful Google sign in
-            AnalyticsManager.shared.trackEvent("auth_google_signin_success")
+            // Track successful Google sign in with analytics user ID update
+            AnalyticsManager.shared.trackUserSignedIn(method: "google", email: authResult.user.email)
             
         } catch {
             DispatchQueue.main.async {
@@ -167,8 +162,8 @@ class FirebaseManager: ObservableObject {
                 self.isLoading = false
             }
             
-            // Track successful Apple sign in
-            AnalyticsManager.shared.trackEvent("auth_apple_signin_success")
+            // Track successful Apple sign in with analytics user ID update
+            AnalyticsManager.shared.trackUserSignedIn(method: "apple", email: authResult.user.email)
             
         } catch {
             DispatchQueue.main.async {
@@ -233,6 +228,9 @@ class FirebaseManager: ObservableObject {
     }
     
     func signOut() throws {
+        // Track sign out before clearing user data
+        AnalyticsManager.shared.trackUserSignedOut()
+        
         try auth.signOut()
         GIDSignIn.sharedInstance.signOut()
         

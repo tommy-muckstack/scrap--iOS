@@ -154,36 +154,6 @@ struct AuthenticationView: View {
                     .buttonStyle(PlainButtonStyle())
                     .disabled(firebaseManager.isLoading)
                     
-                    // Or separator
-                    HStack {
-                        Rectangle()
-                            .fill(GentleLightning.Colors.textSecondary.opacity(0.2))
-                            .frame(height: 1)
-                        
-                        Text("Or")
-                            .font(.custom("Satoshi-Regular", size: 14))
-                            .foregroundColor(GentleLightning.Colors.textSecondary)
-                            .padding(.horizontal, 16)
-                        
-                        Rectangle()
-                            .fill(GentleLightning.Colors.textSecondary.opacity(0.2))
-                            .frame(height: 1)
-                    }
-                    .padding(.vertical, 8)
-                    
-                    // Continue as Guest
-                    Button(action: {
-                        Task {
-                            await signInAsGuest()
-                        }
-                    }) {
-                        Text("Continue as Guest")
-                            .font(.custom("Satoshi-Medium", size: 16))
-                            .foregroundColor(GentleLightning.Colors.accentNeutral)
-                            .underline()
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .disabled(firebaseManager.isLoading)
                     
                     // Loading indicator
                     if firebaseManager.isLoading {
@@ -247,14 +217,6 @@ struct AuthenticationView: View {
         }
     }
     
-    private func signInAsGuest() async {
-        do {
-            try await firebaseManager.signInAnonymously()
-            AnalyticsManager.shared.trackEvent("auth_anonymous_signin")
-        } catch {
-            print("Failed to sign in anonymously: \(error)")
-        }
-    }
     
     private func performAppleSignIn() {
         errorMessage = nil
@@ -485,11 +447,11 @@ struct EmailAuthView: View {
             if isSignUp {
                 // Create new user
                 let result = try await Auth.auth().createUser(withEmail: email, password: password)
-                AnalyticsManager.shared.trackEvent("auth_email_signup")
+                AnalyticsManager.shared.trackUserSignedIn(method: "email_signup", email: result.user.email)
             } else {
                 // Sign in existing user
                 let result = try await Auth.auth().signIn(withEmail: email, password: password)
-                AnalyticsManager.shared.trackEvent("auth_email_signin")
+                AnalyticsManager.shared.trackUserSignedIn(method: "email_signin", email: result.user.email)
             }
             
             dismiss()
