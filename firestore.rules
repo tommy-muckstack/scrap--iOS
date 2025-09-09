@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // Security rules for notes collection
     match /notes/{noteId} {
-      // Users can only read/write their own notes
+      // Users can only read/write their own notes (for existing documents)
       allow read, write: if request.auth != null 
         && request.auth.uid == resource.data.userId;
       
@@ -11,6 +11,11 @@ service cloud.firestore {
       allow create: if request.auth != null 
         && request.auth.uid == request.resource.data.userId
         && validateNoteData(request.resource.data);
+      
+      // Allow updates if user owns the note
+      allow update: if request.auth != null 
+        && request.auth.uid == resource.data.userId
+        && request.auth.uid == request.resource.data.userId;
     }
     
     // Deny all other access
@@ -22,7 +27,7 @@ service cloud.firestore {
 
 // Validate note data structure
 function validateNoteData(data) {
-  return data.keys().hasAll(['userId', 'content', 'isTask', 'categories', 'createdAt', 'updatedAt'])
+  return data.keys().hasAll(['userId', 'content', 'isTask', 'categories', 'createdAt', 'updatedAt', 'creationType'])
     && data.userId is string
     && data.content is string
     && data.content.size() <= 10000  // Max 10k characters
@@ -30,5 +35,7 @@ function validateNoteData(data) {
     && data.categories is list
     && data.categories.size() <= 10  // Max 10 categories
     && data.createdAt is timestamp
-    && data.updatedAt is timestamp;
+    && data.updatedAt is timestamp
+    && data.creationType is string
+    && data.creationType in ['voice', 'text'];
 }

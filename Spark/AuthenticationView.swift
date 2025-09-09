@@ -4,6 +4,162 @@ import GoogleSignIn
 import GoogleSignInSwift
 import AuthenticationServices
 
+// MARK: - FloatingLabelTextField Component
+struct FloatingLabelTextField: View {
+    let placeholder: String
+    @Binding var text: String
+    var isSecureField: Bool = false
+    var keyboardType: UIKeyboardType = .default
+    var textContentType: UITextContentType?
+    var autocapitalization: TextInputAutocapitalization = .sentences
+    var isDisabled: Bool = false
+    
+    @FocusState private var isFocused: Bool
+    @State private var isSecureTextVisible: Bool = false
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ZStack(alignment: .leading) {
+                // Background with border
+                RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.medium)
+                    .fill(GentleLightning.Colors.surface)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.medium)
+                            .stroke(borderColor, lineWidth: isFocused ? 2 : 1)
+                    )
+                    .frame(height: 56)
+                
+                // Floating Label - positioned more precisely like HuddleUp
+                Text(placeholder)
+                    .font(shouldShowFloatingLabel ? GentleLightning.Typography.caption : GentleLightning.Typography.bodyInput)
+                    .foregroundColor(labelColor)
+                    .padding(.leading, 16)
+                    .offset(y: shouldShowFloatingLabel ? -18 : 0)
+                    .scaleEffect(shouldShowFloatingLabel ? 0.85 : 1.0, anchor: .leading)
+                    .animation(.easeInOut(duration: 0.2), value: shouldShowFloatingLabel)
+                    .allowsHitTesting(false)
+                
+                // Text Input
+                HStack {
+                    if isSecureField && !isSecureTextVisible {
+                        SecureField("", text: $text)
+                            .font(GentleLightning.Typography.bodyInput)
+                            .foregroundColor(GentleLightning.Colors.textPrimary)
+                            .keyboardType(keyboardType)
+                            .textContentType(textContentType)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(autocapitalization)
+                            .focused($isFocused)
+                            .disabled(isDisabled)
+                    } else {
+                        TextField("", text: $text)
+                            .font(GentleLightning.Typography.bodyInput)
+                            .foregroundColor(GentleLightning.Colors.textPrimary)
+                            .keyboardType(keyboardType)
+                            .textContentType(textContentType)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(autocapitalization)
+                            .focused($isFocused)
+                            .disabled(isDisabled)
+                    }
+                    
+                    // Show/Hide password toggle
+                    if isSecureField {
+                        Button(action: {
+                            isSecureTextVisible.toggle()
+                        }) {
+                            Image(systemName: isSecureTextVisible ? "eye.slash" : "eye")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(GentleLightning.Colors.textSecondary)
+                        }
+                        .padding(.trailing, 4)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 16)
+            }
+        }
+        .opacity(isDisabled ? 0.6 : 1.0)
+        .animation(.easeInOut(duration: 0.2), value: isFocused)
+        .animation(.easeInOut(duration: 0.2), value: !text.isEmpty)
+    }
+    
+    // MARK: - Computed Properties
+    
+    private var shouldShowFloatingLabel: Bool {
+        isFocused || !text.isEmpty
+    }
+    
+    private var labelColor: Color {
+        if isDisabled {
+            return GentleLightning.Colors.textSecondary.opacity(0.5)
+        } else if isFocused {
+            return GentleLightning.Colors.accentNeutral
+        } else if !text.isEmpty {
+            return GentleLightning.Colors.textPrimary
+        } else {
+            return GentleLightning.Colors.textSecondary
+        }
+    }
+    
+    private var borderColor: Color {
+        if isDisabled {
+            return GentleLightning.Colors.textSecondary.opacity(0.1)
+        } else if isFocused {
+            return GentleLightning.Colors.accentNeutral
+        } else {
+            return GentleLightning.Colors.textSecondary.opacity(0.2)
+        }
+    }
+}
+
+// MARK: - Convenience Initializers for FloatingLabelTextField
+extension FloatingLabelTextField {
+    static func email(placeholder: String, text: Binding<String>, isDisabled: Bool = false) -> FloatingLabelTextField {
+        FloatingLabelTextField(
+            placeholder: placeholder,
+            text: text,
+            keyboardType: .emailAddress,
+            textContentType: .emailAddress,
+            autocapitalization: .never,
+            isDisabled: isDisabled
+        )
+    }
+    
+    static func password(placeholder: String, text: Binding<String>, isDisabled: Bool = false) -> FloatingLabelTextField {
+        FloatingLabelTextField(
+            placeholder: placeholder,
+            text: text,
+            isSecureField: true,
+            textContentType: .password,
+            autocapitalization: .never,
+            isDisabled: isDisabled
+        )
+    }
+    
+    static func newPassword(placeholder: String, text: Binding<String>, isDisabled: Bool = false) -> FloatingLabelTextField {
+        FloatingLabelTextField(
+            placeholder: placeholder,
+            text: text,
+            isSecureField: true,
+            textContentType: .newPassword,
+            autocapitalization: .never,
+            isDisabled: isDisabled
+        )
+    }
+    
+    static func name(placeholder: String, text: Binding<String>, isDisabled: Bool = false) -> FloatingLabelTextField {
+        FloatingLabelTextField(
+            placeholder: placeholder,
+            text: text,
+            keyboardType: .default,
+            textContentType: .name,
+            autocapitalization: .words,
+            isDisabled: isDisabled
+        )
+    }
+}
+
 struct AuthenticationView: View {
     @ObservedObject private var firebaseManager = FirebaseManager.shared
     @State private var showingEmailEntry = false
@@ -47,7 +203,7 @@ struct AuthenticationView: View {
                     
                     // Welcome text below logo (left aligned)
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Welcome to Spark")
+                        Text("Scrap")
                             .font(GentleLightning.Typography.hero)
                             .foregroundColor(GentleLightning.Colors.textPrimary)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -273,11 +429,18 @@ struct EmailAuthView: View {
     
     @State private var email = ""
     @State private var password = ""
+    @State private var confirmPassword = ""
+    @State private var fullName = ""
+    
+    @State private var isCheckingEmail = false
+    @State private var showingPasswordFields = false
     @State private var isSignUp = false
     @State private var error: String?
     
     @FocusState private var isEmailFocused: Bool
     @FocusState private var isPasswordFocused: Bool
+    @FocusState private var isConfirmPasswordFocused: Bool
+    @FocusState private var isFullNameFocused: Bool
     
     var body: some View {
         NavigationStack {
@@ -308,108 +471,131 @@ struct EmailAuthView: View {
                                         .foregroundColor(.white)
                                 )
                             
-                            Text(isSignUp ? "Create Account" : "Sign In")
+                            Text(getHeaderTitle())
                                 .font(GentleLightning.Typography.hero)
                                 .foregroundColor(GentleLightning.Colors.textPrimary)
+                                .animation(.easeInOut(duration: 0.3), value: showingPasswordFields)
                             
-                            Text("Enter your email to continue")
+                            Text(getSubtitle())
                                 .font(GentleLightning.Typography.body)
                                 .foregroundColor(GentleLightning.Colors.textSecondary)
                                 .multilineTextAlignment(.center)
+                                .animation(.easeInOut(duration: 0.3), value: showingPasswordFields)
                         }
                         .padding(.top, 40)
                         
                         // Form
-                        VStack(spacing: 16) {
-                            // Email field
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text("Email")
-                                    .font(GentleLightning.Typography.caption)
-                                    .foregroundColor(GentleLightning.Colors.textPrimary)
-                                
-                                TextField("Enter your email", text: $email)
-                                    .font(GentleLightning.Typography.bodyInput)
-                                    .foregroundColor(GentleLightning.Colors.textPrimary)
-                                    .keyboardType(.emailAddress)
-                                    .textContentType(.emailAddress)
-                                    .autocapitalization(.none)
-                                    .focused($isEmailFocused)
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 14)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.medium)
-                                            .fill(GentleLightning.Colors.surface)
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.medium)
-                                                    .stroke(GentleLightning.Colors.textSecondary.opacity(0.2), lineWidth: 1)
-                                            )
-                                    )
+                        VStack(spacing: 20) {
+                            // Email field - always visible
+                            FloatingLabelTextField.email(
+                                placeholder: "Email Address",
+                                text: $email
+                            )
+                            .focused($isEmailFocused)
+                            .disabled(showingPasswordFields)
+                            .onChange(of: email) { newValue in
+                                if !showingPasswordFields && isValidEmail(newValue) && !isCheckingEmail {
+                                    checkEmailExists()
+                                }
                             }
                             
-                            // Password field
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text("Password")
-                                    .font(GentleLightning.Typography.caption)
-                                    .foregroundColor(GentleLightning.Colors.textPrimary)
-                                
-                                SecureField("Enter your password", text: $password)
-                                    .font(GentleLightning.Typography.bodyInput)
-                                    .foregroundColor(GentleLightning.Colors.textPrimary)
-                                    .textContentType(isSignUp ? .newPassword : .password)
-                                    .focused($isPasswordFocused)
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 14)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.medium)
-                                            .fill(GentleLightning.Colors.surface)
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.medium)
-                                                    .stroke(GentleLightning.Colors.textSecondary.opacity(0.2), lineWidth: 1)
-                                            )
-                                    )
+                            // Password fields - shown after email validation
+                            if showingPasswordFields {
+                                VStack(spacing: 16) {
+                                    // Full name field (only for sign up)
+                                    if isSignUp {
+                                        FloatingLabelTextField.name(
+                                            placeholder: "Full Name",
+                                            text: $fullName
+                                        )
+                                        .focused($isFullNameFocused)
+                                        .transition(.move(edge: .top).combined(with: .opacity))
+                                    }
+                                    
+                                    // Password field
+                                    if isSignUp {
+                                        FloatingLabelTextField.newPassword(
+                                            placeholder: "Password",
+                                            text: $password
+                                        )
+                                        .focused($isPasswordFocused)
+                                    } else {
+                                        FloatingLabelTextField.password(
+                                            placeholder: "Password",
+                                            text: $password
+                                        )
+                                        .focused($isPasswordFocused)
+                                    }
+                                    
+                                    // Confirm password (only for sign up)
+                                    if isSignUp {
+                                        FloatingLabelTextField.newPassword(
+                                            placeholder: "Confirm Password",
+                                            text: $confirmPassword
+                                        )
+                                        .focused($isConfirmPasswordFocused)
+                                        .transition(.move(edge: .top).combined(with: .opacity))
+                                    }
+                                }
+                                .transition(.move(edge: .top).combined(with: .opacity))
                             }
                             
                             // Submit button
-                            Button(action: {
-                                Task {
-                                    await handleSubmit()
-                                }
-                            }) {
-                                HStack {
-                                    if firebaseManager.isLoading {
-                                        ProgressView()
-                                            .scaleEffect(0.8)
-                                            .tint(.white)
-                                    } else {
-                                        Text(isSignUp ? "Create Account" : "Sign In")
-                                            .font(Font.custom("Office Notes", size: 16))
-                                            .foregroundColor(.white)
+                            if showingPasswordFields {
+                                Button(action: {
+                                    Task {
+                                        await handleSubmit()
                                     }
+                                }) {
+                                    HStack {
+                                        if firebaseManager.isLoading {
+                                            ProgressView()
+                                                .scaleEffect(0.8)
+                                                .tint(.white)
+                                        } else {
+                                            Text(getButtonText())
+                                                .font(GentleLightning.Typography.body)
+                                                .foregroundColor(.white)
+                                        }
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 52)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.large)
+                                            .fill(isFormValid ? GentleLightning.Colors.accentNeutral : GentleLightning.Colors.textSecondary.opacity(0.3))
+                                    )
                                 }
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 48)
-                                .background(
-                                    RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.medium)
-                                        .fill(isFormValid ? GentleLightning.Colors.accentNeutral : GentleLightning.Colors.textSecondary.opacity(0.3))
-                                )
+                                .buttonStyle(PlainButtonStyle())
+                                .disabled(!isFormValid || firebaseManager.isLoading)
+                                .transition(.move(edge: .top).combined(with: .opacity))
                             }
-                            .buttonStyle(PlainButtonStyle())
-                            .disabled(!isFormValid || firebaseManager.isLoading)
                             
-                            // Toggle sign up/in
-                            HStack {
-                                Text(isSignUp ? "Already have an account?" : "Don't have an account?")
-                                    .font(GentleLightning.Typography.caption)
-                                    .foregroundColor(GentleLightning.Colors.textSecondary)
-                                
-                                Button(isSignUp ? "Sign In" : "Sign Up") {
+                            // Back to email button
+                            if showingPasswordFields {
+                                Button("← Back to email") {
                                     withAnimation(.easeInOut(duration: 0.3)) {
-                                        isSignUp.toggle()
+                                        showingPasswordFields = false
+                                        clearPasswordFields()
                                         error = nil
+                                        isEmailFocused = true
                                     }
                                 }
                                 .font(GentleLightning.Typography.caption)
                                 .foregroundColor(GentleLightning.Colors.accentNeutral)
+                                .transition(.move(edge: .top).combined(with: .opacity))
+                            }
+                            
+                            // Email checking indicator
+                            if isCheckingEmail {
+                                HStack(spacing: 8) {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                        .tint(GentleLightning.Colors.accentNeutral)
+                                    Text("Checking email...")
+                                        .font(GentleLightning.Typography.caption)
+                                        .foregroundColor(GentleLightning.Colors.textSecondary)
+                                }
+                                .transition(.opacity)
                             }
                             
                             // Error message
@@ -418,7 +604,8 @@ struct EmailAuthView: View {
                                     .font(GentleLightning.Typography.small)
                                     .foregroundColor(.red)
                                     .multilineTextAlignment(.center)
-                                    .padding(.top, 8)
+                                    .padding(.horizontal, 16)
+                                    .transition(.opacity)
                             }
                         }
                         .padding(.horizontal, 24)
@@ -443,8 +630,92 @@ struct EmailAuthView: View {
         }
     }
     
+    // MARK: - Helper Methods
+    
+    private func getHeaderTitle() -> String {
+        if showingPasswordFields {
+            return isSignUp ? "Create Account" : "Welcome Back"
+        } else {
+            return "Enter Email"
+        }
+    }
+    
+    private func getSubtitle() -> String {
+        if showingPasswordFields {
+            return isSignUp ? "Just a few details to get started" : "Enter your password to continue"
+        } else {
+            return "We'll check if you have an account"
+        }
+    }
+    
+    private func getButtonText() -> String {
+        return isSignUp ? "Create Account" : "Sign In"
+    }
+    
     private var isFormValid: Bool {
-        !email.isEmpty && password.count >= 6 && email.contains("@")
+        let hasValidEmail = !email.isEmpty && isValidEmail(email)
+        let hasValidPassword = password.count >= 6
+        
+        if isSignUp {
+            let hasValidName = !fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            let passwordsMatch = password == confirmPassword && !password.isEmpty
+            return hasValidEmail && hasValidPassword && hasValidName && passwordsMatch
+        } else {
+            return hasValidEmail && hasValidPassword
+        }
+    }
+    
+    private func isValidEmail(_ email: String) -> Bool {
+        let emailRegex = "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
+        let emailPredicate = NSPredicate(format: "SELF MATCHES %@", emailRegex)
+        return emailPredicate.evaluate(with: email)
+    }
+    
+    private func clearPasswordFields() {
+        password = ""
+        confirmPassword = ""
+        fullName = ""
+    }
+    
+    private func checkEmailExists() {
+        isCheckingEmail = true
+        
+        Task {
+            // Simulate API call to check if email exists
+            try await Task.sleep(nanoseconds: 500_000_000) // 0.5 second delay
+            
+            // Demo implementation - checks against hardcoded list of existing emails
+            let existingEmails = [
+                "tommy@muckstack.com",
+                "test@example.com",
+                "user@test.com",
+                "demo@spark.com"
+            ]
+            
+            await MainActor.run {
+                isCheckingEmail = false
+                isSignUp = !existingEmails.contains(email.lowercased())
+                
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    showingPasswordFields = true
+                }
+                
+                // Focus appropriate field
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                    if isSignUp {
+                        isFullNameFocused = true
+                    } else {
+                        isPasswordFocused = true
+                    }
+                }
+                
+                // Track analytics
+                AnalyticsManager.shared.trackEvent("email_checked", properties: [
+                    "is_new_user": isSignUp,
+                    "email_domain": String(email.split(separator: "@").last ?? "")
+                ])
+            }
+        }
     }
     
     private func handleSubmit() async {
@@ -456,6 +727,12 @@ struct EmailAuthView: View {
             if isSignUp {
                 // Create new user
                 let result = try await Auth.auth().createUser(withEmail: email, password: password)
+                
+                // Update profile with display name
+                let changeRequest = result.user.createProfileChangeRequest()
+                changeRequest.displayName = fullName.trimmingCharacters(in: .whitespacesAndNewlines)
+                try await changeRequest.commitChanges()
+                
                 AnalyticsManager.shared.trackUserSignedIn(method: "email_signup", email: result.user.email)
             } else {
                 // Sign in existing user
@@ -466,6 +743,12 @@ struct EmailAuthView: View {
             dismiss()
         } catch {
             self.error = error.localizedDescription
+            
+            // Track failed authentication
+            AnalyticsManager.shared.trackEvent(isSignUp ? "auth_signup_failed" : "auth_signin_failed", properties: [
+                "error": error.localizedDescription,
+                "method": "email"
+            ])
         }
     }
 }

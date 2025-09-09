@@ -695,55 +695,89 @@ struct NoteEditView: View {
         self._isPresented = isPresented
         self.item = item
         self.dataManager = dataManager
-        // Initialize with current item content immediately
-        print("🔧 NoteEditView init: item.content = '\(item.content)'")
-        self._editedText = State(initialValue: item.content.isEmpty ? " " : item.content)
+        
+        let initialContent = item.content.isEmpty ? " " : item.content
+        print("🔧 NoteEditView init: item.content = '\(item.content)' -> initialContent = '\(initialContent)'")
+        
+        // Validate the content doesn't contain problematic characters that could cause NaN
+        let safeContent = sanitizeTextContent(initialContent)
+        print("🔧 NoteEditView init: sanitized content = '\(safeContent)'")
+        
+        self._editedText = State(initialValue: safeContent)
     }
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 0) {
-                // Text Editor
-                TextEditor(text: $editedText)
-                    .font(GentleLightning.Typography.bodyInput)
-                    .foregroundColor(GentleLightning.Colors.textPrimary)
-                    .padding(GentleLightning.Layout.Padding.lg)
-                    .frame(minHeight: 100) // Ensure minimum height to prevent layout issues
-                    .focused($isTextFieldFocused)
-                    .onAppear {
-                        print("📝 NoteEditView: onAppear - item.content: '\(item.content)', editedText: '\(editedText)'")
-                        // Ensure we have the latest content
-                        if editedText.isEmpty || editedText != item.content {
-                            print("📝 NoteEditView: Setting editedText to item.content: '\(item.content)'")
-                            editedText = item.content
-                        }
-                        isTextFieldFocused = true
-                    }
+            GeometryReader { geometry in
+                VStack(spacing: 0) {
+                    // Text Editor with safe bounds
+                    ScrollView {
+                        TextEditor(text: $editedText)
+                            .font(GentleLightning.Typography.bodyInput)
+                            .foregroundColor(GentleLightning.Colors.textPrimary)
+                            .padding(GentleLightning.Layout.Padding.lg)
+                            .frame(
+                                minWidth: max(200, geometry.size.width - 32),
+                                maxWidth: .infinity,
+                                minHeight: max(120, geometry.size.height * 0.6),
+                                maxHeight: .infinity,
+                                alignment: .topLeading
+                            )
+                            .background(Color.white)
+                            .focused($isTextFieldFocused)
+                            .onAppear {
+                                print("📝 NoteEditView: onAppear - geometry: \(geometry.size), item.content: '\(item.content)', editedText: '\(editedText)'")
+                                
+                                // Double-check our content is safe
+                                let safeContent = sanitizeTextContent(item.content)
+                                if editedText != safeContent {
+                                    print("📝 NoteEditView: Updating to safe content: '\(safeContent)'")
+                                    editedText = safeContent
+                                }
+                                
+                                // Focus with a small delay to ensure layout is stable
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                    isTextFieldFocused = true
+                                }
+                            }
                     .onChange(of: editedText) { newValue in
-                        // Auto-convert bullet markers to bullet points
-                        guard !newValue.isEmpty else { return }
+                        // Sanitize input to prevent NaN errors
+                        let safeValue = sanitizeTextContent(newValue)
+                        if safeValue != newValue {
+                            print("🛡️ NoteEditView: Sanitized input from '\(newValue)' to '\(safeValue)'")
+                            editedText = safeValue
+                            return
+                        }
                         
-                        let processedText = processMarkdownBullets(newValue, oldValue: editedText)
-                        if processedText != newValue && processedText != editedText {
+                        // Auto-convert bullet markers to bullet points
+                        guard !safeValue.isEmpty else { return }
+                        
+                        let processedText = processMarkdownBullets(safeValue, oldValue: editedText)
+                        if processedText != safeValue && processedText != editedText {
                             editedText = processedText
                         }
                         
                         // Auto-save changes
-                        if !newValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            dataManager.updateItem(item, newContent: newValue.trimmingCharacters(in: .whitespacesAndNewlines))
-                            AnalyticsManager.shared.trackNoteEditSaved(noteId: item.id, contentLength: newValue.count)
+                        let trimmedContent = safeValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if !trimmedContent.isEmpty {
+                            dataManager.updateItem(item, newContent: trimmedContent)
+                            AnalyticsManager.shared.trackNoteEditSaved(noteId: item.id, contentLength: safeValue.count)
                         }
                     }
                     .onChange(of: item.content) { newContent in
-                        // Update edited text if the underlying item content changes
-                        if editedText != newContent {
-                            editedText = newContent
+                        // Update edited text if the underlying item content changes (with sanitization)
+                        let safeNewContent = sanitizeTextContent(newContent)
+                        if editedText != safeNewContent {
+                            print("📝 NoteEditView: Item content changed, updating to safe content: '\(safeNewContent)'")
+                            editedText = safeNewContent
                         }
                     }
+                    }
                 
-                Spacer()
+                    Spacer()
+                }
+                .background(Color.white)
             }
-            .background(Color.white)
             .navigationTitle("Edit Note")
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarBackButtonHidden()
@@ -841,6 +875,35 @@ struct NoteEditView: View {
                 print("ShareNote: Activity view controller presented successfully from \(String(describing: presentingViewController))")
             }
         }
+    }
+    
+    // Sanitize text content to prevent CoreGraphics NaN errors
+    private func sanitizeTextContent(_ text: String) -> String {
+        guard !text.isEmpty else { return " " }
+        
+        // Remove any problematic characters that could cause layout issues
+        var sanitized = text
+        
+        // Remove null characters and other control characters that might cause issues
+        sanitized = sanitized.replacingOccurrences(of: "\0", with: "")
+        
+        // Replace any zero-width or invisible characters that might cause measurement issues
+        sanitized = sanitized.replacingOccurrences(of: "\u{200B}", with: "") // Zero-width space
+        sanitized = sanitized.replacingOccurrences(of: "\u{FEFF}", with: "") // Byte order mark
+        sanitized = sanitized.replacingOccurrences(of: "\u{202E}", with: "") // Right-to-left override
+        
+        // Ensure we don't have empty string after sanitization
+        if sanitized.isEmpty || sanitized.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return " "
+        }
+        
+        // Limit extremely long single lines that might cause layout issues
+        let lines = sanitized.components(separatedBy: .newlines)
+        let sanitizedLines = lines.map { line in
+            line.count > 1000 ? String(line.prefix(1000)) + "..." : line
+        }
+        
+        return sanitizedLines.joined(separator: "\n")
     }
     
     // Process markdown-style bullets and smart bullet continuation
@@ -1021,7 +1084,7 @@ struct AccountDrawerView: View {
                 
                 // App info
                 VStack(spacing: 8) {
-                    Text("Spark")
+                    Text("Scrap")
                         .font(GentleLightning.Typography.title)
                         .foregroundColor(GentleLightning.Colors.textBlack)
                     
@@ -1069,7 +1132,7 @@ struct ContentView: View {
                 HStack {
                     Spacer()
                     
-                    Text("Spark")
+                    Text("Scrap")
                         .font(GentleLightning.Typography.hero)
                         .foregroundColor(GentleLightning.Colors.textPrimary)
                     

@@ -102,7 +102,7 @@ struct RootView: View {
                                     .foregroundColor(.white)
                             )
                         
-                        Text("Spark")
+                        Text("Scrap")
                             .font(GentleLightning.Typography.hero)
                             .foregroundColor(GentleLightning.Colors.textPrimary)
                         

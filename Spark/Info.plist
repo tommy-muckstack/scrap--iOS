@@ -5,7 +5,7 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>$(DEVELOPMENT_LANGUAGE)</string>
     <key>CFBundleDisplayName</key>
-    <string>Spark</string>
+    <string>Scrap</string>
     <key>CFBundleExecutable</key>
     <string>$(EXECUTABLE_NAME)</string>
     <key>CFBundleIdentifier</key>
@@ -60,9 +60,9 @@
         <string>Satoshi-Variable.ttf</string>
     </array>
     <key>NSMicrophoneUsageDescription</key>
-    <string>Spark uses your microphone to transcribe voice notes, making it easy to capture your thoughts hands-free.</string>
+    <string>Scrap uses your microphone to transcribe voice notes, making it easy to capture your thoughts hands-free.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
-    <string>Spark uses speech recognition to convert your voice into text, enabling quick note-taking through voice input.</string>
+    <string>Scrap uses speech recognition to convert your voice into text, enabling quick note-taking through voice input.</string>
     <key>CFBundleURLTypes</key>
     <array>
         <dict>
@@ -78,7 +78,7 @@
             <string>BundleID</string>
             <key>CFBundleURLSchemes</key>
             <array>
-                <string>com.muckstack.spark</string>
+                <string>com.muckstack.scrap</string>
             </array>
         </dict>
     </array>

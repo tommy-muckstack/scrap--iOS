@@ -310,7 +310,7 @@ class FirebaseManager: ObservableObject {
         print("🎯 FirebaseManager: Attempting to save to Firestore collection 'notes'...")
         
         do {
-            let docRef = try await db.collection("notes").addDocument(from: note)
+            let docRef = try db.collection("notes").addDocument(from: note)
             print("🎉 FirebaseManager: Successfully saved note with ID: \(docRef.documentID)")
             
             // Track analytics
