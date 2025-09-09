@@ -1,22 +1,52 @@
 import SwiftUI
 import Firebase
 import GoogleSignIn
+import UIKit
+
+class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        print("AppDelegate: didFinishLaunchingWithOptions called")
+        return true
+    }
+    
+    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
+        print("AppDelegate: Handling URL: \(url)")
+        let handled = GIDSignIn.sharedInstance.handle(url)
+        print("AppDelegate: Google Sign-In handled URL: \(handled)")
+        return handled
+    }
+    
+    func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
+        print("AppDelegate: continue userActivity called")
+        return true
+    }
+}
 
 @main
 struct SparkApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
+    
     init() {
+        print("SparkApp: Initializing app...")
+        
         // Initialize Firebase
         FirebaseApp.configure()
+        print("SparkApp: Firebase configured")
         
         // Configure Google Sign In
         if let path = Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist"),
            let plist = NSDictionary(contentsOfFile: path),
            let clientId = plist["CLIENT_ID"] as? String {
+            print("SparkApp: Configuring Google Sign-In with client ID: \(clientId)")
             GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientId)
+            print("SparkApp: Google Sign-In configured successfully")
+        } else {
+            print("SparkApp: ERROR - Failed to configure Google Sign-In")
         }
         
         // Initialize analytics when app launches
         AnalyticsManager.shared.initialize()
+        print("SparkApp: Analytics initialized")
     }
     
     var body: some Scene {
@@ -30,7 +60,9 @@ struct SparkApp: App {
                     AnalyticsManager.shared.trackAppBackground()
                 }
                 .onOpenURL { url in
-                    GIDSignIn.sharedInstance.handle(url)
+                    print("SwiftUI: Handling URL: \(url)")
+                    let handled = GIDSignIn.sharedInstance.handle(url)
+                    print("SwiftUI: Google Sign-In handled URL: \(handled)")
                 }
         }
     }
@@ -80,9 +112,12 @@ struct RootView: View {
                 }
                 .onAppear {
                     // Give Firebase time to initialize auth state
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                        withAnimation(.easeInOut(duration: 0.5)) {
-                            hasInitialized = true
+                    Task {
+                        try? await Task.sleep(nanoseconds: 1_000_000_000) // 1.0 seconds
+                        await MainActor.run {
+                            withAnimation(.easeInOut(duration: 0.5)) {
+                                hasInitialized = true
+                            }
                         }
                     }
                 }

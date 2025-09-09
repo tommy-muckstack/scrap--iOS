@@ -54,6 +54,8 @@
         <string>Satoshi-Medium.otf</string>
         <string>Satoshi-Bold.otf</string>
         <string>Satoshi-Variable.ttf</string>
+        <string>Office Notes.otf</string>
+        <string>Office Notes.ttf</string>
     </array>
     <key>NSMicrophoneUsageDescription</key>
     <string>Spark uses your microphone to transcribe voice notes, making it easy to capture your thoughts hands-free.</string>
@@ -66,7 +68,7 @@
             <string>GoogleSignIn</string>
             <key>CFBundleURLSchemes</key>
             <array>
-                <string>com.googleusercontent.apps.520567341698-h372oqpma77ge4o0v42pssnh20iesk91</string>
+                <string>com.googleusercontent.apps.367508532007-v1bvu3ccfmdjt6202prunp6ebos6cfgc</string>
             </array>
         </dict>
     </array>

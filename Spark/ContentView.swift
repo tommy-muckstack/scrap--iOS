@@ -19,10 +19,12 @@ struct GentleLightning {
     }
     
     struct Typography {
-        static let hero = Font.custom("Satoshi-Bold", size: 34)
-        static let body = Font.custom("Satoshi-Regular", size: 17)
-        static let bodyInput = Font.custom("Satoshi-Regular", size: 18)
-        static let title = Font.custom("Satoshi-Medium", size: 20)
+        static let hero = Font.custom("Office Notes", size: 36)
+        static let body = Font.custom("Office Notes", size: 17)
+        static let bodyInput = Font.custom("Office Notes", size: 18)
+        static let title = Font.custom("Office Notes", size: 22)
+        static let caption = Font.custom("Office Notes", size: 14)
+        static let small = Font.custom("Office Notes", size: 12)
     }
     
     struct Layout {
@@ -139,14 +141,14 @@ class FirebaseDataManager: ObservableObject {
                     categories: categories
                 )
                 
-                DispatchQueue.main.async {
+                await MainActor.run {
                     newItem.firebaseId = firebaseId
                 }
                 
                 // TODO: Save to Pinecone for vector search
                 
             } catch {
-                DispatchQueue.main.async {
+                await MainActor.run {
                     // Remove optimistic item on error
                     self.items.removeAll { $0.id == newItem.id }
                     self.error = "Failed to save note: \(error.localizedDescription)"
@@ -179,7 +181,7 @@ class FirebaseDataManager: ObservableObject {
                 do {
                     try await firebaseManager.deleteNote(noteId: firebaseId)
                 } catch {
-                    DispatchQueue.main.async {
+                    await MainActor.run {
                         self.error = "Failed to delete note: \(error.localizedDescription)"
                         // Re-add the item since deletion failed
                         self.items.insert(item, at: 0)
@@ -231,8 +233,11 @@ struct InputField: View {
                 .focused($isFieldFocused)
                 .onAppear {
                     // Auto-focus on appear
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        isFieldFocused = true
+                    Task {
+                        try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                        await MainActor.run {
+                            isFieldFocused = true
+                        }
                     }
                 }
             
@@ -362,7 +367,7 @@ struct ContentView: View {
                         }) {
                             HStack(spacing: 4) {
                                 Text(viewModel.showingAllNotes ? "Hide" : "View all")
-                                    .font(.custom("Satoshi-Regular", size: 14))
+                                    .font(GentleLightning.Typography.caption)
                                     .foregroundColor(GentleLightning.Colors.textSecondary)
                                 Image(systemName: viewModel.showingAllNotes ? "eye.slash" : "eye")
                                     .font(.system(size: 12, weight: .medium))
@@ -451,7 +456,7 @@ struct ContentView: View {
                                     HStack {
                                         Spacer()
                                         Text("\(dataManager.items.count - 3) more notes")
-                                            .font(.custom("Satoshi-Regular", size: 12))
+                                            .font(GentleLightning.Typography.small)
                                             .foregroundColor(GentleLightning.Colors.textSecondary.opacity(0.6))
                                         Spacer()
                                     }

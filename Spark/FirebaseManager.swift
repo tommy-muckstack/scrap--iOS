@@ -40,7 +40,7 @@ class FirebaseManager: ObservableObject {
     init() {
         // Listen for auth state changes
         authStateListener = auth.addStateDidChangeListener { [weak self] _, user in
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 guard let self = self else { return }
                 self.user = user
                 self.isAuthenticated = user != nil
@@ -58,27 +58,39 @@ class FirebaseManager: ObservableObject {
     // MARK: - Authentication
     
     func signInWithGoogle() async throws {
+        print("FirebaseManager: Starting Google Sign-In")
+        
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let window = windowScene.windows.first,
               let rootViewController = window.rootViewController else {
+            print("FirebaseManager: Failed to get root view controller")
             throw FirebaseError.invalidData
         }
         
-        DispatchQueue.main.async {
+        print("FirebaseManager: Got root view controller: \(rootViewController)")
+        
+        await MainActor.run {
             self.isLoading = true
         }
         
         do {
             guard let clientID = FirebaseApp.app()?.options.clientID else {
+                print("FirebaseManager: Failed to get Firebase client ID")
                 throw FirebaseError.invalidData
             }
+            
+            print("FirebaseManager: Using client ID: \(clientID)")
             
             // Configure Google Sign In
             let config = GIDConfiguration(clientID: clientID)
             GIDSignIn.sharedInstance.configuration = config
             
+            print("FirebaseManager: Google Sign-In configured")
+            
             // Start the Google Sign In flow
+            print("FirebaseManager: Starting Google Sign-In flow...")
             let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController)
+            print("FirebaseManager: Google Sign-In completed successfully")
             
             guard let idToken = result.user.idToken?.tokenString else {
                 throw FirebaseError.invalidData
@@ -90,7 +102,7 @@ class FirebaseManager: ObservableObject {
             // Sign in with Firebase
             let authResult = try await auth.signIn(with: credential)
             
-            DispatchQueue.main.async {
+            await MainActor.run {
                 self.user = authResult.user
                 self.isAuthenticated = true
                 self.isLoading = false
@@ -100,7 +112,7 @@ class FirebaseManager: ObservableObject {
             AnalyticsManager.shared.trackUserSignedIn(method: "google", email: authResult.user.email)
             
         } catch {
-            DispatchQueue.main.async {
+            await MainActor.run {
                 self.isLoading = false
             }
             
@@ -114,7 +126,7 @@ class FirebaseManager: ObservableObject {
     }
     
     func signInWithApple(authorization: ASAuthorization) async throws {
-        DispatchQueue.main.async {
+        await MainActor.run {
             self.isLoading = true
         }
         
@@ -159,7 +171,7 @@ class FirebaseManager: ObservableObject {
                 }
             }
             
-            DispatchQueue.main.async {
+            await MainActor.run {
                 self.user = authResult.user
                 self.isAuthenticated = true
                 self.isLoading = false
@@ -169,7 +181,7 @@ class FirebaseManager: ObservableObject {
             AnalyticsManager.shared.trackUserSignedIn(method: "apple", email: authResult.user.email)
             
         } catch {
-            DispatchQueue.main.async {
+            await MainActor.run {
                 self.isLoading = false
             }
             
@@ -237,7 +249,7 @@ class FirebaseManager: ObservableObject {
         try auth.signOut()
         GIDSignIn.sharedInstance.signOut()
         
-        DispatchQueue.main.async {
+        Task { @MainActor in
             self.user = nil
             self.isAuthenticated = false
         }
@@ -325,7 +337,7 @@ class FirebaseManager: ObservableObject {
                     try? doc.data(as: FirebaseNote.self)
                 }
                 
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     completion(notes)
                 }
             }

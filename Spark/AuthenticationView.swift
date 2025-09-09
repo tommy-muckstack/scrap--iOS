@@ -171,7 +171,7 @@ struct AuthenticationView: View {
                                 .scaleEffect(0.8)
                                 .tint(GentleLightning.Colors.accentNeutral)
                             Text("Signing in...")
-                                .font(.custom("Satoshi-Regular", size: 14))
+                                .font(GentleLightning.Typography.caption)
                                 .foregroundColor(GentleLightning.Colors.textSecondary)
                         }
                         .padding(.top, 8)
@@ -180,7 +180,7 @@ struct AuthenticationView: View {
                     // Error message
                     if let errorMessage = errorMessage {
                         Text(errorMessage)
-                            .font(.custom("Satoshi-Regular", size: 12))
+                            .font(GentleLightning.Typography.small)
                             .foregroundColor(.red)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 16)
@@ -190,15 +190,15 @@ struct AuthenticationView: View {
                     // Privacy links
                     HStack(spacing: 4) {
                         Link("Terms of Service", destination: URL(string: "https://spark-app.com/terms")!)
-                            .font(.custom("Satoshi-Regular", size: 12))
+                            .font(GentleLightning.Typography.small)
                             .foregroundColor(GentleLightning.Colors.textSecondary)
                         
                         Text("|")
-                            .font(.custom("Satoshi-Regular", size: 12))
+                            .font(GentleLightning.Typography.small)
                             .foregroundColor(GentleLightning.Colors.textSecondary)
                         
                         Link("Privacy Policy", destination: URL(string: "https://spark-app.com/privacy")!)
-                            .font(.custom("Satoshi-Regular", size: 12))
+                            .font(GentleLightning.Typography.small)
                             .foregroundColor(GentleLightning.Colors.textSecondary)
                     }
                     .padding(.top, 16)
@@ -219,7 +219,7 @@ struct AuthenticationView: View {
             errorMessage = nil
             try await firebaseManager.signInWithGoogle()
         } catch {
-            DispatchQueue.main.async {
+            await MainActor.run {
                 self.errorMessage = "Google Sign-In failed: \(error.localizedDescription)"
             }
             print("Google Sign-In failed: \(error.localizedDescription)")
@@ -246,12 +246,12 @@ struct AuthenticationView: View {
                     do {
                         try await firebaseManager.signInWithApple(authorization: authorization)
                     } catch {
-                        DispatchQueue.main.async {
+                        await MainActor.run {
                             self.errorMessage = "Apple Sign-In failed: \(error.localizedDescription)"
                         }
                     }
                 case .failure(let error):
-                    DispatchQueue.main.async {
+                    await MainActor.run {
                         if (error as NSError).code != ASAuthorizationError.canceled.rawValue {
                             self.errorMessage = "Apple Sign-In failed: \(error.localizedDescription)"
                         }
@@ -324,7 +324,7 @@ struct EmailAuthView: View {
                             // Email field
                             VStack(alignment: .leading, spacing: 6) {
                                 Text("Email")
-                                    .font(.custom("Satoshi-Medium", size: 14))
+                                    .font(GentleLightning.Typography.caption)
                                     .foregroundColor(GentleLightning.Colors.textPrimary)
                                 
                                 TextField("Enter your email", text: $email)
@@ -349,7 +349,7 @@ struct EmailAuthView: View {
                             // Password field
                             VStack(alignment: .leading, spacing: 6) {
                                 Text("Password")
-                                    .font(.custom("Satoshi-Medium", size: 14))
+                                    .font(GentleLightning.Typography.caption)
                                     .foregroundColor(GentleLightning.Colors.textPrimary)
                                 
                                 SecureField("Enter your password", text: $password)
@@ -382,7 +382,7 @@ struct EmailAuthView: View {
                                             .tint(.white)
                                     } else {
                                         Text(isSignUp ? "Create Account" : "Sign In")
-                                            .font(.custom("Satoshi-Medium", size: 16))
+                                            .font(Font.custom("Office Notes", size: 16))
                                             .foregroundColor(.white)
                                     }
                                 }
@@ -399,7 +399,7 @@ struct EmailAuthView: View {
                             // Toggle sign up/in
                             HStack {
                                 Text(isSignUp ? "Already have an account?" : "Don't have an account?")
-                                    .font(.custom("Satoshi-Regular", size: 14))
+                                    .font(GentleLightning.Typography.caption)
                                     .foregroundColor(GentleLightning.Colors.textSecondary)
                                 
                                 Button(isSignUp ? "Sign In" : "Sign Up") {
@@ -408,14 +408,14 @@ struct EmailAuthView: View {
                                         error = nil
                                     }
                                 }
-                                .font(.custom("Satoshi-Medium", size: 14))
+                                .font(GentleLightning.Typography.caption)
                                 .foregroundColor(GentleLightning.Colors.accentNeutral)
                             }
                             
                             // Error message
                             if let error = error {
                                 Text(error)
-                                    .font(.custom("Satoshi-Regular", size: 12))
+                                    .font(GentleLightning.Typography.small)
                                     .foregroundColor(.red)
                                     .multilineTextAlignment(.center)
                                     .padding(.top, 8)
