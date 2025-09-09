@@ -1,0 +1,34 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Security rules for notes collection
+    match /notes/{noteId} {
+      // Users can only read/write their own notes
+      allow read, write: if request.auth != null 
+        && request.auth.uid == resource.data.userId;
+      
+      // Users can only create notes with their own userId
+      allow create: if request.auth != null 
+        && request.auth.uid == request.resource.data.userId
+        && validateNoteData(request.resource.data);
+    }
+    
+    // Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+// Validate note data structure
+function validateNoteData(data) {
+  return data.keys().hasAll(['userId', 'content', 'isTask', 'categories', 'createdAt', 'updatedAt'])
+    && data.userId is string
+    && data.content is string
+    && data.content.size() <= 10000  // Max 10k characters
+    && data.isTask is bool
+    && data.categories is list
+    && data.categories.size() <= 10  // Max 10 categories
+    && data.createdAt is timestamp
+    && data.updatedAt is timestamp;
+}
