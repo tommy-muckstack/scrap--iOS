@@ -60,9 +60,16 @@ class FirebaseManager: ObservableObject {
     func signInWithGoogle() async throws {
         print("FirebaseManager: Starting Google Sign-In")
         
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let window = windowScene.windows.first,
-              let rootViewController = window.rootViewController else {
+        let rootViewController = await MainActor.run {
+            guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                  let window = windowScene.windows.first,
+                  let rootViewController = window.rootViewController else {
+                return nil
+            }
+            return rootViewController
+        }
+        
+        guard let rootViewController = rootViewController else {
             print("FirebaseManager: Failed to get root view controller")
             throw FirebaseError.invalidData
         }
