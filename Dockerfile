@@ -6,8 +6,9 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install ChromaDB
-RUN pip install chromadb==0.5.0
+# Install ChromaDB with compatible NumPy version
+RUN pip install numpy==1.26.4 && \
+    pip install chromadb==0.5.0
 
 # Set environment variables
 ENV CHROMA_HOST=0.0.0.0
