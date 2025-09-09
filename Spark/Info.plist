@@ -50,6 +50,7 @@
     <true/>
     <key>UIAppFonts</key>
     <array>
+        <string>Cloud.otf</string>
         <string>Hadley.otf</string>
         <string>Office Notes.otf</string>
         <string>Office Notes.ttf</string>

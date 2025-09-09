@@ -269,6 +269,13 @@ class FirebaseManager: ObservableObject {
         return docRef.documentID
     }
     
+    func updateNote(noteId: String, newContent: String) async throws {
+        try await db.collection("notes").document(noteId).updateData([
+            "content": newContent,
+            "updatedAt": Date()
+        ])
+    }
+    
     func updateNotePineconeId(noteId: String, pineconeId: String) async throws {
         try await db.collection("notes").document(noteId).updateData([
             "pineconeId": pineconeId,
@@ -312,14 +319,20 @@ class FirebaseManager: ObservableObject {
     
     // MARK: - Real-time Listener
     func startListening(completion: @escaping ([FirebaseNote]) -> Void) {
-        guard let userId = user?.uid else { return }
+        guard let userId = user?.uid else { 
+            return 
+        }
         
         listenerRegistration = db.collection("notes")
             .whereField("userId", isEqualTo: userId)
             .order(by: "createdAt", descending: true)
             .addSnapshotListener { snapshot, error in
+                if let error = error {
+                    print("Error fetching notes: \(error.localizedDescription)")
+                    return
+                }
+                
                 guard let documents = snapshot?.documents else {
-                    print("Error fetching notes: \(error?.localizedDescription ?? "Unknown error")")
                     return
                 }
                 

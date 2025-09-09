@@ -19,12 +19,12 @@ struct GentleLightning {
     }
     
     struct Typography {
-        static let hero = Font.custom("Hadley", size: 36)
-        static let body = Font.custom("Hadley", size: 17)
-        static let bodyInput = Font.custom("Hadley", size: 18)
-        static let title = Font.custom("Hadley", size: 22)
-        static let caption = Font.custom("Hadley", size: 14)
-        static let small = Font.custom("Hadley", size: 12)
+        static let hero = Font.custom("Cloud", size: 36)
+        static let body = Font.custom("Cloud", size: 17)
+        static let bodyInput = Font.custom("Cloud", size: 18)
+        static let title = Font.custom("Cloud", size: 22)
+        static let caption = Font.custom("Cloud", size: 14)
+        static let small = Font.custom("Cloud", size: 12)
     }
     
     struct Layout {
@@ -152,6 +152,24 @@ class FirebaseDataManager: ObservableObject {
     }
     
     
+    func updateItem(_ item: SparkItem, newContent: String) {
+        // Update local item immediately (optimistic)
+        item.content = newContent
+        
+        // Update Firebase
+        if let firebaseId = item.firebaseId {
+            Task {
+                do {
+                    try await firebaseManager.updateNote(noteId: firebaseId, newContent: newContent)
+                } catch {
+                    await MainActor.run {
+                        self.error = "Failed to update note: \(error.localizedDescription)"
+                    }
+                }
+            }
+        }
+    }
+    
     func deleteItem(_ item: SparkItem) {
         // Track item deletion before removing
         AnalyticsManager.shared.trackItemDeleted(isTask: item.isTask)
@@ -254,30 +272,34 @@ struct EmptyStateView: View {
 struct ItemRowSimple: View {
     @ObservedObject var item: SparkItem
     let dataManager: FirebaseDataManager
+    let onTap: () -> Void
     
     var body: some View {
-        HStack(spacing: 12) {
-            // Simple bullet point for notes
-            Circle()
-                .fill(GentleLightning.Colors.accentIdea.opacity(0.3))
-                .frame(width: 6, height: 6)
-                .padding(.horizontal, 8)
-            
-            Text(item.wrappedContent)
-                .font(GentleLightning.Typography.body)
-                .foregroundColor(GentleLightning.Colors.textPrimary)
-                .lineLimit(nil)
-                .multilineTextAlignment(.leading)
-            
-            Spacer()
+        Button(action: onTap) {
+            HStack(spacing: 12) {
+                // Simple bullet point for notes
+                Circle()
+                    .fill(GentleLightning.Colors.accentIdea.opacity(0.3))
+                    .frame(width: 6, height: 6)
+                    .padding(.horizontal, 8)
+                
+                Text(item.wrappedContent)
+                    .font(GentleLightning.Typography.body)
+                    .foregroundColor(GentleLightning.Colors.textPrimary)
+                    .lineLimit(nil)
+                    .multilineTextAlignment(.leading)
+                
+                Spacer()
+            }
+            .padding(.horizontal, GentleLightning.Layout.Padding.lg)
+            .padding(.vertical, GentleLightning.Layout.Padding.lg)
+            .background(
+                RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.medium)
+                    .fill(GentleLightning.Colors.surface)
+                    .shadow(color: GentleLightning.Colors.shadowLight, radius: 8, x: 0, y: 2)
+            )
         }
-        .padding(.horizontal, GentleLightning.Layout.Padding.lg)
-        .padding(.vertical, GentleLightning.Layout.Padding.lg)
-        .background(
-            RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.medium)
-                .fill(GentleLightning.Colors.surface)
-                .shadow(color: GentleLightning.Colors.shadowLight, radius: 8, x: 0, y: 2)
-        )
+        .buttonStyle(PlainButtonStyle())
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button("Delete") {
                 withAnimation(GentleLightning.Animation.gentle) {
@@ -289,10 +311,72 @@ struct ItemRowSimple: View {
     }
 }
 
+// MARK: - Note Edit View
+struct NoteEditView: View {
+    @Binding var isPresented: Bool
+    @ObservedObject var item: SparkItem
+    let dataManager: FirebaseDataManager
+    
+    @State private var editedText: String
+    @FocusState private var isTextFieldFocused: Bool
+    
+    init(isPresented: Binding<Bool>, item: SparkItem, dataManager: FirebaseDataManager) {
+        self._isPresented = isPresented
+        self.item = item
+        self.dataManager = dataManager
+        self._editedText = State(initialValue: item.content)
+    }
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 0) {
+                // Text Editor
+                TextEditor(text: $editedText)
+                    .font(GentleLightning.Typography.bodyInput)
+                    .foregroundColor(GentleLightning.Colors.textPrimary)
+                    .padding(GentleLightning.Layout.Padding.lg)
+                    .focused($isTextFieldFocused)
+                    .onAppear {
+                        isTextFieldFocused = true
+                    }
+                
+                Spacer()
+            }
+            .background(Color.white)
+            .navigationTitle("Edit Note")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden()
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        isPresented = false
+                    }
+                    .font(GentleLightning.Typography.body)
+                    .foregroundColor(GentleLightning.Colors.textSecondary)
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        if !editedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            dataManager.updateItem(item, newContent: editedText.trimmingCharacters(in: .whitespacesAndNewlines))
+                        }
+                        isPresented = false
+                    }
+                    .font(GentleLightning.Typography.body)
+                    .foregroundColor(GentleLightning.Colors.textPrimary)
+                    .disabled(editedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+    }
+}
+
 // MARK: - Main Content View
 struct ContentView: View {
     @StateObject private var dataManager = FirebaseDataManager()
     @StateObject private var viewModel = ContentViewModel()
+    @State private var editingItem: SparkItem?
+    @State private var showingEditView = false
     
     var body: some View {
         ZStack {
@@ -335,11 +419,14 @@ struct ContentView: View {
                                 .padding(.top, 60)
                         } else {
                             ForEach(Array(dataManager.items.prefix(3))) { item in
-                                ItemRowSimple(item: item, dataManager: dataManager)
-                                    .transition(.asymmetric(
-                                        insertion: .move(edge: .top).combined(with: .opacity),
-                                        removal: .move(edge: .leading).combined(with: .opacity)
-                                    ))
+                                ItemRowSimple(item: item, dataManager: dataManager) {
+                                    editingItem = item
+                                    showingEditView = true
+                                }
+                                .transition(.asymmetric(
+                                    insertion: .move(edge: .top).combined(with: .opacity),
+                                    removal: .move(edge: .leading).combined(with: .opacity)
+                                ))
                             }
                             
                             if dataManager.items.count > 3 {
@@ -378,6 +465,11 @@ struct ContentView: View {
                 }
                 .buttonStyle(PlainButtonStyle())
                 .padding(.bottom, 50) // Position behind keyboard area
+            }
+        }
+        .sheet(isPresented: $showingEditView) {
+            if let editingItem = editingItem {
+                NoteEditView(isPresented: $showingEditView, item: editingItem, dataManager: dataManager)
             }
         }
     }
