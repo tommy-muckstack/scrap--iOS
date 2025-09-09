@@ -40,8 +40,8 @@ class ChromaService: ObservableObject {
     @Published var error: String?
     
     init() {
-        // TODO: Replace with your Railway deployment URL
-        self.baseURL = "https://your-chroma-deployment.up.railway.app"
+        // Railway Chroma deployment URL
+        self.baseURL = "https://spark-ios-production.up.railway.app"
         
         Task {
             await initializeCollection()
