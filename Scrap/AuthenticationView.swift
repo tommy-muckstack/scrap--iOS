@@ -69,7 +69,7 @@ struct FloatingLabelTextField: View {
                             isSecureTextVisible.toggle()
                         }) {
                             Image(systemName: isSecureTextVisible ? "eye.slash" : "eye")
-                                .font(.system(size: 16, weight: .medium))
+                                .font(GentleLightning.Typography.body)
                                 .foregroundColor(GentleLightning.Colors.textSecondary)
                         }
                         .padding(.trailing, 4)
@@ -192,7 +192,7 @@ struct AuthenticationView: View {
                             .frame(width: 80, height: 80)
                             .overlay(
                                 Image(systemName: "sparkles")
-                                    .font(.system(size: 32, weight: .medium))
+                                    .font(GentleLightning.Typography.hero)
                                     .foregroundColor(.white)
                             )
                         
@@ -233,14 +233,14 @@ struct AuthenticationView: View {
                             // Google G logo
                             ZStack {
                                 Circle()
-                                    .fill(Color.white)
+                                    .fill(GentleLightning.Colors.background)
                                     .frame(width: 24, height: 24)
                                     .overlay(
                                         Circle()
                                             .stroke(GentleLightning.Colors.shadowLight, lineWidth: 1)
                                     )
                                 Text("G")
-                                    .font(.system(size: 13, weight: .medium))
+                                    .font(GentleLightning.Typography.caption)
                                     .foregroundColor(Color(red: 0.26, green: 0.52, blue: 0.96))
                             }
                             
@@ -269,7 +269,7 @@ struct AuthenticationView: View {
                     }) {
                         HStack(spacing: 12) {
                             Image(systemName: "applelogo")
-                                .font(.system(size: 18, weight: .medium))
+                                .font(GentleLightning.Typography.bodyInput)
                                 .foregroundColor(GentleLightning.Colors.textPrimary)
                             
                             Text("Continue with Apple")
@@ -297,7 +297,7 @@ struct AuthenticationView: View {
                     }) {
                         HStack(spacing: 12) {
                             Image(systemName: "envelope")
-                                .font(.system(size: 18, weight: .medium))
+                                .font(GentleLightning.Typography.bodyInput)
                                 .foregroundColor(GentleLightning.Colors.textPrimary)
                             
                             Text("Continue with Email")
@@ -337,7 +337,7 @@ struct AuthenticationView: View {
                     if let errorMessage = errorMessage {
                         Text(errorMessage)
                             .font(GentleLightning.Typography.small)
-                            .foregroundColor(.red)
+                            .foregroundColor(GentleLightning.Colors.error)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 16)
                             .padding(.top, 8)
@@ -467,7 +467,7 @@ struct EmailAuthView: View {
                                 .frame(width: 60, height: 60)
                                 .overlay(
                                     Image(systemName: "envelope")
-                                        .font(.system(size: 24, weight: .medium))
+                                        .font(GentleLightning.Typography.title)
                                         .foregroundColor(.white)
                                 )
                             
@@ -602,7 +602,7 @@ struct EmailAuthView: View {
                             if let error = error {
                                 Text(error)
                                     .font(GentleLightning.Typography.small)
-                                    .foregroundColor(.red)
+                                    .foregroundColor(GentleLightning.Colors.error)
                                     .multilineTextAlignment(.center)
                                     .padding(.horizontal, 16)
                                     .transition(.opacity)

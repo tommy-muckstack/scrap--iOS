@@ -19,6 +19,8 @@ struct GentleLightning {
         static let accentTask = Color(red: 0.4, green: 0.65, blue: 1.0)
         static let accentNeutral = Color(red: 0.65, green: 0.7, blue: 1.0)
         static let shadowLight = Color.black.opacity(0.03)
+        static let error = Color(red: 0.95, green: 0.26, blue: 0.21)
+        static let success = Color(red: 0.29, green: 0.76, blue: 0.49)
     }
     
     struct Typography {
@@ -381,7 +383,7 @@ struct InputField: View {
                             // Stop icon - appears when recording
                             if isRecording {
                                 Image(systemName: "stop.fill")
-                                    .font(.system(size: 16, weight: .medium))
+                                    .font(GentleLightning.Typography.body)
                                     .foregroundColor(.white)
                                     .scaleEffect(
                                         x: isRecording ? 1.0 : 0.01,
@@ -399,7 +401,7 @@ struct InputField: View {
                             // Microphone icon - default state
                             if !hasText && !isRecording {
                                 Image(systemName: "mic.fill")
-                                    .font(.system(size: 20, weight: .medium))
+                                    .font(GentleLightning.Typography.title)
                                     .foregroundColor(.white)
                                     .scaleEffect(
                                         x: (!hasText && !isRecording) ? 1.0 : 0.01,
@@ -428,7 +430,7 @@ struct InputField: View {
             if isRecording {
                 HStack {
                     Circle()
-                        .fill(Color.red)
+                        .fill(GentleLightning.Colors.error)
                         .frame(width: 8, height: 8)
                         .opacity(0.8)
                         .scaleEffect(1.5)
@@ -613,7 +615,7 @@ struct InputField: View {
     
     // Calculate text height dynamically
     private func updateTextHeight(for text: String) {
-        let font = UIFont.systemFont(ofSize: 18) // Match bodyInput font size
+        let font = UIFont(name: "SharpGrotesk-Book", size: 17) ?? UIFont.systemFont(ofSize: 17) // Match bodyInput font size
         let screenWidth = UIScreen.main.bounds.width
         let maxWidth = max(200, screenWidth.isFinite ? screenWidth - 120 : 200) // Ensure minimum width, account for padding and mic button
         
@@ -825,7 +827,7 @@ struct NoteEditView: View {
                     showingActionSheet = true
                 }) {
                     Image(systemName: "ellipsis")
-                        .font(.system(size: 18, weight: .medium))
+                        .font(GentleLightning.Typography.bodyInput)
                         .foregroundColor(GentleLightning.Colors.textPrimary)
                 }
             )
@@ -1109,7 +1111,7 @@ struct AccountDrawerView: View {
                     }) {
                         HStack {
                             Image(systemName: "arrow.right.square")
-                                .font(.system(size: 20, weight: .medium))
+                                .font(GentleLightning.Typography.title)
                             Text("Logout")
                                 .font(GentleLightning.Typography.body)
                             Spacer()
@@ -1131,12 +1133,12 @@ struct AccountDrawerView: View {
                     }) {
                         HStack {
                             Image(systemName: "trash")
-                                .font(.system(size: 20, weight: .medium))
+                                .font(GentleLightning.Typography.title)
                             Text("Delete Account")
                                 .font(GentleLightning.Typography.body)
                             Spacer()
                         }
-                        .foregroundColor(.red)
+                        .foregroundColor(GentleLightning.Colors.error)
                         .padding(.horizontal, 20)
                         .padding(.vertical, 16)
                         .background(

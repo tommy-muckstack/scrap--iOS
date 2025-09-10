@@ -98,7 +98,7 @@ struct RootView: View {
                             .frame(width: 120, height: 120)
                             .overlay(
                                 Image(systemName: "sparkles")
-                                    .font(.system(size: 48, weight: .medium))
+                                    .font(GentleLightning.Typography.hero)
                                     .foregroundColor(.white)
                             )
                         
