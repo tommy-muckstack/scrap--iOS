@@ -21,15 +21,86 @@
 		BB304E852E6F9F0A0054DD40 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = BB304E842E6F9F0A0054DD40 /* FirebaseStorage */; };
 		BB304E892E6FA8650054DD40 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = BB304E882E6FA8650054DD40 /* GoogleSignIn */; };
 		BB304E8B2E6FA8650054DD40 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = BB304E8A2E6FA8650054DD40 /* GoogleSignInSwift */; };
-		BBC2A2B72E7190E4000BEABE /* SharpGrotesk-SemiBold.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2B62E7190E4000BEABE /* SharpGrotesk-SemiBold.otf */; };
-		BBC2A2B82E7190E4000BEABE /* SharpGrotesk-Medium.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2B52E7190E4000BEABE /* SharpGrotesk-Medium.otf */; };
-		BBC2A2B92E7190E4000BEABE /* SharpGrotesk-Book.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2B42E7190E4000BEABE /* SharpGrotesk-Book.otf */; };
-		BBC2A2BB2E719199000BEABE /* SharpGrotesk-BookItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2BA2E719199000BEABE /* SharpGrotesk-BookItalic.otf */; };
-		BBC2A2BD2E7191A0000BEABE /* SharpGrotesk-Light.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2BC2E7191A0000BEABE /* SharpGrotesk-Light.otf */; };
-		BBC2A2BF2E7191A7000BEABE /* SharpGrotesk-LightItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2BE2E7191A7000BEABE /* SharpGrotesk-LightItalic.otf */; };
-		BBC2A2C12E7191B1000BEABE /* SharpGrotesk-MediumItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2C02E7191B1000BEABE /* SharpGrotesk-MediumItalic.otf */; };
-		BBC2A2C32E7191B9000BEABE /* SharpGrotesk-Thin.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2C22E7191B9000BEABE /* SharpGrotesk-Thin.otf */; };
-		BBC2A2C52E7191BF000BEABE /* SharpGrotesk-ThinItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2C42E7191BF000BEABE /* SharpGrotesk-ThinItalic.otf */; };
+		BBC2A3252E719333000BEABE /* Satoshi-Black.eot in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2DE2E719333000BEABE /* Satoshi-Black.eot */; };
+		BBC2A3262E719333000BEABE /* Satoshi-VariableItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A30B2E719333000BEABE /* Satoshi-VariableItalic.ttf */; };
+		BBC2A3272E719333000BEABE /* Satoshi-VariableItalic.woff2 in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A30D2E719333000BEABE /* Satoshi-VariableItalic.woff2 */; };
+		BBC2A3282E719333000BEABE /* Satoshi-LightItalic.woff in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2F82E719333000BEABE /* Satoshi-LightItalic.woff */; };
+		BBC2A3292E719333000BEABE /* Satoshi-LightItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2F72E719333000BEABE /* Satoshi-LightItalic.ttf */; };
+		BBC2A32A2E719333000BEABE /* Satoshi-Variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3182E719333000BEABE /* Satoshi-Variable.ttf */; };
+		BBC2A32B2E719333000BEABE /* FFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3122E719333000BEABE /* FFL.txt */; };
+		BBC2A32C2E719333000BEABE /* Satoshi-BlackItalic.eot in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2E22E719333000BEABE /* Satoshi-BlackItalic.eot */; };
+		BBC2A32D2E719333000BEABE /* Satoshi-Italic.woff2 in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2F12E719333000BEABE /* Satoshi-Italic.woff2 */; };
+		BBC2A32E2E719333000BEABE /* Satoshi-MediumItalic.woff2 in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3012E719333000BEABE /* Satoshi-MediumItalic.woff2 */; };
+		BBC2A32F2E719333000BEABE /* Satoshi-BoldItalic.woff2 in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2ED2E719333000BEABE /* Satoshi-BoldItalic.woff2 */; };
+		BBC2A3302E719333000BEABE /* Office Notes.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2CC2E719333000BEABE /* Office Notes.ttf */; };
+		BBC2A3312E719333000BEABE /* Satoshi-BoldItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2D12E719333000BEABE /* Satoshi-BoldItalic.otf */; };
+		BBC2A3322E719333000BEABE /* Satoshi-Bold.woff2 in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2E92E719333000BEABE /* Satoshi-Bold.woff2 */; };
+		BBC2A3332E719333000BEABE /* Satoshi-BoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2EB2E719333000BEABE /* Satoshi-BoldItalic.ttf */; };
+		BBC2A3342E719333000BEABE /* Satoshi-Black.woff2 in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2E12E719333000BEABE /* Satoshi-Black.woff2 */; };
+		BBC2A3352E719333000BEABE /* Satoshi-BlackItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2E32E719333000BEABE /* Satoshi-BlackItalic.ttf */; };
+		BBC2A3362E719333000BEABE /* Satoshi-Variable.woff2 in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3092E719333000BEABE /* Satoshi-Variable.woff2 */; };
+		BBC2A3372E719333000BEABE /* Satoshi-Medium.eot in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2FA2E719333000BEABE /* Satoshi-Medium.eot */; };
+		BBC2A3382E719333000BEABE /* Satoshi-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3172E719333000BEABE /* Satoshi-Regular.otf */; };
+		BBC2A3392E719333000BEABE /* Satoshi-Medium.woff in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2FC2E719333000BEABE /* Satoshi-Medium.woff */; };
+		BBC2A33A2E719333000BEABE /* Satoshi-VariableItalic.eot in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A30A2E719333000BEABE /* Satoshi-VariableItalic.eot */; };
+		BBC2A33B2E719333000BEABE /* Satoshi-Black.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2CE2E719333000BEABE /* Satoshi-Black.otf */; };
+		BBC2A33C2E719333000BEABE /* Satoshi-Light.woff in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2F42E719333000BEABE /* Satoshi-Light.woff */; };
+		BBC2A33D2E719333000BEABE /* SharpGrotesk-SemiBold.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3202E719333000BEABE /* SharpGrotesk-SemiBold.otf */; };
+		BBC2A33E2E719333000BEABE /* Satoshi-Variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2D92E719333000BEABE /* Satoshi-Variable.ttf */; };
+		BBC2A33F2E719333000BEABE /* Satoshi-LightItalic.eot in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2F62E719333000BEABE /* Satoshi-LightItalic.eot */; };
+		BBC2A3402E719333000BEABE /* Satoshi-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2FB2E719333000BEABE /* Satoshi-Medium.ttf */; };
+		BBC2A3412E719333000BEABE /* Satoshi-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2D72E719333000BEABE /* Satoshi-Regular.otf */; };
+		BBC2A3422E719333000BEABE /* Satoshi-Regular.woff2 in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3052E719333000BEABE /* Satoshi-Regular.woff2 */; };
+		BBC2A3432E719333000BEABE /* Satoshi-Bold.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2D02E719333000BEABE /* Satoshi-Bold.otf */; };
+		BBC2A3442E719333000BEABE /* Satoshi-MediumItalic.woff in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3002E719333000BEABE /* Satoshi-MediumItalic.woff */; };
+		BBC2A3452E719333000BEABE /* Satoshi-Light.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2D32E719333000BEABE /* Satoshi-Light.otf */; };
+		BBC2A3462E719333000BEABE /* Satoshi-Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2EF2E719333000BEABE /* Satoshi-Italic.ttf */; };
+		BBC2A3472E719333000BEABE /* SharpGrotesk-LightItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A31D2E719333000BEABE /* SharpGrotesk-LightItalic.otf */; };
+		BBC2A3482E719333000BEABE /* Satoshi-Medium.woff2 in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2FD2E719333000BEABE /* Satoshi-Medium.woff2 */; };
+		BBC2A3492E719333000BEABE /* Office Notes.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2CB2E719333000BEABE /* Office Notes.otf */; };
+		BBC2A34A2E719333000BEABE /* Satoshi-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2F32E719333000BEABE /* Satoshi-Light.ttf */; };
+		BBC2A34B2E719333000BEABE /* Satoshi-BlackItalic.woff2 in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2E52E719333000BEABE /* Satoshi-BlackItalic.woff2 */; };
+		BBC2A34C2E719333000BEABE /* SharpGrotesk-BookItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A31B2E719333000BEABE /* SharpGrotesk-BookItalic.otf */; };
+		BBC2A34D2E719333000BEABE /* SharpGrotesk-Book.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A31A2E719333000BEABE /* SharpGrotesk-Book.otf */; };
+		BBC2A34E2E719333000BEABE /* Satoshi-Regular.eot in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3022E719333000BEABE /* Satoshi-Regular.eot */; };
+		BBC2A34F2E719333000BEABE /* Satoshi-BlackItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2CF2E719333000BEABE /* Satoshi-BlackItalic.otf */; };
+		BBC2A3502E719333000BEABE /* satoshi.css in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2DC2E719333000BEABE /* satoshi.css */; };
+		BBC2A3512E719333000BEABE /* Satoshi-VariableItalic.woff in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A30C2E719333000BEABE /* Satoshi-VariableItalic.woff */; };
+		BBC2A3522E719333000BEABE /* Satoshi-Medium.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2D52E719333000BEABE /* Satoshi-Medium.otf */; };
+		BBC2A3532E719333000BEABE /* Satoshi-MediumItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2FF2E719333000BEABE /* Satoshi-MediumItalic.ttf */; };
+		BBC2A3542E719333000BEABE /* Satoshi-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2E72E719333000BEABE /* Satoshi-Bold.ttf */; };
+		BBC2A3552E719333000BEABE /* Satoshi-VariableItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2DA2E719333000BEABE /* Satoshi-VariableItalic.ttf */; };
+		BBC2A3562E719333000BEABE /* Satoshi-MediumItalic.eot in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2FE2E719333000BEABE /* Satoshi-MediumItalic.eot */; };
+		BBC2A3572E719333000BEABE /* SharpGrotesk-Medium.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A31E2E719333000BEABE /* SharpGrotesk-Medium.otf */; };
+		BBC2A3582E719333000BEABE /* Satoshi-Light.woff2 in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2F52E719333000BEABE /* Satoshi-Light.woff2 */; };
+		BBC2A3592E719333000BEABE /* Cloud.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2C72E719333000BEABE /* Cloud.otf */; };
+		BBC2A35A2E719333000BEABE /* Satoshi-Bold.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3152E719333000BEABE /* Satoshi-Bold.otf */; };
+		BBC2A35B2E719333000BEABE /* Satoshi-BoldItalic.woff in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2EC2E719333000BEABE /* Satoshi-BoldItalic.woff */; };
+		BBC2A35C2E719333000BEABE /* Satoshi-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3032E719333000BEABE /* Satoshi-Regular.ttf */; };
+		BBC2A35D2E719333000BEABE /* Satoshi-Regular.woff in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3042E719333000BEABE /* Satoshi-Regular.woff */; };
+		BBC2A35E2E719333000BEABE /* Satoshi-Black.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2DF2E719333000BEABE /* Satoshi-Black.ttf */; };
+		BBC2A35F2E719333000BEABE /* SharpGrotesk-Thin.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3212E719333000BEABE /* SharpGrotesk-Thin.otf */; };
+		BBC2A3602E719333000BEABE /* Satoshi-BoldItalic.eot in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2EA2E719333000BEABE /* Satoshi-BoldItalic.eot */; };
+		BBC2A3612E719333000BEABE /* Satoshi-BlackItalic.woff in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2E42E719333000BEABE /* Satoshi-BlackItalic.woff */; };
+		BBC2A3622E719333000BEABE /* Satoshi-Bold.woff in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2E82E719333000BEABE /* Satoshi-Bold.woff */; };
+		BBC2A3632E719333000BEABE /* Satoshi-Italic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2D22E719333000BEABE /* Satoshi-Italic.otf */; };
+		BBC2A3642E719333000BEABE /* Satoshi-Light.eot in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2F22E719333000BEABE /* Satoshi-Light.eot */; };
+		BBC2A3652E719333000BEABE /* Satoshi-Variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3072E719333000BEABE /* Satoshi-Variable.ttf */; };
+		BBC2A3662E719333000BEABE /* Satoshi-Black.woff in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2E02E719333000BEABE /* Satoshi-Black.woff */; };
+		BBC2A3672E719333000BEABE /* Satoshi-Italic.eot in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2EE2E719333000BEABE /* Satoshi-Italic.eot */; };
+		BBC2A3682E719333000BEABE /* Satoshi-Italic.woff in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2F02E719333000BEABE /* Satoshi-Italic.woff */; };
+		BBC2A3692E719333000BEABE /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A30F2E719333000BEABE /* README.md */; };
+		BBC2A36A2E719333000BEABE /* Satoshi-Medium.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3162E719333000BEABE /* Satoshi-Medium.otf */; };
+		BBC2A36B2E719333000BEABE /* Satoshi-Variable.eot in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3062E719333000BEABE /* Satoshi-Variable.eot */; };
+		BBC2A36C2E719333000BEABE /* Hadley.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2C92E719333000BEABE /* Hadley.otf */; };
+		BBC2A36D2E719333000BEABE /* Satoshi-LightItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2D42E719333000BEABE /* Satoshi-LightItalic.otf */; };
+		BBC2A36E2E719333000BEABE /* Satoshi-Variable.woff in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3082E719333000BEABE /* Satoshi-Variable.woff */; };
+		BBC2A36F2E719333000BEABE /* Satoshi-Bold.eot in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2E62E719333000BEABE /* Satoshi-Bold.eot */; };
+		BBC2A3702E719333000BEABE /* Satoshi-LightItalic.woff2 in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2F92E719333000BEABE /* Satoshi-LightItalic.woff2 */; };
+		BBC2A3712E719333000BEABE /* SharpGrotesk-Light.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A31C2E719333000BEABE /* SharpGrotesk-Light.otf */; };
+		BBC2A3722E719333000BEABE /* SharpGrotesk-ThinItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3222E719333000BEABE /* SharpGrotesk-ThinItalic.otf */; };
+		BBC2A3732E719333000BEABE /* SharpGrotesk-MediumItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A31F2E719333000BEABE /* SharpGrotesk-MediumItalic.otf */; };
+		BBC2A3742E719333000BEABE /* Satoshi-MediumItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2D62E719333000BEABE /* Satoshi-MediumItalic.otf */; };
 		CC304E7B3F6F72990054DD42 /* TestContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC304E7C3F6F72990054DD42 /* TestContentView.swift */; };
 		DD304E862E6FA0000054DD42 /* FirebaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD304E872E6FA0000054DD42 /* FirebaseManager.swift */; };
 		EE304E882E6FA1000054DD43 /* AuthenticationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE304E892E6FA1000054DD43 /* AuthenticationView.swift */; };
@@ -45,15 +116,86 @@
 		AA304E7A2F6F72980054DD41 /* AnalyticsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsManager.swift; sourceTree = "<group>"; };
 		BB304E792E6F9E750054DD40 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		BB304E862E6FA71E0054DD40 /* Scrap.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Scrap.entitlements; sourceTree = "<group>"; };
-		BBC2A2B42E7190E4000BEABE /* SharpGrotesk-Book.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-Book.otf"; sourceTree = "<group>"; };
-		BBC2A2B52E7190E4000BEABE /* SharpGrotesk-Medium.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-Medium.otf"; sourceTree = "<group>"; };
-		BBC2A2B62E7190E4000BEABE /* SharpGrotesk-SemiBold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-SemiBold.otf"; sourceTree = "<group>"; };
-		BBC2A2BA2E719199000BEABE /* SharpGrotesk-BookItalic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-BookItalic.otf"; sourceTree = "<group>"; };
-		BBC2A2BC2E7191A0000BEABE /* SharpGrotesk-Light.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-Light.otf"; sourceTree = "<group>"; };
-		BBC2A2BE2E7191A7000BEABE /* SharpGrotesk-LightItalic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-LightItalic.otf"; sourceTree = "<group>"; };
-		BBC2A2C02E7191B1000BEABE /* SharpGrotesk-MediumItalic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-MediumItalic.otf"; sourceTree = "<group>"; };
-		BBC2A2C22E7191B9000BEABE /* SharpGrotesk-Thin.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-Thin.otf"; sourceTree = "<group>"; };
-		BBC2A2C42E7191BF000BEABE /* SharpGrotesk-ThinItalic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-ThinItalic.otf"; sourceTree = "<group>"; };
+		BBC2A2C72E719333000BEABE /* Cloud.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Cloud.otf; sourceTree = "<group>"; };
+		BBC2A2C92E719333000BEABE /* Hadley.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Hadley.otf; sourceTree = "<group>"; };
+		BBC2A2CB2E719333000BEABE /* Office Notes.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Office Notes.otf"; sourceTree = "<group>"; };
+		BBC2A2CC2E719333000BEABE /* Office Notes.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Office Notes.ttf"; sourceTree = "<group>"; };
+		BBC2A2CE2E719333000BEABE /* Satoshi-Black.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Black.otf"; sourceTree = "<group>"; };
+		BBC2A2CF2E719333000BEABE /* Satoshi-BlackItalic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-BlackItalic.otf"; sourceTree = "<group>"; };
+		BBC2A2D02E719333000BEABE /* Satoshi-Bold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Bold.otf"; sourceTree = "<group>"; };
+		BBC2A2D12E719333000BEABE /* Satoshi-BoldItalic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-BoldItalic.otf"; sourceTree = "<group>"; };
+		BBC2A2D22E719333000BEABE /* Satoshi-Italic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Italic.otf"; sourceTree = "<group>"; };
+		BBC2A2D32E719333000BEABE /* Satoshi-Light.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Light.otf"; sourceTree = "<group>"; };
+		BBC2A2D42E719333000BEABE /* Satoshi-LightItalic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-LightItalic.otf"; sourceTree = "<group>"; };
+		BBC2A2D52E719333000BEABE /* Satoshi-Medium.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Medium.otf"; sourceTree = "<group>"; };
+		BBC2A2D62E719333000BEABE /* Satoshi-MediumItalic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-MediumItalic.otf"; sourceTree = "<group>"; };
+		BBC2A2D72E719333000BEABE /* Satoshi-Regular.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Regular.otf"; sourceTree = "<group>"; };
+		BBC2A2D92E719333000BEABE /* Satoshi-Variable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Variable.ttf"; sourceTree = "<group>"; };
+		BBC2A2DA2E719333000BEABE /* Satoshi-VariableItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-VariableItalic.ttf"; sourceTree = "<group>"; };
+		BBC2A2DC2E719333000BEABE /* satoshi.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = satoshi.css; sourceTree = "<group>"; };
+		BBC2A2DE2E719333000BEABE /* Satoshi-Black.eot */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Black.eot"; sourceTree = "<group>"; };
+		BBC2A2DF2E719333000BEABE /* Satoshi-Black.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Black.ttf"; sourceTree = "<group>"; };
+		BBC2A2E02E719333000BEABE /* Satoshi-Black.woff */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Black.woff"; sourceTree = "<group>"; };
+		BBC2A2E12E719333000BEABE /* Satoshi-Black.woff2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Black.woff2"; sourceTree = "<group>"; };
+		BBC2A2E22E719333000BEABE /* Satoshi-BlackItalic.eot */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-BlackItalic.eot"; sourceTree = "<group>"; };
+		BBC2A2E32E719333000BEABE /* Satoshi-BlackItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-BlackItalic.ttf"; sourceTree = "<group>"; };
+		BBC2A2E42E719333000BEABE /* Satoshi-BlackItalic.woff */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-BlackItalic.woff"; sourceTree = "<group>"; };
+		BBC2A2E52E719333000BEABE /* Satoshi-BlackItalic.woff2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-BlackItalic.woff2"; sourceTree = "<group>"; };
+		BBC2A2E62E719333000BEABE /* Satoshi-Bold.eot */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Bold.eot"; sourceTree = "<group>"; };
+		BBC2A2E72E719333000BEABE /* Satoshi-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Bold.ttf"; sourceTree = "<group>"; };
+		BBC2A2E82E719333000BEABE /* Satoshi-Bold.woff */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Bold.woff"; sourceTree = "<group>"; };
+		BBC2A2E92E719333000BEABE /* Satoshi-Bold.woff2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Bold.woff2"; sourceTree = "<group>"; };
+		BBC2A2EA2E719333000BEABE /* Satoshi-BoldItalic.eot */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-BoldItalic.eot"; sourceTree = "<group>"; };
+		BBC2A2EB2E719333000BEABE /* Satoshi-BoldItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-BoldItalic.ttf"; sourceTree = "<group>"; };
+		BBC2A2EC2E719333000BEABE /* Satoshi-BoldItalic.woff */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-BoldItalic.woff"; sourceTree = "<group>"; };
+		BBC2A2ED2E719333000BEABE /* Satoshi-BoldItalic.woff2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-BoldItalic.woff2"; sourceTree = "<group>"; };
+		BBC2A2EE2E719333000BEABE /* Satoshi-Italic.eot */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Italic.eot"; sourceTree = "<group>"; };
+		BBC2A2EF2E719333000BEABE /* Satoshi-Italic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Italic.ttf"; sourceTree = "<group>"; };
+		BBC2A2F02E719333000BEABE /* Satoshi-Italic.woff */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Italic.woff"; sourceTree = "<group>"; };
+		BBC2A2F12E719333000BEABE /* Satoshi-Italic.woff2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Italic.woff2"; sourceTree = "<group>"; };
+		BBC2A2F22E719333000BEABE /* Satoshi-Light.eot */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Light.eot"; sourceTree = "<group>"; };
+		BBC2A2F32E719333000BEABE /* Satoshi-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Light.ttf"; sourceTree = "<group>"; };
+		BBC2A2F42E719333000BEABE /* Satoshi-Light.woff */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Light.woff"; sourceTree = "<group>"; };
+		BBC2A2F52E719333000BEABE /* Satoshi-Light.woff2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Light.woff2"; sourceTree = "<group>"; };
+		BBC2A2F62E719333000BEABE /* Satoshi-LightItalic.eot */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-LightItalic.eot"; sourceTree = "<group>"; };
+		BBC2A2F72E719333000BEABE /* Satoshi-LightItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-LightItalic.ttf"; sourceTree = "<group>"; };
+		BBC2A2F82E719333000BEABE /* Satoshi-LightItalic.woff */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-LightItalic.woff"; sourceTree = "<group>"; };
+		BBC2A2F92E719333000BEABE /* Satoshi-LightItalic.woff2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-LightItalic.woff2"; sourceTree = "<group>"; };
+		BBC2A2FA2E719333000BEABE /* Satoshi-Medium.eot */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Medium.eot"; sourceTree = "<group>"; };
+		BBC2A2FB2E719333000BEABE /* Satoshi-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Medium.ttf"; sourceTree = "<group>"; };
+		BBC2A2FC2E719333000BEABE /* Satoshi-Medium.woff */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Medium.woff"; sourceTree = "<group>"; };
+		BBC2A2FD2E719333000BEABE /* Satoshi-Medium.woff2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Medium.woff2"; sourceTree = "<group>"; };
+		BBC2A2FE2E719333000BEABE /* Satoshi-MediumItalic.eot */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-MediumItalic.eot"; sourceTree = "<group>"; };
+		BBC2A2FF2E719333000BEABE /* Satoshi-MediumItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-MediumItalic.ttf"; sourceTree = "<group>"; };
+		BBC2A3002E719333000BEABE /* Satoshi-MediumItalic.woff */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-MediumItalic.woff"; sourceTree = "<group>"; };
+		BBC2A3012E719333000BEABE /* Satoshi-MediumItalic.woff2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-MediumItalic.woff2"; sourceTree = "<group>"; };
+		BBC2A3022E719333000BEABE /* Satoshi-Regular.eot */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Regular.eot"; sourceTree = "<group>"; };
+		BBC2A3032E719333000BEABE /* Satoshi-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Regular.ttf"; sourceTree = "<group>"; };
+		BBC2A3042E719333000BEABE /* Satoshi-Regular.woff */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Regular.woff"; sourceTree = "<group>"; };
+		BBC2A3052E719333000BEABE /* Satoshi-Regular.woff2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Regular.woff2"; sourceTree = "<group>"; };
+		BBC2A3062E719333000BEABE /* Satoshi-Variable.eot */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Variable.eot"; sourceTree = "<group>"; };
+		BBC2A3072E719333000BEABE /* Satoshi-Variable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Variable.ttf"; sourceTree = "<group>"; };
+		BBC2A3082E719333000BEABE /* Satoshi-Variable.woff */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Variable.woff"; sourceTree = "<group>"; };
+		BBC2A3092E719333000BEABE /* Satoshi-Variable.woff2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Variable.woff2"; sourceTree = "<group>"; };
+		BBC2A30A2E719333000BEABE /* Satoshi-VariableItalic.eot */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-VariableItalic.eot"; sourceTree = "<group>"; };
+		BBC2A30B2E719333000BEABE /* Satoshi-VariableItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-VariableItalic.ttf"; sourceTree = "<group>"; };
+		BBC2A30C2E719333000BEABE /* Satoshi-VariableItalic.woff */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-VariableItalic.woff"; sourceTree = "<group>"; };
+		BBC2A30D2E719333000BEABE /* Satoshi-VariableItalic.woff2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-VariableItalic.woff2"; sourceTree = "<group>"; };
+		BBC2A30F2E719333000BEABE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		BBC2A3122E719333000BEABE /* FFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = FFL.txt; sourceTree = "<group>"; };
+		BBC2A3152E719333000BEABE /* Satoshi-Bold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Bold.otf"; sourceTree = "<group>"; };
+		BBC2A3162E719333000BEABE /* Satoshi-Medium.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Medium.otf"; sourceTree = "<group>"; };
+		BBC2A3172E719333000BEABE /* Satoshi-Regular.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Regular.otf"; sourceTree = "<group>"; };
+		BBC2A3182E719333000BEABE /* Satoshi-Variable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Variable.ttf"; sourceTree = "<group>"; };
+		BBC2A31A2E719333000BEABE /* SharpGrotesk-Book.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-Book.otf"; sourceTree = "<group>"; };
+		BBC2A31B2E719333000BEABE /* SharpGrotesk-BookItalic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-BookItalic.otf"; sourceTree = "<group>"; };
+		BBC2A31C2E719333000BEABE /* SharpGrotesk-Light.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-Light.otf"; sourceTree = "<group>"; };
+		BBC2A31D2E719333000BEABE /* SharpGrotesk-LightItalic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-LightItalic.otf"; sourceTree = "<group>"; };
+		BBC2A31E2E719333000BEABE /* SharpGrotesk-Medium.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-Medium.otf"; sourceTree = "<group>"; };
+		BBC2A31F2E719333000BEABE /* SharpGrotesk-MediumItalic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-MediumItalic.otf"; sourceTree = "<group>"; };
+		BBC2A3202E719333000BEABE /* SharpGrotesk-SemiBold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-SemiBold.otf"; sourceTree = "<group>"; };
+		BBC2A3212E719333000BEABE /* SharpGrotesk-Thin.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-Thin.otf"; sourceTree = "<group>"; };
+		BBC2A3222E719333000BEABE /* SharpGrotesk-ThinItalic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-ThinItalic.otf"; sourceTree = "<group>"; };
 		CC304E7C3F6F72990054DD42 /* TestContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestContentView.swift; sourceTree = "<group>"; };
 		DD304E872E6FA0000054DD42 /* FirebaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseManager.swift; sourceTree = "<group>"; };
 		EE304E892E6FA1000054DD43 /* AuthenticationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationView.swift; sourceTree = "<group>"; };
@@ -98,6 +240,7 @@
 		1D1A2B282B1234567890ABCC /* Scrap */ = {
 			isa = PBXGroup;
 			children = (
+				BBC2A3242E719333000BEABE /* Fonts */,
 				BB304E862E6FA71E0054DD40 /* Scrap.entitlements */,
 				BB304E792E6F9E750054DD40 /* GoogleService-Info.plist */,
 				1D1A2B292B1234567890ABCD /* ScrapApp.swift */,
@@ -108,15 +251,6 @@
 				FF304E8B2E6FA2000054DD44 /* ChromaService.swift */,
 				CC304E7C3F6F72990054DD42 /* TestContentView.swift */,
 				1D1A2B2D2B1234567890ABCF /* Assets.xcassets */,
-				BBC2A2B42E7190E4000BEABE /* SharpGrotesk-Book.otf */,
-				BBC2A2BA2E719199000BEABE /* SharpGrotesk-BookItalic.otf */,
-				BBC2A2BC2E7191A0000BEABE /* SharpGrotesk-Light.otf */,
-				BBC2A2BE2E7191A7000BEABE /* SharpGrotesk-LightItalic.otf */,
-				BBC2A2B52E7190E4000BEABE /* SharpGrotesk-Medium.otf */,
-				BBC2A2C02E7191B1000BEABE /* SharpGrotesk-MediumItalic.otf */,
-				BBC2A2B62E7190E4000BEABE /* SharpGrotesk-SemiBold.otf */,
-				BBC2A2C22E7191B9000BEABE /* SharpGrotesk-Thin.otf */,
-				BBC2A2C42E7191BF000BEABE /* SharpGrotesk-ThinItalic.otf */,
 				1D1A2B2F2B1234567890ABD0 /* Preview Content */,
 			);
 			path = Scrap;
@@ -128,6 +262,197 @@
 				1D1A2B302B1234567890ABD0 /* Preview Assets.xcassets */,
 			);
 			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		BBC2A2C82E719333000BEABE /* Cloud */ = {
+			isa = PBXGroup;
+			children = (
+				BBC2A2C72E719333000BEABE /* Cloud.otf */,
+			);
+			path = Cloud;
+			sourceTree = "<group>";
+		};
+		BBC2A2CA2E719333000BEABE /* Hadley */ = {
+			isa = PBXGroup;
+			children = (
+				BBC2A2C92E719333000BEABE /* Hadley.otf */,
+			);
+			path = Hadley;
+			sourceTree = "<group>";
+		};
+		BBC2A2CD2E719333000BEABE /* Office Notes */ = {
+			isa = PBXGroup;
+			children = (
+				BBC2A2CB2E719333000BEABE /* Office Notes.otf */,
+				BBC2A2CC2E719333000BEABE /* Office Notes.ttf */,
+			);
+			path = "Office Notes";
+			sourceTree = "<group>";
+		};
+		BBC2A2D82E719333000BEABE /* OTF */ = {
+			isa = PBXGroup;
+			children = (
+				BBC2A2CE2E719333000BEABE /* Satoshi-Black.otf */,
+				BBC2A2CF2E719333000BEABE /* Satoshi-BlackItalic.otf */,
+				BBC2A2D02E719333000BEABE /* Satoshi-Bold.otf */,
+				BBC2A2D12E719333000BEABE /* Satoshi-BoldItalic.otf */,
+				BBC2A2D22E719333000BEABE /* Satoshi-Italic.otf */,
+				BBC2A2D32E719333000BEABE /* Satoshi-Light.otf */,
+				BBC2A2D42E719333000BEABE /* Satoshi-LightItalic.otf */,
+				BBC2A2D52E719333000BEABE /* Satoshi-Medium.otf */,
+				BBC2A2D62E719333000BEABE /* Satoshi-MediumItalic.otf */,
+				BBC2A2D72E719333000BEABE /* Satoshi-Regular.otf */,
+			);
+			path = OTF;
+			sourceTree = "<group>";
+		};
+		BBC2A2DB2E719333000BEABE /* TTF */ = {
+			isa = PBXGroup;
+			children = (
+				BBC2A2D92E719333000BEABE /* Satoshi-Variable.ttf */,
+				BBC2A2DA2E719333000BEABE /* Satoshi-VariableItalic.ttf */,
+			);
+			path = TTF;
+			sourceTree = "<group>";
+		};
+		BBC2A2DD2E719333000BEABE /* css */ = {
+			isa = PBXGroup;
+			children = (
+				BBC2A2DC2E719333000BEABE /* satoshi.css */,
+			);
+			path = css;
+			sourceTree = "<group>";
+		};
+		BBC2A30E2E719333000BEABE /* fonts */ = {
+			isa = PBXGroup;
+			children = (
+				BBC2A2DE2E719333000BEABE /* Satoshi-Black.eot */,
+				BBC2A2DF2E719333000BEABE /* Satoshi-Black.ttf */,
+				BBC2A2E02E719333000BEABE /* Satoshi-Black.woff */,
+				BBC2A2E12E719333000BEABE /* Satoshi-Black.woff2 */,
+				BBC2A2E22E719333000BEABE /* Satoshi-BlackItalic.eot */,
+				BBC2A2E32E719333000BEABE /* Satoshi-BlackItalic.ttf */,
+				BBC2A2E42E719333000BEABE /* Satoshi-BlackItalic.woff */,
+				BBC2A2E52E719333000BEABE /* Satoshi-BlackItalic.woff2 */,
+				BBC2A2E62E719333000BEABE /* Satoshi-Bold.eot */,
+				BBC2A2E72E719333000BEABE /* Satoshi-Bold.ttf */,
+				BBC2A2E82E719333000BEABE /* Satoshi-Bold.woff */,
+				BBC2A2E92E719333000BEABE /* Satoshi-Bold.woff2 */,
+				BBC2A2EA2E719333000BEABE /* Satoshi-BoldItalic.eot */,
+				BBC2A2EB2E719333000BEABE /* Satoshi-BoldItalic.ttf */,
+				BBC2A2EC2E719333000BEABE /* Satoshi-BoldItalic.woff */,
+				BBC2A2ED2E719333000BEABE /* Satoshi-BoldItalic.woff2 */,
+				BBC2A2EE2E719333000BEABE /* Satoshi-Italic.eot */,
+				BBC2A2EF2E719333000BEABE /* Satoshi-Italic.ttf */,
+				BBC2A2F02E719333000BEABE /* Satoshi-Italic.woff */,
+				BBC2A2F12E719333000BEABE /* Satoshi-Italic.woff2 */,
+				BBC2A2F22E719333000BEABE /* Satoshi-Light.eot */,
+				BBC2A2F32E719333000BEABE /* Satoshi-Light.ttf */,
+				BBC2A2F42E719333000BEABE /* Satoshi-Light.woff */,
+				BBC2A2F52E719333000BEABE /* Satoshi-Light.woff2 */,
+				BBC2A2F62E719333000BEABE /* Satoshi-LightItalic.eot */,
+				BBC2A2F72E719333000BEABE /* Satoshi-LightItalic.ttf */,
+				BBC2A2F82E719333000BEABE /* Satoshi-LightItalic.woff */,
+				BBC2A2F92E719333000BEABE /* Satoshi-LightItalic.woff2 */,
+				BBC2A2FA2E719333000BEABE /* Satoshi-Medium.eot */,
+				BBC2A2FB2E719333000BEABE /* Satoshi-Medium.ttf */,
+				BBC2A2FC2E719333000BEABE /* Satoshi-Medium.woff */,
+				BBC2A2FD2E719333000BEABE /* Satoshi-Medium.woff2 */,
+				BBC2A2FE2E719333000BEABE /* Satoshi-MediumItalic.eot */,
+				BBC2A2FF2E719333000BEABE /* Satoshi-MediumItalic.ttf */,
+				BBC2A3002E719333000BEABE /* Satoshi-MediumItalic.woff */,
+				BBC2A3012E719333000BEABE /* Satoshi-MediumItalic.woff2 */,
+				BBC2A3022E719333000BEABE /* Satoshi-Regular.eot */,
+				BBC2A3032E719333000BEABE /* Satoshi-Regular.ttf */,
+				BBC2A3042E719333000BEABE /* Satoshi-Regular.woff */,
+				BBC2A3052E719333000BEABE /* Satoshi-Regular.woff2 */,
+				BBC2A3062E719333000BEABE /* Satoshi-Variable.eot */,
+				BBC2A3072E719333000BEABE /* Satoshi-Variable.ttf */,
+				BBC2A3082E719333000BEABE /* Satoshi-Variable.woff */,
+				BBC2A3092E719333000BEABE /* Satoshi-Variable.woff2 */,
+				BBC2A30A2E719333000BEABE /* Satoshi-VariableItalic.eot */,
+				BBC2A30B2E719333000BEABE /* Satoshi-VariableItalic.ttf */,
+				BBC2A30C2E719333000BEABE /* Satoshi-VariableItalic.woff */,
+				BBC2A30D2E719333000BEABE /* Satoshi-VariableItalic.woff2 */,
+			);
+			path = fonts;
+			sourceTree = "<group>";
+		};
+		BBC2A3102E719333000BEABE /* WEB */ = {
+			isa = PBXGroup;
+			children = (
+				BBC2A2DD2E719333000BEABE /* css */,
+				BBC2A30E2E719333000BEABE /* fonts */,
+				BBC2A30F2E719333000BEABE /* README.md */,
+			);
+			path = WEB;
+			sourceTree = "<group>";
+		};
+		BBC2A3112E719333000BEABE /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				BBC2A2D82E719333000BEABE /* OTF */,
+				BBC2A2DB2E719333000BEABE /* TTF */,
+				BBC2A3102E719333000BEABE /* WEB */,
+			);
+			path = Fonts;
+			sourceTree = "<group>";
+		};
+		BBC2A3132E719333000BEABE /* License */ = {
+			isa = PBXGroup;
+			children = (
+				BBC2A3122E719333000BEABE /* FFL.txt */,
+			);
+			path = License;
+			sourceTree = "<group>";
+		};
+		BBC2A3142E719333000BEABE /* Satoshi_Complete */ = {
+			isa = PBXGroup;
+			children = (
+				BBC2A3112E719333000BEABE /* Fonts */,
+				BBC2A3132E719333000BEABE /* License */,
+			);
+			path = Satoshi_Complete;
+			sourceTree = "<group>";
+		};
+		BBC2A3192E719333000BEABE /* Satoshi */ = {
+			isa = PBXGroup;
+			children = (
+				BBC2A3142E719333000BEABE /* Satoshi_Complete */,
+				BBC2A3152E719333000BEABE /* Satoshi-Bold.otf */,
+				BBC2A3162E719333000BEABE /* Satoshi-Medium.otf */,
+				BBC2A3172E719333000BEABE /* Satoshi-Regular.otf */,
+				BBC2A3182E719333000BEABE /* Satoshi-Variable.ttf */,
+			);
+			path = Satoshi;
+			sourceTree = "<group>";
+		};
+		BBC2A3232E719333000BEABE /* SharpGrotesk */ = {
+			isa = PBXGroup;
+			children = (
+				BBC2A31A2E719333000BEABE /* SharpGrotesk-Book.otf */,
+				BBC2A31B2E719333000BEABE /* SharpGrotesk-BookItalic.otf */,
+				BBC2A31C2E719333000BEABE /* SharpGrotesk-Light.otf */,
+				BBC2A31D2E719333000BEABE /* SharpGrotesk-LightItalic.otf */,
+				BBC2A31E2E719333000BEABE /* SharpGrotesk-Medium.otf */,
+				BBC2A31F2E719333000BEABE /* SharpGrotesk-MediumItalic.otf */,
+				BBC2A3202E719333000BEABE /* SharpGrotesk-SemiBold.otf */,
+				BBC2A3212E719333000BEABE /* SharpGrotesk-Thin.otf */,
+				BBC2A3222E719333000BEABE /* SharpGrotesk-ThinItalic.otf */,
+			);
+			path = SharpGrotesk;
+			sourceTree = "<group>";
+		};
+		BBC2A3242E719333000BEABE /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				BBC2A2C82E719333000BEABE /* Cloud */,
+				BBC2A2CA2E719333000BEABE /* Hadley */,
+				BBC2A2CD2E719333000BEABE /* Office Notes */,
+				BBC2A3192E719333000BEABE /* Satoshi */,
+				BBC2A3232E719333000BEABE /* SharpGrotesk */,
+			);
+			path = Fonts;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -193,18 +518,89 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BBC2A3252E719333000BEABE /* Satoshi-Black.eot in Resources */,
+				BBC2A3262E719333000BEABE /* Satoshi-VariableItalic.ttf in Resources */,
+				BBC2A3272E719333000BEABE /* Satoshi-VariableItalic.woff2 in Resources */,
+				BBC2A3282E719333000BEABE /* Satoshi-LightItalic.woff in Resources */,
+				BBC2A3292E719333000BEABE /* Satoshi-LightItalic.ttf in Resources */,
+				BBC2A32A2E719333000BEABE /* Satoshi-Variable.ttf in Resources */,
+				BBC2A32B2E719333000BEABE /* FFL.txt in Resources */,
+				BBC2A32C2E719333000BEABE /* Satoshi-BlackItalic.eot in Resources */,
+				BBC2A32D2E719333000BEABE /* Satoshi-Italic.woff2 in Resources */,
+				BBC2A32E2E719333000BEABE /* Satoshi-MediumItalic.woff2 in Resources */,
+				BBC2A32F2E719333000BEABE /* Satoshi-BoldItalic.woff2 in Resources */,
+				BBC2A3302E719333000BEABE /* Office Notes.ttf in Resources */,
+				BBC2A3312E719333000BEABE /* Satoshi-BoldItalic.otf in Resources */,
+				BBC2A3322E719333000BEABE /* Satoshi-Bold.woff2 in Resources */,
+				BBC2A3332E719333000BEABE /* Satoshi-BoldItalic.ttf in Resources */,
+				BBC2A3342E719333000BEABE /* Satoshi-Black.woff2 in Resources */,
+				BBC2A3352E719333000BEABE /* Satoshi-BlackItalic.ttf in Resources */,
+				BBC2A3362E719333000BEABE /* Satoshi-Variable.woff2 in Resources */,
+				BBC2A3372E719333000BEABE /* Satoshi-Medium.eot in Resources */,
+				BBC2A3382E719333000BEABE /* Satoshi-Regular.otf in Resources */,
+				BBC2A3392E719333000BEABE /* Satoshi-Medium.woff in Resources */,
+				BBC2A33A2E719333000BEABE /* Satoshi-VariableItalic.eot in Resources */,
+				BBC2A33B2E719333000BEABE /* Satoshi-Black.otf in Resources */,
+				BBC2A33C2E719333000BEABE /* Satoshi-Light.woff in Resources */,
+				BBC2A33D2E719333000BEABE /* SharpGrotesk-SemiBold.otf in Resources */,
+				BBC2A33E2E719333000BEABE /* Satoshi-Variable.ttf in Resources */,
+				BBC2A33F2E719333000BEABE /* Satoshi-LightItalic.eot in Resources */,
+				BBC2A3402E719333000BEABE /* Satoshi-Medium.ttf in Resources */,
+				BBC2A3412E719333000BEABE /* Satoshi-Regular.otf in Resources */,
+				BBC2A3422E719333000BEABE /* Satoshi-Regular.woff2 in Resources */,
+				BBC2A3432E719333000BEABE /* Satoshi-Bold.otf in Resources */,
+				BBC2A3442E719333000BEABE /* Satoshi-MediumItalic.woff in Resources */,
+				BBC2A3452E719333000BEABE /* Satoshi-Light.otf in Resources */,
+				BBC2A3462E719333000BEABE /* Satoshi-Italic.ttf in Resources */,
+				BBC2A3472E719333000BEABE /* SharpGrotesk-LightItalic.otf in Resources */,
+				BBC2A3482E719333000BEABE /* Satoshi-Medium.woff2 in Resources */,
+				BBC2A3492E719333000BEABE /* Office Notes.otf in Resources */,
+				BBC2A34A2E719333000BEABE /* Satoshi-Light.ttf in Resources */,
+				BBC2A34B2E719333000BEABE /* Satoshi-BlackItalic.woff2 in Resources */,
+				BBC2A34C2E719333000BEABE /* SharpGrotesk-BookItalic.otf in Resources */,
+				BBC2A34D2E719333000BEABE /* SharpGrotesk-Book.otf in Resources */,
+				BBC2A34E2E719333000BEABE /* Satoshi-Regular.eot in Resources */,
+				BBC2A34F2E719333000BEABE /* Satoshi-BlackItalic.otf in Resources */,
+				BBC2A3502E719333000BEABE /* satoshi.css in Resources */,
+				BBC2A3512E719333000BEABE /* Satoshi-VariableItalic.woff in Resources */,
+				BBC2A3522E719333000BEABE /* Satoshi-Medium.otf in Resources */,
+				BBC2A3532E719333000BEABE /* Satoshi-MediumItalic.ttf in Resources */,
+				BBC2A3542E719333000BEABE /* Satoshi-Bold.ttf in Resources */,
+				BBC2A3552E719333000BEABE /* Satoshi-VariableItalic.ttf in Resources */,
+				BBC2A3562E719333000BEABE /* Satoshi-MediumItalic.eot in Resources */,
+				BBC2A3572E719333000BEABE /* SharpGrotesk-Medium.otf in Resources */,
+				BBC2A3582E719333000BEABE /* Satoshi-Light.woff2 in Resources */,
+				BBC2A3592E719333000BEABE /* Cloud.otf in Resources */,
+				BBC2A35A2E719333000BEABE /* Satoshi-Bold.otf in Resources */,
+				BBC2A35B2E719333000BEABE /* Satoshi-BoldItalic.woff in Resources */,
+				BBC2A35C2E719333000BEABE /* Satoshi-Regular.ttf in Resources */,
+				BBC2A35D2E719333000BEABE /* Satoshi-Regular.woff in Resources */,
+				BBC2A35E2E719333000BEABE /* Satoshi-Black.ttf in Resources */,
+				BBC2A35F2E719333000BEABE /* SharpGrotesk-Thin.otf in Resources */,
+				BBC2A3602E719333000BEABE /* Satoshi-BoldItalic.eot in Resources */,
+				BBC2A3612E719333000BEABE /* Satoshi-BlackItalic.woff in Resources */,
+				BBC2A3622E719333000BEABE /* Satoshi-Bold.woff in Resources */,
+				BBC2A3632E719333000BEABE /* Satoshi-Italic.otf in Resources */,
+				BBC2A3642E719333000BEABE /* Satoshi-Light.eot in Resources */,
+				BBC2A3652E719333000BEABE /* Satoshi-Variable.ttf in Resources */,
+				BBC2A3662E719333000BEABE /* Satoshi-Black.woff in Resources */,
+				BBC2A3672E719333000BEABE /* Satoshi-Italic.eot in Resources */,
+				BBC2A3682E719333000BEABE /* Satoshi-Italic.woff in Resources */,
+				BBC2A3692E719333000BEABE /* README.md in Resources */,
+				BBC2A36A2E719333000BEABE /* Satoshi-Medium.otf in Resources */,
+				BBC2A36B2E719333000BEABE /* Satoshi-Variable.eot in Resources */,
+				BBC2A36C2E719333000BEABE /* Hadley.otf in Resources */,
+				BBC2A36D2E719333000BEABE /* Satoshi-LightItalic.otf in Resources */,
+				BBC2A36E2E719333000BEABE /* Satoshi-Variable.woff in Resources */,
+				BBC2A36F2E719333000BEABE /* Satoshi-Bold.eot in Resources */,
+				BBC2A3702E719333000BEABE /* Satoshi-LightItalic.woff2 in Resources */,
+				BBC2A3712E719333000BEABE /* SharpGrotesk-Light.otf in Resources */,
+				BBC2A3722E719333000BEABE /* SharpGrotesk-ThinItalic.otf in Resources */,
+				BBC2A3732E719333000BEABE /* SharpGrotesk-MediumItalic.otf in Resources */,
+				BBC2A3742E719333000BEABE /* Satoshi-MediumItalic.otf in Resources */,
 				1D1A2B312B1234567890ABD0 /* Preview Assets.xcassets in Resources */,
-				BBC2A2C52E7191BF000BEABE /* SharpGrotesk-ThinItalic.otf in Resources */,
-				BBC2A2BF2E7191A7000BEABE /* SharpGrotesk-LightItalic.otf in Resources */,
-				BBC2A2BB2E719199000BEABE /* SharpGrotesk-BookItalic.otf in Resources */,
 				1D1A2B2E2B1234567890ABCF /* Assets.xcassets in Resources */,
 				BB304E7A2E6F9E750054DD40 /* GoogleService-Info.plist in Resources */,
-				BBC2A2B72E7190E4000BEABE /* SharpGrotesk-SemiBold.otf in Resources */,
-				BBC2A2B82E7190E4000BEABE /* SharpGrotesk-Medium.otf in Resources */,
-				BBC2A2B92E7190E4000BEABE /* SharpGrotesk-Book.otf in Resources */,
-				BBC2A2BD2E7191A0000BEABE /* SharpGrotesk-Light.otf in Resources */,
-				BBC2A2C12E7191B1000BEABE /* SharpGrotesk-MediumItalic.otf in Resources */,
-				BBC2A2C32E7191B9000BEABE /* SharpGrotesk-Thin.otf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

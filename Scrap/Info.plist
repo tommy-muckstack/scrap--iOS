@@ -50,14 +50,6 @@
     <true/>
     <key>UIAppFonts</key>
     <array>
-        <string>Cloud.otf</string>
-        <string>Hadley.otf</string>
-        <string>Office Notes.otf</string>
-        <string>Office Notes.ttf</string>
-        <string>Satoshi-Regular.otf</string>
-        <string>Satoshi-Medium.otf</string>
-        <string>Satoshi-Bold.otf</string>
-        <string>Satoshi-Variable.ttf</string>
         <string>Fonts/SharpGrotesk/SharpGrotesk-Thin.otf</string>
         <string>Fonts/SharpGrotesk/SharpGrotesk-ThinItalic.otf</string>
         <string>Fonts/SharpGrotesk/SharpGrotesk-Light.otf</string>
