@@ -364,7 +364,7 @@ struct InputField: View {
                                 value: hasText
                             )
                         
-                        // Content container with staggered collapse/expand animations
+                        // Content container with symmetric collapse/expand animations
                         ZStack {
                             // Save text - appears when hasText is true
                             if hasText {
@@ -373,14 +373,14 @@ struct InputField: View {
                                     .foregroundColor(.white)
                                     .fontWeight(.semibold)
                                     .scaleEffect(
-                                        x: hasText ? 1.0 : 0.01, 
-                                        y: hasText ? 1.0 : 0.01,
+                                        x: hasText ? 1.0 : 0.1, 
+                                        y: hasText ? 1.0 : 0.1,
                                         anchor: .center
                                     )
                                     .opacity(hasText ? 1.0 : 0.0)
                                     .animation(
-                                        .interpolatingSpring(stiffness: 250, damping: 20)
-                                        .delay(hasText ? 0.15 : 0), // Delay entrance, immediate exit
+                                        .interpolatingSpring(stiffness: 280, damping: 22)
+                                        .delay(hasText ? 0.08 : 0.08), // Symmetric timing
                                         value: hasText
                                     )
                             }
@@ -391,14 +391,14 @@ struct InputField: View {
                                     .font(GentleLightning.Typography.body)
                                     .foregroundColor(.white)
                                     .scaleEffect(
-                                        x: isRecording ? 1.0 : 0.01,
-                                        y: isRecording ? 1.0 : 0.01,
+                                        x: isRecording ? 1.0 : 0.1,
+                                        y: isRecording ? 1.0 : 0.1,
                                         anchor: .center
                                     )
                                     .opacity(isRecording ? 1.0 : 0.0)
                                     .animation(
-                                        .interpolatingSpring(stiffness: 250, damping: 20)
-                                        .delay(isRecording ? 0.1 : 0),
+                                        .interpolatingSpring(stiffness: 280, damping: 22)
+                                        .delay(0.08), // Consistent symmetric timing
                                         value: isRecording
                                     )
                             }
@@ -409,15 +409,15 @@ struct InputField: View {
                                     .font(GentleLightning.Typography.title)
                                     .foregroundColor(.white)
                                     .scaleEffect(
-                                        x: (!hasText && !isRecording) ? 1.0 : 0.01,
-                                        y: (!hasText && !isRecording) ? 1.0 : 0.01,
+                                        x: (!hasText && !isRecording) ? 1.0 : 0.1,
+                                        y: (!hasText && !isRecording) ? 1.0 : 0.1,
                                         anchor: .center
                                     )
                                     .opacity((!hasText && !isRecording) ? 1.0 : 0.0)
                                     .animation(
-                                        .interpolatingSpring(stiffness: 250, damping: 20)
-                                        .delay((!hasText && !isRecording) ? 0.15 : 0),
-                                        value: hasText
+                                        .interpolatingSpring(stiffness: 280, damping: 22)
+                                        .delay(0.08), // Consistent symmetric timing
+                                        value: hasText || isRecording
                                     )
                             }
                         }
@@ -708,70 +708,94 @@ struct NoteEditView: View {
     @FocusState private var isTextFieldFocused: Bool
     @State private var showingActionSheet = false
     @State private var showingDeleteAlert = false
-    @State private var isContentReady = false
-    @State private var hasValidGeometry = true
+    @State private var isContentReady = true
     
     init(isPresented: Binding<Bool>, item: SparkItem, dataManager: FirebaseDataManager) {
+        print("🏗️ NoteEditView init: STARTING - item.id = '\(item.id)'")
+        print("🏗️ NoteEditView init: item.content = '\(item.content)' (length: \(item.content.count))")
+        print("🏗️ NoteEditView init: item.content.isEmpty = \(item.content.isEmpty)")
+        
         self._isPresented = isPresented
         self.item = item
         self.dataManager = dataManager
         
         let initialContent = item.content.isEmpty ? " " : item.content
-        print("🔧 NoteEditView init: item.content = '\(item.content)' -> initialContent = '\(initialContent)'")
+        print("🏗️ NoteEditView init: initialContent = '\(initialContent)' (length: \(initialContent.count))")
         
-        // Validate the content doesn't contain problematic characters that could cause NaN
-        let safeContent = sanitizeTextContent(initialContent)
-        print("🔧 NoteEditView init: sanitized content = '\(safeContent)'")
+        self._editedText = State(initialValue: initialContent)
         
-        self._editedText = State(initialValue: safeContent)
+        print("🏗️ NoteEditView init: COMPLETED - editedText initialized with '\(initialContent.prefix(50))...'")
     }
     
     var body: some View {
-        NavigationView {
-            GeometryReader { geometry in
-                VStack(spacing: 0) {
-                    if isContentReady {
-                        // Simplified Text Editor without ScrollView wrapper
-                        TextEditor(text: $editedText)
-                            .font(GentleLightning.Typography.bodyInput)
-                            .foregroundColor(GentleLightning.Colors.textPrimary)
-                            .padding(GentleLightning.Layout.Padding.lg)
-                            .background(Color.white)
-                            .focused($isTextFieldFocused)
-                            .onAppear {
-                                print("📝 NoteEditView: TextEditor appeared - focusing field")
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                    isTextFieldFocused = true
-                                }
-                            }
-                    } else {
-                        // Loading state
-                        VStack(spacing: 16) {
-                            ProgressView()
-                                .scaleEffect(1.2)
-                                .tint(GentleLightning.Colors.accentNeutral)
-                            
-                            Text("Loading note...")
-                                .font(GentleLightning.Typography.body)
-                                .foregroundColor(GentleLightning.Colors.textSecondary)
+        NavigationStack {
+            VStack(spacing: 0) {
+                if isContentReady {
+                    // Simplified Text Editor without ScrollView wrapper
+                    TextEditor(text: Binding(
+                        get: {
+                            print("📖 TextEditor binding GET: returning '\(editedText.prefix(30))...' (length: \(editedText.count))")
+                            return editedText
+                        },
+                        set: { newValue in
+                            print("✏️  TextEditor binding SET: received '\(newValue.prefix(30))...' (length: \(newValue.count))")
+                            editedText = newValue
                         }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    ))
+                        .font(GentleLightning.Typography.bodyInput)
+                        .foregroundColor(GentleLightning.Colors.textPrimary)
+                        .padding(GentleLightning.Layout.Padding.lg)
                         .background(Color.white)
+                        .focused($isTextFieldFocused)
+                        .onAppear {
+                            print("🎯 NoteEditView: TextEditor onAppear - text = '\(editedText.prefix(30))...'")
+                            print("🎯 NoteEditView: TextEditor onAppear - focusing field in 0.1s")
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                isTextFieldFocused = true
+                                print("🎯 NoteEditView: TextEditor focus applied")
+                            }
+                        }
+                } else {
+                    // Loading state
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .scaleEffect(1.2)
+                            .tint(GentleLightning.Colors.accentNeutral)
+                        
+                        Text("Loading note...")
+                            .font(GentleLightning.Typography.body)
+                            .foregroundColor(GentleLightning.Colors.textSecondary)
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.white)
                 }
-                .onAppear {
-                    print("📝 NoteEditView: onAppear - geometry: \(geometry.size), item.content: '\(item.content)', editedText: '\(editedText)'")
-                    
-                    // Validate geometry
-                    validateGeometry(geometry.size)
-                    
-                    // Double-check our content is safe
-                    let safeContent = sanitizeTextContent(item.content)
-                    if editedText != safeContent {
-                        print("📝 NoteEditView: Updating to safe content: '\(safeContent)'")
-                        editedText = safeContent
-                    }
+            }
+            .onAppear {
+                print("🚀 NoteEditView VStack onAppear: TRIGGERED")
+                print("🚀 NoteEditView VStack onAppear: item.content = '\(item.content)' (length: \(item.content.count))")
+                print("🚀 NoteEditView VStack onAppear: editedText = '\(editedText)' (length: \(editedText.count))")
+                print("🚀 NoteEditView VStack onAppear: isContentReady = \(isContentReady)")
+                
+                // Double-check our content is safe
+                let safeContent = sanitizeTextContent(item.content)
+                print("🚀 NoteEditView VStack onAppear: safeContent = '\(safeContent)' (length: \(safeContent.count))")
+                
+                if editedText != safeContent {
+                    print("⚠️  NoteEditView VStack onAppear: Content mismatch - updating editedText")
+                    print("⚠️  NoteEditView VStack onAppear: Old: '\(editedText)'")
+                    print("⚠️  NoteEditView VStack onAppear: New: '\(safeContent)'")
+                    editedText = safeContent
+                } else {
+                    print("✅ NoteEditView VStack onAppear: Content matches - no update needed")
                 }
+                
+                // Set content ready to show the TextEditor
+                print("🚀 NoteEditView VStack onAppear: Setting isContentReady = true")
+                DispatchQueue.main.async {
+                    isContentReady = true
+                    print("✅ NoteEditView VStack onAppear: Content ready - TextEditor should show")
+                }
+            }
                     .onChange(of: editedText) { newValue in
                         // Sanitize input to prevent NaN errors
                         let safeValue = sanitizeTextContent(newValue)
@@ -804,33 +828,24 @@ struct NoteEditView: View {
                             editedText = safeNewContent
                         }
                     }
-                }
-                
-                Spacer()
-            }
             .background(Color.white)
             .navigationTitle("Edit Note")
             .navigationBarTitleDisplayMode(.inline)
-            .navigationBarBackButtonHidden()
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Back") {
-                        isPresented = false
-                    }
-                    .font(GentleLightning.Typography.body)
-                    .foregroundColor(GentleLightning.Colors.textSecondary)
+            .navigationBarItems(
+                leading: Button("Back") {
+                    isPresented = false
                 }
+                .font(GentleLightning.Typography.body)
+                .foregroundColor(GentleLightning.Colors.textSecondary),
                 
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        showingActionSheet = true
-                    }) {
-                        Image(systemName: "ellipsis")
-                            .font(GentleLightning.Typography.bodyInput)
-                            .foregroundColor(GentleLightning.Colors.textPrimary)
-                    }
+                trailing: Button(action: {
+                    showingActionSheet = true
+                }) {
+                    Image(systemName: "ellipsis")
+                        .font(GentleLightning.Typography.bodyInput)
+                        .foregroundColor(GentleLightning.Colors.textPrimary)
                 }
-            }
+            )
             .confirmationDialog("Note Options", isPresented: $showingActionSheet, titleVisibility: .visible) {
                 Button("Share") {
                     shareNote()
@@ -850,11 +865,12 @@ struct NoteEditView: View {
                 Text("This note will be permanently deleted. This action cannot be undone.")
             }
         }
+    }
     
     // MARK: - Helper Methods
     
     // Share note using iOS share sheet
-    private func shareNote() {
+    func shareNote() {
         AnalyticsManager.shared.trackNoteShared(noteId: item.id)
         let shareText = editedText.isEmpty ? item.content : editedText
         
@@ -909,7 +925,7 @@ struct NoteEditView: View {
     }
     
     // Sanitize text content to prevent CoreGraphics NaN errors
-    private func sanitizeTextContent(_ text: String) -> String {
+    func sanitizeTextContent(_ text: String) -> String {
         guard !text.isEmpty else { return " " }
         
         // Remove any problematic characters that could cause layout issues
@@ -935,37 +951,6 @@ struct NoteEditView: View {
         }
         
         return sanitizedLines.joined(separator: "\n")
-    }
-    
-    
-    // MARK: - Geometry Validation
-    
-    private func validateGeometry(_ size: CGSize) {
-        let isValid = size.width > 0 && size.height > 0 && 
-                     size.width.isFinite && size.height.isFinite &&
-                     !size.width.isNaN && !size.height.isNaN
-        
-        print("📏 NoteEditView: Geometry validation - size: \(size), isValid: \(isValid)")
-        
-        // Set content ready immediately with basic validation
-        hasValidGeometry = isValid
-        isContentReady = true
-    }
-    
-    private func validWidth(from width: CGFloat) -> CGFloat {
-        guard width.isFinite && !width.isNaN && width > 0 else {
-            print("⚠️ NoteEditView: Invalid width \(width), using fallback")
-            return 300 // Fallback width
-        }
-        return max(200, width - 32)
-    }
-    
-    private func validHeight(from height: CGFloat) -> CGFloat {
-        guard height.isFinite && !height.isNaN && height > 0 else {
-            print("⚠️ NoteEditView: Invalid height \(height), using fallback")
-            return 400 // Fallback height
-        }
-        return max(120, height * 0.6)
     }
 }
 
@@ -1085,6 +1070,7 @@ struct ContentView: View {
     @StateObject private var dataManager = FirebaseDataManager()
     @StateObject private var viewModel = ContentViewModel()
     @State private var editingItem: SparkItem?
+    @State private var editingItemId: String?
     @State private var showingEditView = false
     @State private var showingAccountDrawer = false
     @FocusState private var isInputFieldFocused: Bool
@@ -1135,10 +1121,23 @@ struct ContentView: View {
                         } else {
                             ForEach(dataManager.items) { item in
                                 ItemRowSimple(item: item, dataManager: dataManager) {
-                                    print("📝 Opening edit view for item: '\(item.content)' with ID: \(item.id)")
+                                    print("🎯 ContentView: Note tap detected - STARTING note opening process")
+                                    print("🎯 ContentView: item.id = '\(item.id)'")
+                                    print("🎯 ContentView: item.content = '\(item.content)' (length: \(item.content.count))")
+                                    print("🎯 ContentView: item.content.isEmpty = \(item.content.isEmpty)")
+                                    
                                     AnalyticsManager.shared.trackNoteEditOpened(noteId: item.id)
+                                    
+                                    print("🎯 ContentView: Setting editingItem = item")
                                     editingItem = item
+                                    editingItemId = item.id
+                                    print("🎯 ContentView: Immediately after setting - editingItem.id = '\(editingItem?.id ?? "nil")'")
+                                    print("🎯 ContentView: Stored editingItemId = '\(editingItemId ?? "nil")'")
+                                    
+                                    print("🎯 ContentView: Setting showingEditView = true")
                                     showingEditView = true
+                                    
+                                    print("🎯 ContentView: Note opening process completed - waiting for sheet to present")
                                 }
                                 .transition(.asymmetric(
                                     insertion: .move(edge: .top).combined(with: .opacity).combined(with: .scale(scale: 0.8)),
@@ -1151,15 +1150,22 @@ struct ContentView: View {
                     .padding(.horizontal, GentleLightning.Layout.Padding.xl)
                     .padding(.bottom, 120) // Extra padding for footer
                 }
-                .gesture(
+                .scrollDismissesKeyboard(.interactively)
+                .simultaneousGesture(
                     DragGesture()
-                        .onEnded { gesture in
-                            // Dismiss keyboard when swiping down in scroll area
-                            if gesture.translation.height > 50 {
+                        .onChanged { gesture in
+                            // Dismiss keyboard immediately when scrolling starts  
+                            if abs(gesture.translation.height) > 10 && isInputFieldFocused {
                                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                             }
                         }
                 )
+                .onTapGesture {
+                    // Also dismiss keyboard when tapping in scroll area
+                    if isInputFieldFocused {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
+                }
             }
             
             // Fixed footer at bottom - will be covered by keyboard
@@ -1193,18 +1199,21 @@ struct ContentView: View {
             // Dismiss keyboard when tapping outside input area
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
-        .gesture(
-            DragGesture()
-                .onEnded { gesture in
-                    // Dismiss keyboard when swiping down
-                    if gesture.translation.height > 50 {
-                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                    }
-                }
-        )
         .sheet(isPresented: $showingEditView) {
-            if let editingItem = editingItem {
-                NoteEditView(isPresented: $showingEditView, item: editingItem, dataManager: dataManager)
+            SheetContentView(
+                editingItemId: editingItemId,
+                editingItem: editingItem,
+                dataManager: dataManager,
+                showingEditView: $showingEditView
+            )
+            .onAppear {
+                print("🚨 ContentView: Sheet onAppear - editingItem = \(editingItem?.id ?? "nil")")
+                print("🚨 ContentView: Sheet onAppear - editingItemId = \(editingItemId ?? "nil")")
+            }
+            .onDisappear {
+                print("🧹 ContentView: Edit sheet dismissed - cleaning up references")
+                editingItem = nil
+                editingItemId = nil
             }
         }
         .sheet(isPresented: $showingAccountDrawer) {
@@ -1214,6 +1223,97 @@ struct ContentView: View {
                 .onDisappear {
                     AnalyticsManager.shared.trackAccountDrawerClosed()
                 }
+        }
+    }
+}
+
+// MARK: - Sheet Content View
+
+struct SheetContentView: View {
+    let editingItemId: String?
+    let editingItem: SparkItem?
+    let dataManager: FirebaseDataManager
+    @Binding var showingEditView: Bool
+    
+    @State private var resolvedItem: SparkItem?
+    @State private var isSearching = true
+    
+    var body: some View {
+        Group {
+            if let item = resolvedItem {
+                NoteEditView(isPresented: $showingEditView, item: item, dataManager: dataManager)
+                    .onAppear {
+                        print("✅ SheetContentView: Successfully opened note with id = '\(item.id)'")
+                        print("✅ SheetContentView: Note content = '\(item.content)' (length: \(item.content.count))")
+                    }
+            } else if isSearching {
+                VStack(spacing: 16) {
+                    ProgressView()
+                        .scaleEffect(1.2)
+                    Text("Loading note...")
+                        .font(.system(size: 16))
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                Text("Error: Note not found")
+                    .foregroundColor(.red)
+                    .padding()
+                    .onAppear {
+                        print("❌ SheetContentView: Failed to resolve item")
+                        print("❌ SheetContentView: editingItemId = '\(editingItemId ?? "nil")'")
+                        print("❌ SheetContentView: editingItem = '\(editingItem?.id ?? "nil")'")
+                        print("❌ SheetContentView: dataManager.items.count = \(dataManager.items.count)")
+                        print("❌ SheetContentView: Available item IDs: \(dataManager.items.map(\.id))")
+                    }
+            }
+        }
+        .onAppear {
+            resolveItem()
+        }
+        .onChange(of: editingItemId) { _ in
+            resolveItem()
+        }
+    }
+    
+    private func resolveItem() {
+        print("🔍 SheetContentView: Starting item resolution...")
+        
+        // Method 1: Try ID-based lookup
+        if let targetId = editingItemId {
+            print("🔍 SheetContentView: Looking for ID: '\(targetId)'")
+            if let foundItem = dataManager.items.first(where: { $0.id == targetId }) {
+                print("✅ SheetContentView: Found item by ID")
+                resolvedItem = foundItem
+                isSearching = false
+                return
+            }
+        }
+        
+        // Method 2: Try direct reference
+        if let directItem = editingItem {
+            print("🔄 SheetContentView: Using direct reference for '\(directItem.id)'")
+            resolvedItem = directItem
+            isSearching = false
+            return
+        }
+        
+        // Method 3: Wait a bit for data to load, then try again
+        print("⏳ SheetContentView: Retrying after delay...")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            if let targetId = editingItemId,
+               let foundItem = dataManager.items.first(where: { $0.id == targetId }) {
+                print("✅ SheetContentView: Found item by ID after delay")
+                resolvedItem = foundItem
+                isSearching = false
+            } else if let directItem = editingItem {
+                print("🔄 SheetContentView: Using direct reference after delay")
+                resolvedItem = directItem
+                isSearching = false
+            } else {
+                print("❌ SheetContentView: All resolution methods failed")
+                isSearching = false
+            }
         }
     }
 }

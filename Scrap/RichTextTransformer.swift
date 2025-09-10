@@ -12,8 +12,6 @@ class RichTextTransformer {
     ///   - oldText: The previous text content (for context-aware transformations)
     /// - Returns: Transformed text with rich formatting applied
     static func transform(_ newText: String, oldText: String) -> String {
-        print("🎨 RichTextTransformer: Processing '\(newText.prefix(50))...' (old: '\(oldText.prefix(20))...')")
-        
         // Apply transformations in order
         var processed = newText
         
@@ -58,11 +56,32 @@ class RichTextTransformer {
         var newLines = lines
         
         for (index, line) in lines.enumerated() {
-            // Convert "* " or "- " at start of line to bullet
+            // Convert "* " or "- " at start of line to bullet (existing behavior)
             if line.hasPrefix("* ") || line.hasPrefix("- ") {
                 newLines[index] = "• " + line.dropFirst(2)
                 modified = true
                 print("🔸 RichTextTransformer: Converted '\(line)' to bullet point")
+            }
+            // Convert single "*" or "-" at start of line to bullet with space
+            else if line == "*" || line == "-" {
+                newLines[index] = "• "
+                modified = true
+                print("🔸 RichTextTransformer: Converted '\(line)' to bullet point with space")
+            }
+            // Also handle the case where user types "*" followed by any character
+            else if line.hasPrefix("*") && line.count >= 1 && !line.hasPrefix("• ") {
+                // Replace the "*" with "• " but keep the rest of the content
+                let restOfLine = String(line.dropFirst())
+                newLines[index] = "• " + restOfLine
+                modified = true
+                print("🔸 RichTextTransformer: Converted '*' prefix in '\(line)' to bullet point")
+            }
+            // Same logic for "-"
+            else if line.hasPrefix("-") && line.count >= 1 && !line.hasPrefix("• ") {
+                let restOfLine = String(line.dropFirst())
+                newLines[index] = "• " + restOfLine
+                modified = true
+                print("🔸 RichTextTransformer: Converted '-' prefix in '\(line)' to bullet point")
             }
         }
         
@@ -154,6 +173,14 @@ extension RichTextTransformer {
         // Test bullet conversion
         let bulletTest = transform("* Item 1\n- Item 2", oldText: "")
         assert(bulletTest == "• Item 1\n• Item 2", "Bullet conversion failed")
+        
+        // Test single character bullet conversion
+        let singleBulletTest = transform("*\n-", oldText: "")
+        assert(singleBulletTest == "• \n• ", "Single character bullet conversion failed")
+        
+        // Test bullet conversion with immediate text
+        let immediateBulletTest = transform("*hello\n-world", oldText: "")
+        assert(immediateBulletTest == "• hello\n• world", "Immediate bullet conversion failed")
         
         // Test arrow conversion
         let arrowTest = transform("This -> That", oldText: "")
