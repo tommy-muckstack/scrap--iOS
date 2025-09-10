@@ -24,6 +24,9 @@
 		BBC2A2B72E7190E4000BEABE /* SharpGrotesk-SemiBold.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2B62E7190E4000BEABE /* SharpGrotesk-SemiBold.otf */; };
 		BBC2A2B82E7190E4000BEABE /* SharpGrotesk-Medium.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2B52E7190E4000BEABE /* SharpGrotesk-Medium.otf */; };
 		BBC2A2B92E7190E4000BEABE /* SharpGrotesk-Book.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2B42E7190E4000BEABE /* SharpGrotesk-Book.otf */; };
+		BBC2A2BB2E719199000BEABE /* SharpGrotesk-BookItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2BA2E719199000BEABE /* SharpGrotesk-BookItalic.otf */; };
+		BBC2A2BD2E7191A0000BEABE /* SharpGrotesk-Light.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2BC2E7191A0000BEABE /* SharpGrotesk-Light.otf */; };
+		BBC2A2BF2E7191A7000BEABE /* SharpGrotesk-LightItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2BE2E7191A7000BEABE /* SharpGrotesk-LightItalic.otf */; };
 		CC304E7B3F6F72990054DD42 /* TestContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC304E7C3F6F72990054DD42 /* TestContentView.swift */; };
 		DD304E862E6FA0000054DD42 /* FirebaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD304E872E6FA0000054DD42 /* FirebaseManager.swift */; };
 		EE304E882E6FA1000054DD43 /* AuthenticationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE304E892E6FA1000054DD43 /* AuthenticationView.swift */; };
@@ -42,6 +45,9 @@
 		BBC2A2B42E7190E4000BEABE /* SharpGrotesk-Book.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-Book.otf"; sourceTree = "<group>"; };
 		BBC2A2B52E7190E4000BEABE /* SharpGrotesk-Medium.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-Medium.otf"; sourceTree = "<group>"; };
 		BBC2A2B62E7190E4000BEABE /* SharpGrotesk-SemiBold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-SemiBold.otf"; sourceTree = "<group>"; };
+		BBC2A2BA2E719199000BEABE /* SharpGrotesk-BookItalic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-BookItalic.otf"; sourceTree = "<group>"; };
+		BBC2A2BC2E7191A0000BEABE /* SharpGrotesk-Light.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-Light.otf"; sourceTree = "<group>"; };
+		BBC2A2BE2E7191A7000BEABE /* SharpGrotesk-LightItalic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-LightItalic.otf"; sourceTree = "<group>"; };
 		CC304E7C3F6F72990054DD42 /* TestContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestContentView.swift; sourceTree = "<group>"; };
 		DD304E872E6FA0000054DD42 /* FirebaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseManager.swift; sourceTree = "<group>"; };
 		EE304E892E6FA1000054DD43 /* AuthenticationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationView.swift; sourceTree = "<group>"; };
@@ -97,6 +103,9 @@
 				CC304E7C3F6F72990054DD42 /* TestContentView.swift */,
 				1D1A2B2D2B1234567890ABCF /* Assets.xcassets */,
 				BBC2A2B42E7190E4000BEABE /* SharpGrotesk-Book.otf */,
+				BBC2A2BA2E719199000BEABE /* SharpGrotesk-BookItalic.otf */,
+				BBC2A2BC2E7191A0000BEABE /* SharpGrotesk-Light.otf */,
+				BBC2A2BE2E7191A7000BEABE /* SharpGrotesk-LightItalic.otf */,
 				BBC2A2B52E7190E4000BEABE /* SharpGrotesk-Medium.otf */,
 				BBC2A2B62E7190E4000BEABE /* SharpGrotesk-SemiBold.otf */,
 				1D1A2B2F2B1234567890ABD0 /* Preview Content */,
@@ -176,11 +185,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				1D1A2B312B1234567890ABD0 /* Preview Assets.xcassets in Resources */,
+				BBC2A2BF2E7191A7000BEABE /* SharpGrotesk-LightItalic.otf in Resources */,
+				BBC2A2BB2E719199000BEABE /* SharpGrotesk-BookItalic.otf in Resources */,
 				1D1A2B2E2B1234567890ABCF /* Assets.xcassets in Resources */,
 				BB304E7A2E6F9E750054DD40 /* GoogleService-Info.plist in Resources */,
 				BBC2A2B72E7190E4000BEABE /* SharpGrotesk-SemiBold.otf in Resources */,
 				BBC2A2B82E7190E4000BEABE /* SharpGrotesk-Medium.otf in Resources */,
 				BBC2A2B92E7190E4000BEABE /* SharpGrotesk-Book.otf in Resources */,
+				BBC2A2BD2E7191A0000BEABE /* SharpGrotesk-Light.otf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

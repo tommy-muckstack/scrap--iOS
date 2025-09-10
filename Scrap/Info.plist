@@ -58,10 +58,15 @@
         <string>Satoshi-Medium.otf</string>
         <string>Satoshi-Bold.otf</string>
         <string>Satoshi-Variable.ttf</string>
-        <string>Fonts/SharpGrotesk/SharpGrotesk-Book.otf</string>
-        <string>Fonts/SharpGrotesk/SharpGrotesk-Medium.otf</string>
-        <string>Fonts/SharpGrotesk/SharpGrotesk-SemiBold.otf</string>
         <string>Fonts/SharpGrotesk/SharpGrotesk-Thin.otf</string>
+        <string>Fonts/SharpGrotesk/SharpGrotesk-ThinItalic.otf</string>
+        <string>Fonts/SharpGrotesk/SharpGrotesk-Light.otf</string>
+        <string>Fonts/SharpGrotesk/SharpGrotesk-LightItalic.otf</string>
+        <string>Fonts/SharpGrotesk/SharpGrotesk-Book.otf</string>
+        <string>Fonts/SharpGrotesk/SharpGrotesk-BookItalic.otf</string>
+        <string>Fonts/SharpGrotesk/SharpGrotesk-Medium.otf</string>
+        <string>Fonts/SharpGrotesk/SharpGrotesk-MediumItalic.otf</string>
+        <string>Fonts/SharpGrotesk/SharpGrotesk-SemiBold.otf</string>
     </array>
     <key>NSMicrophoneUsageDescription</key>
     <string>Scrap uses your microphone to transcribe voice notes, making it easy to capture your thoughts hands-free.</string>

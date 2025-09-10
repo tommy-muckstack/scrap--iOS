@@ -22,13 +22,24 @@ struct GentleLightning {
     }
     
     struct Typography {
+        // Primary hierarchy (most commonly used)
         static let hero = Font.custom("SharpGrotesk-SemiBold", size: 34)
         static let body = Font.custom("SharpGrotesk-Book", size: 16)
         static let bodyInput = Font.custom("SharpGrotesk-Book", size: 17)
         static let title = Font.custom("SharpGrotesk-Medium", size: 20)
         static let caption = Font.custom("SharpGrotesk-Book", size: 13)
         static let small = Font.custom("SharpGrotesk-Book", size: 11)
+        
+        // Extended weight options
         static let ultraLight = Font.custom("SharpGrotesk-Thin", size: 14)
+        static let light = Font.custom("SharpGrotesk-Light", size: 16)
+        static let medium = Font.custom("SharpGrotesk-Medium", size: 16)
+        
+        // Italic variants for emphasis and style
+        static let bodyItalic = Font.custom("SharpGrotesk-BookItalic", size: 16)
+        static let titleItalic = Font.custom("SharpGrotesk-MediumItalic", size: 20)
+        static let lightItalic = Font.custom("SharpGrotesk-LightItalic", size: 16)
+        static let ultraLightItalic = Font.custom("SharpGrotesk-ThinItalic", size: 14)
     }
     
     struct Layout {
