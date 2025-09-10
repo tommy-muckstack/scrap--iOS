@@ -8,20 +8,6 @@ import UIKit
 import AuthenticationServices
 import CryptoKit
 
-// MARK: - Firebase Note Model
-struct FirebaseNote: Identifiable, Codable {
-    @DocumentID var id: String?
-    let userId: String
-    let content: String
-    let isTask: Bool
-    let categories: [String]
-    let createdAt: Date
-    let updatedAt: Date
-    let pineconeId: String? // Reference to vector in Pinecone
-    let creationType: String // "voice" or "text"
-    
-    var wrappedContent: String { content }
-}
 
 // MARK: - Firebase Manager
 class FirebaseManager: ObservableObject {
@@ -38,7 +24,23 @@ class FirebaseManager: ObservableObject {
     private var authStateListener: AuthStateDidChangeListenerHandle?
     private var currentNonce: String?
     
+    // Screenshot demo mode
+    private var isScreenshotMode: Bool {
+        return ProcessInfo.processInfo.environment["SCREENSHOT_MODE"] == "true"
+    }
+    
     init() {
+        // Check for screenshot mode
+        if isScreenshotMode {
+            print("🎬 FirebaseManager: Screenshot mode enabled - bypassing authentication")
+            Task { @MainActor in
+                self.isAuthenticated = true
+                // Set a mock user for screenshot mode
+                AnalyticsManager.shared.setUserIdToDeviceId()
+            }
+            return
+        }
+        
         // Listen for auth state changes
         authStateListener = auth.addStateDidChangeListener { [weak self] _, user in
             Task { @MainActor in
@@ -253,6 +255,11 @@ class FirebaseManager: ObservableObject {
         
         let userId = user.uid
         
+        // Track account deletion start
+        AnalyticsManager.shared.trackEvent("account_deletion_started", properties: [
+            "user_id": userId
+        ])
+        
         // First, delete all user's notes
         let snapshot = try await db.collection("notes")
             .whereField("userId", isEqualTo: userId)
@@ -265,27 +272,55 @@ class FirebaseManager: ObservableObject {
         }
         try await batch.commit()
         
-        // Track account deletion
-        AnalyticsManager.shared.trackEvent("account_deleted", properties: [
+        // Track notes deletion
+        AnalyticsManager.shared.trackEvent("account_notes_deleted", properties: [
             "user_id": userId,
             "notes_deleted": snapshot.documents.count
         ])
         
-        // Delete the user account
-        try await user.delete()
+        // Delete the user account - this may require recent authentication
+        do {
+            try await user.delete()
+            
+            // Track successful account deletion
+            AnalyticsManager.shared.trackEvent("account_deleted_successfully", properties: [
+                "user_id": userId,
+                "notes_deleted": snapshot.documents.count
+            ])
+        } catch {
+            // If account deletion fails, we still want to sign out the user
+            // This often happens when the user needs to re-authenticate
+            print("Failed to delete Firebase user account: \(error.localizedDescription)")
+            
+            // Track partial deletion (notes deleted but account deletion failed)
+            AnalyticsManager.shared.trackEvent("account_deletion_partial", properties: [
+                "user_id": userId,
+                "notes_deleted": snapshot.documents.count,
+                "error": error.localizedDescription
+            ])
+            
+            // Still proceed with sign out to at least log the user out locally
+        }
         
-        // Sign out from Google
+        // Always sign out from Google regardless of account deletion success
         GIDSignIn.sharedInstance.signOut()
         
-        // Clear local state
+        // Always clear local state and sign out from Firebase Auth
+        try? auth.signOut()
+        
         await MainActor.run {
             self.user = nil
             self.isAuthenticated = false
         }
+        
+        // Track final sign out
+        AnalyticsManager.shared.trackEvent("account_deletion_completed", properties: [
+            "user_id": userId
+        ])
     }
     
     // MARK: - Notes Operations
-    func createNote(content: String, isTask: Bool, categories: [String] = [], creationType: String = "text") async throws -> String {
+    func createNote(content: String, title: String? = nil, categoryIds: [String] = [], isTask: Bool, categories: [String] = [], creationType: String = "text") async throws -> String {
         print("🔥 FirebaseManager: createNote called with content: '\(content)' type: '\(creationType)'")
         
         guard let userId = user?.uid else {
@@ -298,8 +333,10 @@ class FirebaseManager: ObservableObject {
         let note = FirebaseNote(
             userId: userId,
             content: content,
+            title: title,
+            categoryIds: categoryIds,
             isTask: isTask,
-            categories: categories,
+            categories: categories, // Legacy field for backward compatibility
             createdAt: Date(),
             updatedAt: Date(),
             pineconeId: nil, // Will be updated after Pinecone insertion
@@ -337,7 +374,26 @@ class FirebaseManager: ObservableObject {
         ])
     }
     
+    func updateNoteTitle(noteId: String, title: String) async throws {
+        try await db.collection("notes").document(noteId).updateData([
+            "title": title,
+            "updatedAt": Date()
+        ])
+    }
+    
+    func updateNoteCategories(noteId: String, categoryIds: [String]) async throws {
+        try await db.collection("notes").document(noteId).updateData([
+            "categoryIds": categoryIds,
+            "updatedAt": Date()
+        ])
+    }
+    
     func fetchNotes(limit: Int = 50) async throws -> [FirebaseNote] {
+        // Return demo data in screenshot mode
+        if isScreenshotMode {
+            return getScreenshotDemoNotes()
+        }
+        
         guard let userId = user?.uid else {
             throw FirebaseError.notAuthenticated
         }
@@ -373,6 +429,14 @@ class FirebaseManager: ObservableObject {
     
     // MARK: - Real-time Listener
     func startListening(completion: @escaping ([FirebaseNote]) -> Void) {
+        // Return demo data immediately in screenshot mode
+        if isScreenshotMode {
+            Task { @MainActor in
+                completion(getScreenshotDemoNotes())
+            }
+            return
+        }
+        
         guard let userId = user?.uid else { 
             return 
         }
@@ -410,6 +474,80 @@ class FirebaseManager: ObservableObject {
         if let authStateListener = authStateListener {
             auth.removeStateDidChangeListener(authStateListener)
         }
+    }
+    
+    // MARK: - Screenshot Demo Data
+    private func getScreenshotDemoNotes() -> [FirebaseNote] {
+        let now = Date()
+        let calendar = Calendar.current
+        
+        return [
+            FirebaseNote(
+                id: "demo1",
+                userId: "demo-user",
+                content: "Morning reflection: Woke up feeling grateful for the small moments of peace in my daily routine. There's something beautiful about watching the sunrise while having my first cup of coffee.",
+                title: "Gratitude Practice",
+                categoryIds: [],
+                isTask: false,
+                categories: [],
+                createdAt: calendar.date(byAdding: .hour, value: -2, to: now) ?? now,
+                updatedAt: calendar.date(byAdding: .hour, value: -2, to: now) ?? now,
+                pineconeId: nil,
+                creationType: "text"
+            ),
+            FirebaseNote(
+                id: "demo2",
+                userId: "demo-user",
+                content: "Read an inspiring quote today: 'The only way to do great work is to love what you do.' This really resonates with my current career transition.",
+                title: "Daily Inspiration",
+                categoryIds: [],
+                isTask: false,
+                categories: [],
+                createdAt: calendar.date(byAdding: .hour, value: -5, to: now) ?? now,
+                updatedAt: calendar.date(byAdding: .hour, value: -5, to: now) ?? now,
+                pineconeId: nil,
+                creationType: "text"
+            ),
+            FirebaseNote(
+                id: "demo3",
+                userId: "demo-user",
+                content: "Breakthrough insight during meditation: I've been holding onto perfectionism as a form of self-protection, but it's actually preventing me from taking meaningful risks and growing.",
+                title: "Self-Discovery",
+                categoryIds: [],
+                isTask: false,
+                categories: [],
+                createdAt: calendar.date(byAdding: .day, value: -1, to: now) ?? now,
+                updatedAt: calendar.date(byAdding: .day, value: -1, to: now) ?? now,
+                pineconeId: nil,
+                creationType: "voice"
+            ),
+            FirebaseNote(
+                id: "demo4",
+                userId: "demo-user",
+                content: "Goals for next month: Start a daily journaling practice, read two books on emotional intelligence, and have honest conversations with close friends about my personal growth journey.",
+                title: "Monthly Goals",
+                categoryIds: [],
+                isTask: false,
+                categories: [],
+                createdAt: calendar.date(byAdding: .day, value: -2, to: now) ?? now,
+                updatedAt: calendar.date(byAdding: .day, value: -2, to: now) ?? now,
+                pineconeId: nil,
+                creationType: "text"
+            ),
+            FirebaseNote(
+                id: "demo5",
+                userId: "demo-user",
+                content: "Powerful realization: My anxiety often stems from trying to control outcomes that are beyond my influence. Learning to focus on my actions and responses instead.",
+                title: "Mindfulness Notes",
+                categoryIds: [],
+                isTask: false,
+                categories: [],
+                createdAt: calendar.date(byAdding: .day, value: -3, to: now) ?? now,
+                updatedAt: calendar.date(byAdding: .day, value: -3, to: now) ?? now,
+                pineconeId: nil,
+                creationType: "voice"
+            )
+        ]
     }
 }
 

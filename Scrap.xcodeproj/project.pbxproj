@@ -103,6 +103,8 @@
 				<string>FF304E8A2E6FA2000054DD44</string>
 				<string>CC304E7B3F6F72990054DD42</string>
 				<string>1D1A2B2A2B1234567890ABCD</string>
+				<string>SM746984E3905E9248F740</string>
+				<string>SS7CB67F2F072D9CA9AE6D</string>
 			</array>
 			<key>isa</key>
 			<string>PBXSourcesBuildPhase</string>
@@ -219,6 +221,8 @@
 				<string>EE304E892E6FA1000054DD43</string>
 				<string>FF304E8B2E6FA2000054DD44</string>
 				<string>CC304E7C3F6F72990054DD42</string>
+				<string>SM988B63B7218D59C335B7</string>
+				<string>SS42E11169D5C6456E0538</string>
 				<string>1D1A2B2D2B1234567890ABCF</string>
 				<string>1D1A2B2F2B1234567890ABD0</string>
 			</array>
@@ -626,7 +630,7 @@
 				<key>CODE_SIGN_ENTITLEMENTS</key>
 				<string>Scrap/Scrap.entitlements</string>
 				<key>CODE_SIGN_IDENTITY</key>
-				<string>Apple Distribution</string>
+				<string>Apple Development</string>
 				<key>CODE_SIGN_STYLE</key>
 				<string>Automatic</string>
 				<key>CURRENT_PROJECT_VERSION</key>
@@ -664,8 +668,6 @@
 				<string>com.muckstack.scrap</string>
 				<key>PRODUCT_NAME</key>
 				<string>Scrap</string>
-				<key>PROVISIONING_PROFILE_SPECIFIER</key>
-				<string>Scrap App Store Profile</string>
 				<key>SUPPORTED_PLATFORMS</key>
 				<string>iphoneos iphonesimulator</string>
 				<key>SUPPORTS_MACCATALYST</key>
@@ -1186,6 +1188,42 @@
 		<dict>
 			<key>fileRef</key>
 			<string>RT6C1C6BFA551F</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>SM746984E3905E9248F740</key>
+		<dict>
+			<key>fileRef</key>
+			<string>SM988B63B7218D59C335B7</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>SM988B63B7218D59C335B7</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>SparkModels.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>SS42E11169D5C6456E0538</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>SparkServices.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>SS7CB67F2F072D9CA9AE6D</key>
+		<dict>
+			<key>fileRef</key>
+			<string>SS42E11169D5C6456E0538</string>
 			<key>isa</key>
 			<string>PBXBuildFile</string>
 		</dict>

@@ -24,24 +24,32 @@ struct GentleLightning {
     }
     
     struct Typography {
-        // Primary hierarchy (most commonly used)
-        static let hero = Font.custom("SharpGrotesk-SemiBold", size: 34)
-        static let body = Font.custom("SharpGrotesk-Book", size: 16)
-        static let bodyInput = Font.custom("SharpGrotesk-Book", size: 17)
-        static let title = Font.custom("SharpGrotesk-Medium", size: 20)
-        static let caption = Font.custom("SharpGrotesk-Book", size: 13)
-        static let small = Font.custom("SharpGrotesk-Book", size: 11)
+        // HEADINGS / TITLES → SharpGrotesk-Medium (sometimes SemiBold for emphasis)
+        static let hero = Font.custom("SharpGrotesk-SemiBold", size: 34)           // Large hero titles
+        static let title = Font.custom("SharpGrotesk-Medium", size: 20)            // Standard titles/headings
+        static let titleEmphasis = Font.custom("SharpGrotesk-SemiBold", size: 20)  // Emphasized titles
+        static let subtitle = Font.custom("SharpGrotesk-Medium", size: 18)         // Subtitles
+        static let heading = Font.custom("SharpGrotesk-Medium", size: 16)          // Section headings
         
-        // Extended weight options
-        static let ultraLight = Font.custom("SharpGrotesk-Thin", size: 14)
-        static let light = Font.custom("SharpGrotesk-Light", size: 16)
-        static let medium = Font.custom("SharpGrotesk-Medium", size: 16)
+        // BODY TEXT → SharpGrotesk-Book (regular reading weight)
+        static let body = Font.custom("SharpGrotesk-Book", size: 16)               // Primary body text
+        static let bodyInput = Font.custom("SharpGrotesk-Book", size: 17)          // Input fields
+        static let bodyLarge = Font.custom("SharpGrotesk-Book", size: 18)          // Larger body text
         
-        // Italic variants for emphasis and style
+        // SECONDARY / SUBTLE TEXT → SharpGrotesk-Light
+        static let caption = Font.custom("SharpGrotesk-Light", size: 13)           // Subtle captions
+        static let small = Font.custom("SharpGrotesk-Light", size: 11)             // Small subtle text
+        static let secondary = Font.custom("SharpGrotesk-Light", size: 14)         // Secondary information
+        static let metadata = Font.custom("SharpGrotesk-Light", size: 12)          // Timestamps, metadata
+        
+        // LEGACY / SPECIAL USE
+        static let ultraLight = Font.custom("SharpGrotesk-Thin", size: 14)         // Ultra-light accent
+        static let medium = Font.custom("SharpGrotesk-Medium", size: 16)           // Medium weight utility
+        
+        // ITALIC VARIANTS for emphasis
         static let bodyItalic = Font.custom("SharpGrotesk-BookItalic", size: 16)
         static let titleItalic = Font.custom("SharpGrotesk-MediumItalic", size: 20)
-        static let lightItalic = Font.custom("SharpGrotesk-LightItalic", size: 16)
-        static let ultraLightItalic = Font.custom("SharpGrotesk-ThinItalic", size: 14)
+        static let secondaryItalic = Font.custom("SharpGrotesk-LightItalic", size: 14)
     }
     
     struct Layout {
@@ -86,34 +94,7 @@ struct GentleLightning {
 }
 
 // MARK: - Simple Item Model (Compatible with Firebase)
-class SparkItem: ObservableObject, Identifiable {
-    let id: String
-    @Published var content: String
-    @Published var isTask: Bool
-    @Published var isCompleted: Bool
-    let createdAt: Date
-    var firebaseId: String?
-    
-    var wrappedContent: String { content }
-    
-    init(content: String, isTask: Bool = false, id: String = UUID().uuidString) {
-        self.id = id
-        self.content = content
-        self.isTask = isTask
-        self.isCompleted = false
-        self.createdAt = Date()
-    }
-    
-    // Initialize from Firebase note
-    init(from firebaseNote: FirebaseNote) {
-        self.id = firebaseNote.id ?? UUID().uuidString
-        self.content = firebaseNote.content
-        self.isTask = firebaseNote.isTask
-        self.isCompleted = false // Firebase notes don't have completion status yet
-        self.createdAt = firebaseNote.createdAt
-        self.firebaseId = firebaseNote.id
-    }
-}
+// SparkItem is now defined in SparkModels.swift
 
 // MARK: - Firebase Data Manager
 class FirebaseDataManager: ObservableObject {
@@ -140,31 +121,51 @@ class FirebaseDataManager: ObservableObject {
     }
     
     func createItem(from text: String, creationType: String = "text") {
-        // Create optimistic local item - always a note, never a task
-        let newItem = SparkItem(content: text, isTask: false)
-        withAnimation(GentleLightning.Animation.elastic) {
-            items.insert(newItem, at: 0)
-        }
-        
-        // Save to Firebase
+        // Save to Firebase with AI-generated title first, then add to list
         Task {
             do {
                 print("📋 DataManager: Starting to save note: '\(text)' type: '\(creationType)'")
-                let categories = await categorizeText(text)
-                print("🏷️ DataManager: Categorized text with categories: \(categories)")
                 
+                // Generate title using OpenAI
+                var generatedTitle: String? = nil
+                do {
+                    generatedTitle = try await OpenAIService.shared.generateTitle(for: text)
+                    print("🤖 DataManager: Generated title: '\(generatedTitle!)'")
+                } catch {
+                    print("⚠️ DataManager: Title generation failed: \(error), proceeding without title")
+                }
+                
+                // Get legacy categories for backward compatibility
+                let legacyCategories = await categorizeText(text)
+                print("🏷️ DataManager: Categorized text with legacy categories: \(legacyCategories)")
+                
+                // TODO: Add category suggestion and selection logic here
+                let categoryIds: [String] = [] // Will be populated when categories are implemented
+                
+                let finalTitle = generatedTitle
                 let firebaseId = try await firebaseManager.createNote(
-                    content: text, 
+                    content: text,
+                    title: finalTitle,
+                    categoryIds: categoryIds,
                     isTask: false, 
-                    categories: categories,
+                    categories: legacyCategories,
                     creationType: creationType
                 )
                 
                 print("✅ DataManager: Note saved successfully with Firebase ID: \(firebaseId)")
                 
+                // Now create the item with the title and add to list
                 await MainActor.run {
+                    let newItem = SparkItem(content: text, isTask: false)
                     newItem.firebaseId = firebaseId
-                    print("📲 DataManager: Updated local item with Firebase ID")
+                    if let title = finalTitle {
+                        newItem.title = title
+                    }
+                    
+                    withAnimation(GentleLightning.Animation.elastic) {
+                        self.items.insert(newItem, at: 0)
+                    }
+                    print("📲 DataManager: Added item to list with title: '\(newItem.title)'")
                 }
                 
                 // TODO: Save to Pinecone for vector search
@@ -172,10 +173,8 @@ class FirebaseDataManager: ObservableObject {
             } catch {
                 print("💥 DataManager: Failed to save note: \(error)")
                 await MainActor.run {
-                    // Remove optimistic item on error
-                    self.items.removeAll { $0.id == newItem.id }
                     self.error = "Failed to save note: \(error.localizedDescription)"
-                    print("🗑️ DataManager: Removed failed item from local storage")
+                    print("🗑️ DataManager: Note creation failed")
                 }
             }
         }
@@ -337,17 +336,20 @@ struct InputField: View {
                         }
                 }
                 
-                // Microphone/Save button - transforms based on text content
+                // Microphone/Save button - transforms based on recording state and text content
                 Button(action: {
-                    if hasText {
-                        // Save the note
+                    if isRecording {
+                        // Stop recording
+                        handleVoiceRecording()
+                    } else if hasText {
+                        // Save the note (only when not recording)
                         if !text.isEmpty {
                             AnalyticsManager.shared.trackNoteSaved(method: "button", contentLength: text.count)
                             dataManager.createItem(from: text, creationType: "text")
                             text = ""
                         }
                     } else {
-                        // Voice recording
+                        // Start voice recording
                         handleVoiceRecording()
                     }
                 }) {
@@ -356,32 +358,32 @@ struct InputField: View {
                         RoundedRectangle(cornerRadius: 20)
                             .fill(isRecording ? Color.red : Color.black)
                             .frame(height: 40)
-                            .frame(width: hasText ? 80 : 40)
+                            .frame(width: isRecording ? 40 : (hasText ? 80 : 40))
                             .scaleEffect(x: 1.0, y: 1.0, anchor: .center)
                             .animation(
                                 .interpolatingSpring(stiffness: 300, damping: 30)
                                 .speed(1.2),
-                                value: hasText
+                                value: isRecording || hasText
                             )
                         
                         // Content container with symmetric collapse/expand animations
                         ZStack {
-                            // Save text - appears when hasText is true
-                            if hasText {
+                            // Save text - appears when hasText is true AND not recording
+                            if hasText && !isRecording {
                                 Text("SAVE")
                                     .font(GentleLightning.Typography.small)
                                     .foregroundColor(.white)
                                     .fontWeight(.semibold)
                                     .scaleEffect(
-                                        x: hasText ? 1.0 : 0.1, 
-                                        y: hasText ? 1.0 : 0.1,
+                                        x: (hasText && !isRecording) ? 1.0 : 0.1, 
+                                        y: (hasText && !isRecording) ? 1.0 : 0.1,
                                         anchor: .center
                                     )
-                                    .opacity(hasText ? 1.0 : 0.0)
+                                    .opacity((hasText && !isRecording) ? 1.0 : 0.0)
                                     .animation(
                                         .interpolatingSpring(stiffness: 280, damping: 22)
-                                        .delay(hasText ? 0.08 : 0.08), // Symmetric timing
-                                        value: hasText
+                                        .delay((hasText && !isRecording) ? 0.08 : 0.08), // Symmetric timing
+                                        value: hasText && !isRecording
                                     )
                             }
                             
@@ -403,7 +405,7 @@ struct InputField: View {
                                     )
                             }
                             
-                            // Microphone icon - default state
+                            // Microphone icon - default state (when no text and not recording)
                             if !hasText && !isRecording {
                                 Image(systemName: "mic.fill")
                                     .font(GentleLightning.Typography.title)
@@ -553,8 +555,11 @@ struct InputField: View {
                         let transcription = result.bestTranscription.formattedString
                         
                         // Update the temporary voice note content for visual feedback
+                        // Only update visual text if we're still recording
                         voiceNoteContent = transcription
-                        self.text = transcription
+                        if self.isRecording {
+                            self.text = transcription
+                        }
                     }
                     isFinal = result.isFinal
                 }
@@ -568,14 +573,12 @@ struct InputField: View {
                         self.recognitionTask = nil
                         self.isRecording = false
                         
+                        // Clear the text field immediately to reset button state
+                        self.text = ""
+                        
                         // Auto-save voice note if we have content
                         if !voiceNoteContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                             self.dataManager.createItem(from: voiceNoteContent, creationType: "voice")
-                            
-                            // Clear the text field with animation
-                            withAnimation(.easeOut(duration: 0.3)) {
-                                self.text = ""
-                            }
                         }
                     }
                 }
@@ -613,8 +616,10 @@ struct InputField: View {
         }
         recordingStartTime = nil
         
-        // Don't auto-save when appending to existing text - let user decide when to save
-        // Just provide haptic feedback to indicate recording stopped
+        // Clear text field to reset button state
+        text = ""
+        
+        // Provide haptic feedback to indicate recording stopped
         GentleLightning.Sound.Haptic.swoosh.trigger()
     }
     
@@ -667,18 +672,46 @@ struct ItemRowSimple: View {
     @ObservedObject var item: SparkItem
     let dataManager: FirebaseDataManager
     let onTap: () -> Void
+    // @ObservedObject private var categoryService = CategoryService.shared
     
     var body: some View {
         Button(action: onTap) {
-            HStack(spacing: 12) {
-                Text(item.wrappedContent)
-                    .font(GentleLightning.Typography.body)
-                    .foregroundColor(GentleLightning.Colors.textPrimary)
-                    .lineLimit(nil)
-                    .multilineTextAlignment(.leading)
+            VStack(alignment: .leading, spacing: 8) {
+                // Title and content
+                VStack(alignment: .leading, spacing: 4) {
+                    if !item.title.isEmpty {
+                        Text(item.title)
+                            .font(GentleLightning.Typography.title)
+                            .foregroundColor(GentleLightning.Colors.textPrimary)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    
+                    Text(item.content)
+                        .font(item.title.isEmpty ? GentleLightning.Typography.body : GentleLightning.Typography.secondary)
+                        .foregroundColor(item.title.isEmpty ? GentleLightning.Colors.textPrimary : GentleLightning.Colors.textSecondary)
+                        .lineLimit(item.title.isEmpty ? nil : 3)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
                 
-                Spacer()
+                // Category pills
+                if !item.categoryIds.isEmpty {
+                    HStack(spacing: 6) {
+                        // TODO: Uncomment when CategoryService is added to project
+                        /*
+                        ForEach(categoryService.getCategoriesByIds(item.categoryIds), id: \.id) { category in
+                            CategoryPillSimple(category: category)
+                        }
+                        */
+                        Spacer()
+                    }
+                }
+                
+                Spacer(minLength: 0)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, GentleLightning.Layout.Padding.lg)
             .padding(.vertical, GentleLightning.Layout.Padding.lg)
             .background(
@@ -697,6 +730,32 @@ struct ItemRowSimple: View {
         }
     }
 }
+
+// MARK: - Simple Category Pill for List View
+// TODO: Uncomment when Category model is added to project
+/*
+struct CategoryPillSimple: View {
+    let category: Category
+    
+    var body: some View {
+        HStack(spacing: 4) {
+            Circle()
+                .fill(category.uiColor)
+                .frame(width: 6, height: 6)
+            
+            Text(category.name)
+                .font(GentleLightning.Typography.metadata)
+                .foregroundColor(GentleLightning.Colors.textSecondary)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background(
+            Capsule()
+                .fill(category.uiColor.opacity(0.1))
+        )
+    }
+}
+*/
 
 // MARK: - Note Edit View
 struct NoteEditView: View {
@@ -829,7 +888,7 @@ struct NoteEditView: View {
                         }
                     }
             .background(Color.white)
-            .navigationTitle("Edit Note")
+            // .navigationTitle("Edit Note")
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarItems(
                 leading: Button("Back") {
@@ -958,6 +1017,9 @@ struct NoteEditView: View {
 struct AccountDrawerView: View {
     @Binding var isPresented: Bool
     @State private var showDeleteConfirmation = false
+    @State private var isDeletingAccount = false
+    @State private var deleteError: String?
+    @State private var showDeleteResult = false
     
     // Get app version info
     private var appVersion: String {
@@ -1049,19 +1111,71 @@ struct AccountDrawerView: View {
         .background(Color.white)
         .alert("Delete Account", isPresented: $showDeleteConfirmation) {
             Button("Delete", role: .destructive) {
+                isDeletingAccount = true
+                deleteError = nil
+                
                 Task {
                     do {
                         try await FirebaseManager.shared.deleteAccount()
+                        
+                        // Account deleted successfully, user is now logged out
+                        await MainActor.run {
+                            isDeletingAccount = false
+                            deleteError = nil
+                            isPresented = false
+                        }
+                        
                     } catch {
-                        print("Delete account error: \(error)")
+                        await MainActor.run {
+                            isDeletingAccount = false
+                            deleteError = "Failed to delete account: \(error.localizedDescription)\n\nYour notes have been deleted and you have been logged out, but the account may still exist. Please contact support if needed."
+                            showDeleteResult = true
+                        }
                     }
                 }
-                isPresented = false
             }
+            .disabled(isDeletingAccount)
+            
             Button("Cancel", role: .cancel) { }
         } message: {
             Text("This will permanently delete your account and all your notes. This action cannot be undone.")
         }
+        .alert("Account Deletion", isPresented: $showDeleteResult) {
+            Button("OK") {
+                isPresented = false
+            }
+        } message: {
+            Text(deleteError ?? "Account deleted successfully. You have been logged out.")
+        }
+        .overlay(
+            // Loading overlay when deleting account
+            Group {
+                if isDeletingAccount {
+                    Color.black.opacity(0.3)
+                        .ignoresSafeArea()
+                    
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .scaleEffect(1.2)
+                            .tint(GentleLightning.Colors.accentNeutral)
+                        
+                        Text("Deleting account...")
+                            .font(GentleLightning.Typography.body)
+                            .foregroundColor(GentleLightning.Colors.textPrimary)
+                        
+                        Text("This may take a moment")
+                            .font(GentleLightning.Typography.caption)
+                            .foregroundColor(GentleLightning.Colors.textSecondary)
+                    }
+                    .padding(32)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color.white)
+                            .shadow(color: GentleLightning.Colors.shadowLight, radius: 20, x: 0, y: 4)
+                    )
+                }
+            }
+        )
     }
 }
 
@@ -1069,13 +1183,12 @@ struct AccountDrawerView: View {
 struct ContentView: View {
     @StateObject private var dataManager = FirebaseDataManager()
     @StateObject private var viewModel = ContentViewModel()
-    @State private var editingItem: SparkItem?
-    @State private var editingItemId: String?
-    @State private var showingEditView = false
+    @State private var navigationPath = NavigationPath()
     @State private var showingAccountDrawer = false
     @FocusState private var isInputFieldFocused: Bool
     
     var body: some View {
+        NavigationStack(path: $navigationPath) {
         ZStack {
             // Main content
             VStack(spacing: 0) {
@@ -1121,23 +1234,15 @@ struct ContentView: View {
                         } else {
                             ForEach(dataManager.items) { item in
                                 ItemRowSimple(item: item, dataManager: dataManager) {
-                                    print("🎯 ContentView: Note tap detected - STARTING note opening process")
-                                    print("🎯 ContentView: item.id = '\(item.id)'")
+                                    print("🎯 ContentView: Note tap detected - navigating to item.id = '\(item.id)'")
                                     print("🎯 ContentView: item.content = '\(item.content)' (length: \(item.content.count))")
-                                    print("🎯 ContentView: item.content.isEmpty = \(item.content.isEmpty)")
                                     
                                     AnalyticsManager.shared.trackNoteEditOpened(noteId: item.id)
                                     
-                                    print("🎯 ContentView: Setting editingItem = item")
-                                    editingItem = item
-                                    editingItemId = item.id
-                                    print("🎯 ContentView: Immediately after setting - editingItem.id = '\(editingItem?.id ?? "nil")'")
-                                    print("🎯 ContentView: Stored editingItemId = '\(editingItemId ?? "nil")'")
+                                    // Use navigation instead of sheets - bulletproof approach
+                                    navigationPath.append(item)
                                     
-                                    print("🎯 ContentView: Setting showingEditView = true")
-                                    showingEditView = true
-                                    
-                                    print("🎯 ContentView: Note opening process completed - waiting for sheet to present")
+                                    print("✅ ContentView: Navigation pushed for item.id = '\(item.id)'")
                                 }
                                 .transition(.asymmetric(
                                     insertion: .move(edge: .top).combined(with: .opacity).combined(with: .scale(scale: 0.8)),
@@ -1199,22 +1304,12 @@ struct ContentView: View {
             // Dismiss keyboard when tapping outside input area
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
-        .sheet(isPresented: $showingEditView) {
-            SheetContentView(
-                editingItemId: editingItemId,
-                editingItem: editingItem,
-                dataManager: dataManager,
-                showingEditView: $showingEditView
-            )
-            .onAppear {
-                print("🚨 ContentView: Sheet onAppear - editingItem = \(editingItem?.id ?? "nil")")
-                print("🚨 ContentView: Sheet onAppear - editingItemId = \(editingItemId ?? "nil")")
-            }
-            .onDisappear {
-                print("🧹 ContentView: Edit sheet dismissed - cleaning up references")
-                editingItem = nil
-                editingItemId = nil
-            }
+        .navigationDestination(for: SparkItem.self) { item in
+            NavigationNoteEditView(item: item, dataManager: dataManager)
+                .onAppear {
+                    print("✅ Navigation NoteEditView: Successfully opened note with id = '\(item.id)'")
+                    print("✅ Navigation NoteEditView: Note content = '\(item.content)' (length: \(item.content.count))")
+                }
         }
         .sheet(isPresented: $showingAccountDrawer) {
             AccountDrawerView(isPresented: $showingAccountDrawer)
@@ -1224,99 +1319,275 @@ struct ContentView: View {
                     AnalyticsManager.shared.trackAccountDrawerClosed()
                 }
         }
+        } // NavigationStack
     }
 }
 
-// MARK: - Sheet Content View
-
-struct SheetContentView: View {
-    let editingItemId: String?
-    let editingItem: SparkItem?
+// MARK: - Navigation Note Edit View
+struct NavigationNoteEditView: View {
+    @ObservedObject var item: SparkItem
     let dataManager: FirebaseDataManager
-    @Binding var showingEditView: Bool
+    @Environment(\.dismiss) private var dismiss
+    // @ObservedObject private var categoryService = CategoryService.shared
     
-    @State private var resolvedItem: SparkItem?
-    @State private var isSearching = true
+    @State private var editedText: String = ""
+    @FocusState private var isTextFieldFocused: Bool
+    @State private var showingActionSheet = false
+    @State private var showingDeleteAlert = false
+    @State private var isContentReady = true
+    @State private var selectedCategoryIds: [String] = []
+    @State private var editedTitle: String = ""
+    
+    init(item: SparkItem, dataManager: FirebaseDataManager) {
+        print("🏗️ NavigationNoteEditView init: STARTING - item.id = '\(item.id)'")
+        print("🏗️ NavigationNoteEditView init: item.content = '\(item.content)' (length: \(item.content.count))")
+        
+        self.item = item
+        self.dataManager = dataManager
+        
+        let initialContent = item.content.isEmpty ? " " : item.content
+        print("🏗️ NavigationNoteEditView init: initialContent = '\(initialContent)' (length: \(initialContent.count))")
+        
+        self._editedText = State(initialValue: initialContent)
+        self._selectedCategoryIds = State(initialValue: item.categoryIds)
+        self._editedTitle = State(initialValue: item.title)
+        
+        print("🏗️ NavigationNoteEditView init: COMPLETED - all properties initialized")
+    }
     
     var body: some View {
-        Group {
-            if let item = resolvedItem {
-                NoteEditView(isPresented: $showingEditView, item: item, dataManager: dataManager)
-                    .onAppear {
-                        print("✅ SheetContentView: Successfully opened note with id = '\(item.id)'")
-                        print("✅ SheetContentView: Note content = '\(item.content)' (length: \(item.content.count))")
-                    }
-            } else if isSearching {
-                VStack(spacing: 16) {
-                    ProgressView()
-                        .scaleEffect(1.2)
-                    Text("Loading note...")
-                        .font(.system(size: 16))
-                        .foregroundColor(.secondary)
+        VStack(spacing: 0) {
+            if isContentReady {
+                // Title field
+                VStack(alignment: .leading, spacing: 8) {
+                    TextField("Title (optional)", text: $editedTitle)
+                        .font(GentleLightning.Typography.title)
+                        .foregroundColor(GentleLightning.Colors.textPrimary)
+                        .textFieldStyle(PlainTextFieldStyle())
+                        .onChange(of: editedTitle) { newTitle in
+                            // Update the item's title
+                            Task {
+                                if let firebaseId = item.firebaseId {
+                                    do {
+                                        try await FirebaseManager.shared.updateNoteTitle(noteId: firebaseId, title: newTitle)
+                                        await MainActor.run {
+                                            item.title = newTitle
+                                        }
+                                    } catch {
+                                        print("Failed to update title: \(error)")
+                                    }
+                                }
+                            }
+                        }
+                    
+                    Divider()
+                        .background(GentleLightning.Colors.textSecondary.opacity(0.3))
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                Text("Error: Note not found")
-                    .foregroundColor(.red)
-                    .padding()
-                    .onAppear {
-                        print("❌ SheetContentView: Failed to resolve item")
-                        print("❌ SheetContentView: editingItemId = '\(editingItemId ?? "nil")'")
-                        print("❌ SheetContentView: editingItem = '\(editingItem?.id ?? "nil")'")
-                        print("❌ SheetContentView: dataManager.items.count = \(dataManager.items.count)")
-                        print("❌ SheetContentView: Available item IDs: \(dataManager.items.map(\.id))")
+                .padding(.horizontal, GentleLightning.Layout.Padding.lg)
+                .padding(.top, GentleLightning.Layout.Padding.lg)
+                
+                // Text content
+                TextEditor(text: Binding(
+                    get: {
+                        return editedText
+                    },
+                    set: { newValue in
+                        editedText = newValue
                     }
+                ))
+                    .font(GentleLightning.Typography.bodyInput)
+                    .foregroundColor(GentleLightning.Colors.textPrimary)
+                    .padding(GentleLightning.Layout.Padding.lg)
+                    .background(Color.white)
+                    .focused($isTextFieldFocused)
+                    .onAppear {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            isTextFieldFocused = true
+                        }
+                    }
+                
+                // Category picker at bottom
+                VStack(spacing: 0) {
+                    Divider()
+                        .background(GentleLightning.Colors.textSecondary.opacity(0.3))
+                    
+                    // TODO: Uncomment when CategoryPicker is added to project
+                    /*
+                    CategoryPicker(selectedCategoryIds: $selectedCategoryIds, maxSelections: 3)
+                        .padding(GentleLightning.Layout.Padding.lg)
+                        .onChange(of: selectedCategoryIds) { newCategoryIds in
+                            // Update the item's categories
+                            Task {
+                                if let firebaseId = item.firebaseId {
+                                    do {
+                                        try await FirebaseManager.shared.updateNoteCategories(noteId: firebaseId, categoryIds: newCategoryIds)
+                                        await MainActor.run {
+                                            item.categoryIds = newCategoryIds
+                                        }
+                                        
+                                        // Update usage count for selected categories
+                                        for categoryId in newCategoryIds {
+                                            await categoryService.updateCategoryUsage(categoryId)
+                                        }
+                                    } catch {
+                                        print("Failed to update categories: \(error)")
+                                    }
+                                }
+                            }
+                        }
+                    */
+                }
+                .background(Color.white)
             }
         }
         .onAppear {
-            resolveItem()
+            print("🚀 NavigationNoteEditView VStack onAppear: TRIGGERED")
+            
+            let safeContent = sanitizeTextContent(item.content)
+            print("🚀 NavigationNoteEditView VStack onAppear: safeContent = '\(safeContent)' (length: \(safeContent.count))")
+            
+            if editedText != safeContent {
+                print("⚠️ NavigationNoteEditView VStack onAppear: Content mismatch - updating editedText")
+                editedText = safeContent
+            } else {
+                print("✅ NavigationNoteEditView VStack onAppear: Content matches - no update needed")
+            }
+            
+            isContentReady = true
+            print("✅ NavigationNoteEditView VStack onAppear: Content ready - TextEditor should show")
         }
-        .onChange(of: editingItemId) { _ in
-            resolveItem()
+        .onChange(of: editedText) { newValue in
+            let safeValue = sanitizeTextContent(newValue)
+            if safeValue != newValue {
+                print("🛡️ NavigationNoteEditView: Sanitized input")
+                editedText = safeValue
+                return
+            }
+            
+            guard !safeValue.isEmpty else { return }
+            
+            let processedText = RichTextTransformer.transform(safeValue, oldText: editedText)
+            if processedText != safeValue && processedText != editedText {
+                editedText = processedText
+            }
+            
+            let trimmedContent = safeValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmedContent.isEmpty {
+                dataManager.updateItem(item, newContent: trimmedContent)
+                AnalyticsManager.shared.trackNoteEditSaved(noteId: item.id, contentLength: safeValue.count)
+            }
+        }
+        .onChange(of: item.content) { newContent in
+            let safeNewContent = sanitizeTextContent(newContent)
+            if editedText != safeNewContent {
+                print("📝 NavigationNoteEditView: Item content changed, updating to safe content")
+                editedText = safeNewContent
+            }
+        }
+        .background(Color.white)
+        // .navigationTitle("Edit Note")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: {
+                    showingActionSheet = true
+                }) {
+                    Image(systemName: "ellipsis")
+                        .font(GentleLightning.Typography.bodyInput)
+                        .foregroundColor(GentleLightning.Colors.textPrimary)
+                }
+            }
+        }
+        .confirmationDialog("Note Options", isPresented: $showingActionSheet, titleVisibility: .visible) {
+            Button("Share") {
+                shareNote()
+            }
+            Button("Delete", role: .destructive) {
+                showingDeleteAlert = true
+            }
+            Button("Cancel", role: .cancel) { }
+        }
+        .alert("Delete Note", isPresented: $showingDeleteAlert) {
+            Button("Delete", role: .destructive) {
+                dataManager.deleteItem(item)
+                dismiss()
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This note will be permanently deleted. This action cannot be undone.")
         }
     }
     
-    private func resolveItem() {
-        print("🔍 SheetContentView: Starting item resolution...")
+    private func shareNote() {
+        AnalyticsManager.shared.trackNoteShared(noteId: item.id)
+        let shareText = editedText.isEmpty ? item.content : editedText
         
-        // Method 1: Try ID-based lookup
-        if let targetId = editingItemId {
-            print("🔍 SheetContentView: Looking for ID: '\(targetId)'")
-            if let foundItem = dataManager.items.first(where: { $0.id == targetId }) {
-                print("✅ SheetContentView: Found item by ID")
-                resolvedItem = foundItem
-                isSearching = false
-                return
-            }
-        }
+        let activityViewController = UIActivityViewController(
+            activityItems: [shareText],
+            applicationActivities: nil
+        )
         
-        // Method 2: Try direct reference
-        if let directItem = editingItem {
-            print("🔄 SheetContentView: Using direct reference for '\(directItem.id)'")
-            resolvedItem = directItem
-            isSearching = false
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let keyWindow = windowScene.windows.first(where: { $0.isKeyWindow }),
+              let rootViewController = keyWindow.rootViewController else {
+            print("ShareNote: Could not find root view controller")
             return
         }
         
-        // Method 3: Wait a bit for data to load, then try again
-        print("⏳ SheetContentView: Retrying after delay...")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            if let targetId = editingItemId,
-               let foundItem = dataManager.items.first(where: { $0.id == targetId }) {
-                print("✅ SheetContentView: Found item by ID after delay")
-                resolvedItem = foundItem
-                isSearching = false
-            } else if let directItem = editingItem {
-                print("🔄 SheetContentView: Using direct reference after delay")
-                resolvedItem = directItem
-                isSearching = false
-            } else {
-                print("❌ SheetContentView: All resolution methods failed")
-                isSearching = false
+        var presentingViewController = rootViewController
+        while let presented = presentingViewController.presentedViewController {
+            if presented.isBeingPresented || presented.isBeingDismissed {
+                break
+            }
+            presentingViewController = presented
+        }
+        
+        guard presentingViewController.isViewLoaded,
+              presentingViewController.view.window != nil else {
+            print("ShareNote: Presenting view controller not ready")
+            return
+        }
+        
+        if let popover = activityViewController.popoverPresentationController {
+            popover.sourceView = presentingViewController.view
+            popover.sourceRect = CGRect(
+                x: presentingViewController.view.bounds.midX, 
+                y: presentingViewController.view.bounds.midY, 
+                width: 0, 
+                height: 0
+            )
+            popover.permittedArrowDirections = []
+        }
+        
+        DispatchQueue.main.async {
+            presentingViewController.present(activityViewController, animated: true) { [weak presentingViewController] in
+                print("ShareNote: Activity view controller presented successfully from \(String(describing: presentingViewController))")
             }
         }
     }
+    
+    private func sanitizeTextContent(_ text: String) -> String {
+        guard !text.isEmpty else { return " " }
+        
+        var sanitized = text
+        sanitized = sanitized.replacingOccurrences(of: "\0", with: "")
+        sanitized = sanitized.replacingOccurrences(of: "\u{200B}", with: "")
+        sanitized = sanitized.replacingOccurrences(of: "\u{FEFF}", with: "")
+        sanitized = sanitized.replacingOccurrences(of: "\u{202E}", with: "")
+        
+        if sanitized.isEmpty || sanitized.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return " "
+        }
+        
+        let lines = sanitized.components(separatedBy: .newlines)
+        let sanitizedLines = lines.map { line in
+            line.count > 1000 ? String(line.prefix(1000)) + "..." : line
+        }
+        
+        return sanitizedLines.joined(separator: "\n")
+    }
 }
+
 
 // MARK: - Preview
 struct ContentView_Previews: PreviewProvider {

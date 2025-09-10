@@ -75,7 +75,7 @@ struct RootView: View {
     @State private var hasInitialized = false
     
     var body: some View {
-        Group {
+        ZStack {
             if !hasInitialized {
                 // Loading screen while Firebase initializes
                 ZStack {

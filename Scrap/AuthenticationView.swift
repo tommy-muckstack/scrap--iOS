@@ -4,158 +4,249 @@ import GoogleSignIn
 import GoogleSignInSwift
 import AuthenticationServices
 
-// MARK: - FloatingLabelTextField Component
+// MARK: - FloatingLabelTextField Component (HuddleUp implementation with Scrap design system)
 struct FloatingLabelTextField: View {
+    // MARK: - Properties
     let placeholder: String
     @Binding var text: String
-    var isSecureField: Bool = false
-    var keyboardType: UIKeyboardType = .default
-    var textContentType: UITextContentType?
-    var autocapitalization: TextInputAutocapitalization = .sentences
-    var isDisabled: Bool = false
+    let keyboardType: UIKeyboardType
+    let contentType: UITextContentType?
+    let isSecure: Bool
+    let colors: FloatingLabelColors
+    let fonts: FloatingLabelFonts
+    let animation: FloatingLabelAnimation
     
+    // State management
     @FocusState private var isFocused: Bool
-    @State private var isSecureTextVisible: Bool = false
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ZStack(alignment: .leading) {
-                // Background with border
-                RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.medium)
-                    .fill(GentleLightning.Colors.surface)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.medium)
-                            .stroke(borderColor, lineWidth: isFocused ? 2 : 1)
-                    )
-                    .frame(height: 56)
-                
-                // Floating Label - positioned more precisely like HuddleUp
-                Text(placeholder)
-                    .font(shouldShowFloatingLabel ? GentleLightning.Typography.caption : GentleLightning.Typography.bodyInput)
-                    .foregroundColor(labelColor)
-                    .padding(.leading, 16)
-                    .offset(y: shouldShowFloatingLabel ? -18 : 0)
-                    .scaleEffect(shouldShowFloatingLabel ? 0.85 : 1.0, anchor: .leading)
-                    .animation(.easeInOut(duration: 0.2), value: shouldShowFloatingLabel)
-                    .allowsHitTesting(false)
-                
-                // Text Input
-                HStack {
-                    if isSecureField && !isSecureTextVisible {
-                        SecureField("", text: $text)
-                            .font(GentleLightning.Typography.bodyInput)
-                            .foregroundColor(GentleLightning.Colors.textPrimary)
-                            .keyboardType(keyboardType)
-                            .textContentType(textContentType)
-                            .autocorrectionDisabled()
-                            .textInputAutocapitalization(autocapitalization)
-                            .focused($isFocused)
-                            .disabled(isDisabled)
-                    } else {
-                        TextField("", text: $text)
-                            .font(GentleLightning.Typography.bodyInput)
-                            .foregroundColor(GentleLightning.Colors.textPrimary)
-                            .keyboardType(keyboardType)
-                            .textContentType(textContentType)
-                            .autocorrectionDisabled()
-                            .textInputAutocapitalization(autocapitalization)
-                            .focused($isFocused)
-                            .disabled(isDisabled)
-                    }
-                    
-                    // Show/Hide password toggle
-                    if isSecureField {
-                        Button(action: {
-                            isSecureTextVisible.toggle()
-                        }) {
-                            Image(systemName: isSecureTextVisible ? "eye.slash" : "eye")
-                                .font(GentleLightning.Typography.body)
-                                .foregroundColor(GentleLightning.Colors.textSecondary)
-                        }
-                        .padding(.trailing, 4)
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 16)
-            }
-        }
-        .opacity(isDisabled ? 0.6 : 1.0)
-        .animation(.easeInOut(duration: 0.2), value: isFocused)
-        .animation(.easeInOut(duration: 0.2), value: !text.isEmpty)
-    }
+    @State private var isAnimated: Bool = false
+    @State private var showPassword: Bool = false
     
     // MARK: - Computed Properties
-    
     private var shouldShowFloatingLabel: Bool {
         isFocused || !text.isEmpty
     }
     
-    private var labelColor: Color {
-        if isDisabled {
-            return GentleLightning.Colors.textSecondary.opacity(0.5)
-        } else if isFocused {
-            return GentleLightning.Colors.accentNeutral
-        } else if !text.isEmpty {
-            return GentleLightning.Colors.textPrimary
+    private var borderColor: Color {
+        if isFocused {
+            return colors.focusedBorder
         } else {
-            return GentleLightning.Colors.textSecondary
+            return colors.defaultBorder
         }
     }
     
-    private var borderColor: Color {
-        if isDisabled {
-            return GentleLightning.Colors.textSecondary.opacity(0.1)
-        } else if isFocused {
-            return GentleLightning.Colors.accentNeutral
+    private var labelColor: Color {
+        if isFocused {
+            return colors.focusedLabel
+        } else if shouldShowFloatingLabel {
+            return colors.floatingLabel
         } else {
-            return GentleLightning.Colors.textSecondary.opacity(0.2)
+            return colors.placeholder
         }
     }
+    
+    // MARK: - Initializers
+    init(
+        placeholder: String,
+        text: Binding<String>,
+        keyboardType: UIKeyboardType = .default,
+        contentType: UITextContentType? = nil,
+        isSecure: Bool = false,
+        colors: FloatingLabelColors = .scrapDefault,
+        fonts: FloatingLabelFonts = .scrapDefault,
+        animation: FloatingLabelAnimation = .default
+    ) {
+        self.placeholder = placeholder
+        self._text = text
+        self.keyboardType = keyboardType
+        self.contentType = contentType
+        self.isSecure = isSecure
+        self.colors = colors
+        self.fonts = fonts
+        self.animation = animation
+    }
+    
+    // MARK: - Body
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ZStack(alignment: .topLeading) {
+                // Background and border
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(colors.background)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(borderColor, lineWidth: isFocused ? 2 : 1)
+                    )
+                    .frame(height: 56)
+                    .onTapGesture {
+                        isFocused = true
+                    }
+                
+                // Input field
+                VStack {
+                    if shouldShowFloatingLabel {
+                        Spacer()
+                            .frame(height: 20)
+                    } else {
+                        Spacer()
+                    }
+                    
+                    HStack {
+                        if isSecure && !showPassword {
+                            SecureField("", text: $text)
+                                .font(fonts.input)
+                                .foregroundColor(colors.inputText)
+                                .focused($isFocused)
+                                .textContentType(contentType)
+                        } else {
+                            TextField("", text: $text)
+                                .font(fonts.input)
+                                .foregroundColor(colors.inputText)
+                                .keyboardType(keyboardType)
+                                .textContentType(contentType)
+                                .focused($isFocused)
+                                .autocorrectionDisabled()
+                        }
+                        
+                        // Show/Hide password toggle for secure fields
+                        if isSecure {
+                            Button(action: {
+                                // Toggle password visibility while maintaining focus
+                                let wasFocused = isFocused
+                                showPassword.toggle()
+                                if wasFocused {
+                                    // Ensure focus is maintained after the toggle
+                                    DispatchQueue.main.async {
+                                        isFocused = true
+                                    }
+                                }
+                            }) {
+                                Text(showPassword ? "HIDE" : "SHOW")
+                                    .font(fonts.floatingLabel)
+                                    .foregroundColor(colors.focusedLabel)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                    }
+                    
+                    if shouldShowFloatingLabel {
+                        Spacer()
+                            .frame(height: 8)
+                    } else {
+                        Spacer()
+                    }
+                }
+                .padding(.horizontal, 16)
+                
+                // Floating label
+                Text(placeholder)
+                    .font(shouldShowFloatingLabel ? fonts.floatingLabel : fonts.placeholder)
+                    .foregroundColor(labelColor)
+                    .background(
+                        // Background to hide border line
+                        Rectangle()
+                            .fill(colors.background)
+                            .padding(.horizontal, -4)
+                            .opacity(shouldShowFloatingLabel ? 1 : 0)
+                    )
+                    .padding(.horizontal, shouldShowFloatingLabel ? 12 : 16)
+                    .padding(.top, shouldShowFloatingLabel ? -8 : 18)
+                    .scaleEffect(shouldShowFloatingLabel ? 1 : 1, anchor: .topLeading)
+                    .animation(
+                        .easeOut(duration: 0.15),
+                        value: shouldShowFloatingLabel
+                    )
+                    .allowsHitTesting(false)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(placeholder)
+        .accessibilityValue(text.isEmpty ? "Empty" : text)
+        .accessibilityHint(isFocused ? "Currently editing" : "Double tap to edit")
+    }
+}
+
+// MARK: - Configuration Structs for Scrap
+struct FloatingLabelColors {
+    let background: Color
+    let inputText: Color
+    let placeholder: Color
+    let floatingLabel: Color
+    let focusedLabel: Color
+    let defaultBorder: Color
+    let focusedBorder: Color
+    
+    static let scrapDefault = FloatingLabelColors(
+        background: GentleLightning.Colors.surface,
+        inputText: GentleLightning.Colors.textPrimary,
+        placeholder: GentleLightning.Colors.textSecondary,
+        floatingLabel: GentleLightning.Colors.textPrimary,
+        focusedLabel: GentleLightning.Colors.accentNeutral,
+        defaultBorder: GentleLightning.Colors.textSecondary.opacity(0.2),
+        focusedBorder: GentleLightning.Colors.accentNeutral
+    )
+}
+
+struct FloatingLabelFonts {
+    let input: Font
+    let placeholder: Font
+    let floatingLabel: Font
+    
+    static let scrapDefault = FloatingLabelFonts(
+        input: GentleLightning.Typography.bodyInput,
+        placeholder: GentleLightning.Typography.bodyInput,
+        floatingLabel: GentleLightning.Typography.caption
+    )
+}
+
+struct FloatingLabelAnimation {
+    let duration: TimeInterval
+    let curve: Animation
+    
+    static let `default` = FloatingLabelAnimation(
+        duration: 0.2,
+        curve: .easeInOut(duration: 0.2)
+    )
 }
 
 // MARK: - Convenience Initializers for FloatingLabelTextField
 extension FloatingLabelTextField {
-    static func email(placeholder: String, text: Binding<String>, isDisabled: Bool = false) -> FloatingLabelTextField {
+    // Email field
+    static func email(placeholder: String, text: Binding<String>) -> FloatingLabelTextField {
         FloatingLabelTextField(
             placeholder: placeholder,
             text: text,
             keyboardType: .emailAddress,
-            textContentType: .emailAddress,
-            autocapitalization: .never,
-            isDisabled: isDisabled
+            contentType: .emailAddress
         )
     }
     
-    static func password(placeholder: String, text: Binding<String>, isDisabled: Bool = false) -> FloatingLabelTextField {
+    // Password field
+    static func password(placeholder: String, text: Binding<String>) -> FloatingLabelTextField {
         FloatingLabelTextField(
             placeholder: placeholder,
             text: text,
-            isSecureField: true,
-            textContentType: .password,
-            autocapitalization: .never,
-            isDisabled: isDisabled
+            contentType: .password,
+            isSecure: true
         )
     }
     
-    static func newPassword(placeholder: String, text: Binding<String>, isDisabled: Bool = false) -> FloatingLabelTextField {
+    // New password field
+    static func newPassword(placeholder: String, text: Binding<String>) -> FloatingLabelTextField {
         FloatingLabelTextField(
             placeholder: placeholder,
             text: text,
-            isSecureField: true,
-            textContentType: .newPassword,
-            autocapitalization: .never,
-            isDisabled: isDisabled
+            contentType: .newPassword,
+            isSecure: true
         )
     }
     
-    static func name(placeholder: String, text: Binding<String>, isDisabled: Bool = false) -> FloatingLabelTextField {
+    // Name field
+    static func name(placeholder: String, text: Binding<String>) -> FloatingLabelTextField {
         FloatingLabelTextField(
             placeholder: placeholder,
             text: text,
-            keyboardType: .default,
-            textContentType: .name,
-            autocapitalization: .words,
-            isDisabled: isDisabled
+            keyboardType: .namePhonePad,
+            contentType: .name
         )
     }
 }
@@ -345,7 +436,7 @@ struct AuthenticationView: View {
                     
                     // Privacy links
                     HStack(spacing: 4) {
-                        Link("Terms of Service", destination: URL(string: "https://scrap-app.com/terms")!)
+                        Link("Terms of Service", destination: URL(string: "https://muckstack.com/scrap/terms")!)
                             .font(GentleLightning.Typography.small)
                             .foregroundColor(GentleLightning.Colors.textSecondary)
                         
@@ -353,7 +444,7 @@ struct AuthenticationView: View {
                             .font(GentleLightning.Typography.small)
                             .foregroundColor(GentleLightning.Colors.textSecondary)
                         
-                        Link("Privacy Policy", destination: URL(string: "https://scrap-app.com/privacy")!)
+                        Link("Privacy Policy", destination: URL(string: "https://muckstack.com/scrap/privacy")!)
                             .font(GentleLightning.Typography.small)
                             .foregroundColor(GentleLightning.Colors.textSecondary)
                     }
@@ -375,8 +466,11 @@ struct AuthenticationView: View {
             errorMessage = nil
             try await firebaseManager.signInWithGoogle()
         } catch {
-            await MainActor.run {
-                self.errorMessage = "Google Sign-In failed: \(error.localizedDescription)"
+            // Don't show error message if user canceled
+            if (error as NSError).code != -5 { // GIDSignInError.canceled
+                await MainActor.run {
+                    self.errorMessage = "Google Sign-In failed: \(error.localizedDescription)"
+                }
             }
             print("Google Sign-In failed: \(error.localizedDescription)")
         }
@@ -432,9 +526,9 @@ struct EmailAuthView: View {
     @State private var confirmPassword = ""
     @State private var fullName = ""
     
-    @State private var isCheckingEmail = false
     @State private var showingPasswordFields = false
     @State private var isSignUp = false
+    @State private var lastValidatedEmail = ""
     @State private var error: String?
     
     @FocusState private var isEmailFocused: Bool
@@ -486,17 +580,26 @@ struct EmailAuthView: View {
                         
                         // Form
                         VStack(spacing: 20) {
-                            // Email field - always visible
-                            FloatingLabelTextField.email(
-                                placeholder: "Email Address",
-                                text: $email
-                            )
-                            .focused($isEmailFocused)
-                            .disabled(showingPasswordFields)
-                            .onChange(of: email) { newValue in
-                                if !showingPasswordFields && isValidEmail(newValue) && !isCheckingEmail {
-                                    checkEmailExists()
+                            // Email field - always visible and editable
+                            VStack(alignment: .leading, spacing: 4) {
+                                FloatingLabelTextField.email(
+                                    placeholder: "Email Address",
+                                    text: $email
+                                )
+                                .focused($isEmailFocused)
+                                .onChange(of: email) { _ in
+                                    // If email changed after password fields were shown, reset the flow
+                                    if showingPasswordFields && email != lastValidatedEmail {
+                                        withAnimation(.easeInOut(duration: 0.3)) {
+                                            showingPasswordFields = false
+                                            password = ""
+                                            confirmPassword = ""
+                                            fullName = ""
+                                            error = nil
+                                        }
+                                    }
                                 }
+                                
                             }
                             
                             // Password fields - shown after email validation
@@ -540,63 +643,48 @@ struct EmailAuthView: View {
                                 .transition(.move(edge: .top).combined(with: .opacity))
                             }
                             
-                            // Submit button
+                            // Action Button (like HuddleUp)
+                            Button(action: handleAction) {
+                                HStack {
+                                    if firebaseManager.isLoading {
+                                        ProgressView()
+                                            .scaleEffect(0.8)
+                                            .tint(.white)
+                                    }
+                                    Text(getActionButtonText())
+                                        .font(GentleLightning.Typography.body)
+                                        .foregroundColor(.white)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 52)
+                                .background(
+                                    RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.large)
+                                        .fill(isActionButtonEnabled ? GentleLightning.Colors.accentNeutral : GentleLightning.Colors.textSecondary.opacity(0.3))
+                                )
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .disabled(!isActionButtonEnabled)
+                            .padding(.top, 20)
+                            
+                            // Back button (only shown when password fields are visible)
                             if showingPasswordFields {
                                 Button(action: {
-                                    Task {
-                                        await handleSubmit()
-                                    }
-                                }) {
-                                    HStack {
-                                        if firebaseManager.isLoading {
-                                            ProgressView()
-                                                .scaleEffect(0.8)
-                                                .tint(.white)
-                                        } else {
-                                            Text(getButtonText())
-                                                .font(GentleLightning.Typography.body)
-                                                .foregroundColor(.white)
-                                        }
-                                    }
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: 52)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.large)
-                                            .fill(isFormValid ? GentleLightning.Colors.accentNeutral : GentleLightning.Colors.textSecondary.opacity(0.3))
-                                    )
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                                .disabled(!isFormValid || firebaseManager.isLoading)
-                                .transition(.move(edge: .top).combined(with: .opacity))
-                            }
-                            
-                            // Back to email button
-                            if showingPasswordFields {
-                                Button("← Back to email") {
                                     withAnimation(.easeInOut(duration: 0.3)) {
                                         showingPasswordFields = false
-                                        clearPasswordFields()
+                                        password = ""
+                                        confirmPassword = ""
+                                        fullName = ""
+                                        lastValidatedEmail = ""
                                         error = nil
-                                        isEmailFocused = true
                                     }
+                                }) {
+                                    Text("← Use different email")
+                                        .font(GentleLightning.Typography.caption)
+                                        .foregroundColor(GentleLightning.Colors.accentNeutral)
                                 }
-                                .font(GentleLightning.Typography.caption)
-                                .foregroundColor(GentleLightning.Colors.accentNeutral)
-                                .transition(.move(edge: .top).combined(with: .opacity))
+                                .padding(.top, 12)
                             }
                             
-                            // Email checking indicator
-                            if isCheckingEmail {
-                                HStack(spacing: 8) {
-                                    ProgressView()
-                                        .scaleEffect(0.8)
-                                        .tint(GentleLightning.Colors.accentNeutral)
-                                    Text("Checking email...")
-                                        .font(GentleLightning.Typography.caption)
-                                        .foregroundColor(GentleLightning.Colors.textSecondary)
-                                }
-                                .transition(.opacity)
-                            }
                             
                             // Error message
                             if let error = error {
@@ -644,24 +732,36 @@ struct EmailAuthView: View {
         if showingPasswordFields {
             return isSignUp ? "Just a few details to get started" : "Enter your password to continue"
         } else {
-            return "We'll check if you have an account"
+            return "Enter your email to sign in or create account"
         }
     }
     
-    private func getButtonText() -> String {
-        return isSignUp ? "Create Account" : "Sign In"
+    private func getActionButtonText() -> String {
+        if showingPasswordFields {
+            return isSignUp ? "Create Account" : "Sign In"
+        } else {
+            return "Continue"
+        }
     }
     
-    private var isFormValid: Bool {
-        let hasValidEmail = !email.isEmpty && isValidEmail(email)
-        let hasValidPassword = password.count >= 6
+    private var isActionButtonEnabled: Bool {
+        if firebaseManager.isLoading {
+            return false
+        }
+        
+        if !showingPasswordFields {
+            return isValidEmail(email)
+        }
+        
+        let emailValid = isValidEmail(email)
+        let passwordValid = !password.isEmpty && password.count >= 6
         
         if isSignUp {
-            let hasValidName = !fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            let passwordsMatch = password == confirmPassword && !password.isEmpty
-            return hasValidEmail && hasValidPassword && hasValidName && passwordsMatch
+            let nameValid = !fullName.isEmpty
+            let passwordMatch = password == confirmPassword
+            return emailValid && passwordValid && nameValid && passwordMatch
         } else {
-            return hasValidEmail && hasValidPassword
+            return emailValid && passwordValid
         }
     }
     
@@ -677,68 +777,100 @@ struct EmailAuthView: View {
         fullName = ""
     }
     
-    private func checkEmailExists() {
-        isCheckingEmail = true
+    private func proceedWithEmail() {
+        // Always start with sign-up mode - if email exists, we'll handle that error during account creation
+        isSignUp = true
+        lastValidatedEmail = email.lowercased()
         
+        withAnimation(.easeInOut(duration: 0.3)) {
+            showingPasswordFields = true
+        }
+    }
+    
+    private func handleAction() {
+        if !showingPasswordFields {
+            proceedWithEmail()
+        } else {
+            handleAuth()
+        }
+    }
+    
+    private func handleAuth() {
         Task {
-            // Simulate API call to check if email exists
-            try await Task.sleep(nanoseconds: 500_000_000) // 0.5 second delay
-            
-            // Since you have no users in your userbase, treat everyone as new user
-            await MainActor.run {
-                isCheckingEmail = false
-                isSignUp = true // Always show create account flow since no existing users
-                
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    showingPasswordFields = true
-                }
-                
-                // Focus appropriate field
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                    if isSignUp {
-                        isFullNameFocused = true
-                    } else {
-                        isPasswordFocused = true
-                    }
-                }
-                
-                // Track analytics
-                AnalyticsManager.shared.trackEvent("email_checked", properties: [
-                    "is_new_user": isSignUp,
-                    "email_domain": String(email.split(separator: "@").last ?? "")
-                ])
+            if isSignUp {
+                let displayName = fullName.trimmingCharacters(in: .whitespacesAndNewlines)
+                await signUpUser(email: email, password: password, displayName: displayName)
+            } else {
+                await signInUser(email: email, password: password)
             }
         }
     }
     
-    private func handleSubmit() async {
-        guard isFormValid else { return }
-        
+    private func signUpUser(email: String, password: String, displayName: String) async {
         error = nil
         
         do {
-            if isSignUp {
-                // Create new user
-                let result = try await Auth.auth().createUser(withEmail: email, password: password)
-                
-                // Update profile with display name
-                let changeRequest = result.user.createProfileChangeRequest()
-                changeRequest.displayName = fullName.trimmingCharacters(in: .whitespacesAndNewlines)
-                try await changeRequest.commitChanges()
-                
-                AnalyticsManager.shared.trackUserSignedIn(method: "email_signup", email: result.user.email)
-            } else {
-                // Sign in existing user
-                let result = try await Auth.auth().signIn(withEmail: email, password: password)
-                AnalyticsManager.shared.trackUserSignedIn(method: "email_signin", email: result.user.email)
-            }
+            let result = try await Auth.auth().createUser(withEmail: email, password: password)
             
+            // Update profile with display name
+            let changeRequest = result.user.createProfileChangeRequest()
+            changeRequest.displayName = displayName
+            try await changeRequest.commitChanges()
+            
+            AnalyticsManager.shared.trackUserSignedIn(method: "email_signup", email: result.user.email)
             dismiss()
         } catch {
-            self.error = error.localizedDescription
+            await MainActor.run {
+                if error.localizedDescription.contains("already in use") || error.localizedDescription.contains("email-already-in-use") {
+                    // Email already exists, switch to sign in mode
+                    self.isSignUp = false
+                    self.fullName = "" // Clear name field since we're now signing in
+                    self.confirmPassword = "" // Clear confirm password since we're now signing in
+                    self.error = "This email is already registered. Please enter your password to sign in."
+                } else {
+                    let errorMessage: String
+                    if error.localizedDescription.contains("network") {
+                        errorMessage = "Network error. Please check your connection."
+                    } else if error.localizedDescription.contains("weak-password") {
+                        errorMessage = "Password is too weak. Use at least 6 characters."
+                    } else {
+                        errorMessage = "Failed to create account. Please try again."
+                    }
+                    self.error = errorMessage
+                }
+            }
             
-            // Track failed authentication
-            AnalyticsManager.shared.trackEvent(isSignUp ? "auth_signup_failed" : "auth_signin_failed", properties: [
+            AnalyticsManager.shared.trackEvent("auth_signup_failed", properties: [
+                "error": error.localizedDescription,
+                "method": "email"
+            ])
+        }
+    }
+    
+    private func signInUser(email: String, password: String) async {
+        error = nil
+        
+        do {
+            let result = try await Auth.auth().signIn(withEmail: email, password: password)
+            AnalyticsManager.shared.trackUserSignedIn(method: "email_signin", email: result.user.email)
+            dismiss()
+        } catch {
+            await MainActor.run {
+                if error.localizedDescription.contains("no user record") || 
+                   error.localizedDescription.contains("user-not-found") ||
+                   error.localizedDescription.contains("wrong password") ||
+                   error.localizedDescription.contains("invalid-credential") {
+                    self.error = "Invalid email or password. Check your credentials or create a new account."
+                } else if error.localizedDescription.contains("network") {
+                    self.error = "Network error. Please check your connection."
+                } else if error.localizedDescription.contains("too-many-requests") {
+                    self.error = "Too many attempts. Please try again later."
+                } else {
+                    self.error = "Failed to sign in. Please try again."
+                }
+            }
+            
+            AnalyticsManager.shared.trackEvent("auth_signin_failed", properties: [
                 "error": error.localizedDescription,
                 "method": "email"
             ])

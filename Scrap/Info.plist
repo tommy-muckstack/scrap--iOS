@@ -64,6 +64,8 @@
     <string>Scrap uses your microphone to transcribe voice notes, making it easy to capture your thoughts hands-free.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
     <string>Scrap uses speech recognition to convert your voice into text, enabling quick note-taking through voice input.</string>
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
     <key>CFBundleURLTypes</key>
     <array>
         <dict>
