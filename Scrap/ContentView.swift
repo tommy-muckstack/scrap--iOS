@@ -812,34 +812,33 @@ struct NoteEditView: View {
             .navigationTitle("Edit Note")
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarBackButtonHidden()
-            .navigationBarItems(
-                leading: Button("Back") {
-                    isPresented = false
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Back") {
+                        isPresented = false
+                    }
+                    .font(GentleLightning.Typography.body)
+                    .foregroundColor(GentleLightning.Colors.textSecondary)
                 }
-                .font(GentleLightning.Typography.body)
-                .foregroundColor(GentleLightning.Colors.textSecondary),
                 
-                trailing: Button(action: {
-                    showingActionSheet = true
-                }) {
-                    Image(systemName: "ellipsis")
-                        .font(GentleLightning.Typography.bodyInput)
-                        .foregroundColor(GentleLightning.Colors.textPrimary)
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: {
+                        showingActionSheet = true
+                    }) {
+                        Image(systemName: "ellipsis")
+                            .font(GentleLightning.Typography.bodyInput)
+                            .foregroundColor(GentleLightning.Colors.textPrimary)
+                    }
                 }
-            )
-            .actionSheet(isPresented: $showingActionSheet) {
-                ActionSheet(
-                    title: Text("Note Options"),
-                    buttons: [
-                        .default(Text("Share")) {
-                            shareNote()
-                        },
-                        .destructive(Text("Delete")) {
-                            showingDeleteAlert = true
-                        },
-                        .cancel()
-                    ]
-                )
+            }
+            .confirmationDialog("Note Options", isPresented: $showingActionSheet, titleVisibility: .visible) {
+                Button("Share") {
+                    shareNote()
+                }
+                Button("Delete", role: .destructive) {
+                    showingDeleteAlert = true
+                }
+                Button("Cancel", role: .cancel) { }
             }
             .alert("Delete Note", isPresented: $showingDeleteAlert) {
                 Button("Delete", role: .destructive) {
