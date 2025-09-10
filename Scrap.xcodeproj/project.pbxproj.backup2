@@ -21,12 +21,18 @@
 		BB304E852E6F9F0A0054DD40 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = BB304E842E6F9F0A0054DD40 /* FirebaseStorage */; };
 		BB304E892E6FA8650054DD40 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = BB304E882E6FA8650054DD40 /* GoogleSignIn */; };
 		BB304E8B2E6FA8650054DD40 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = BB304E8A2E6FA8650054DD40 /* GoogleSignInSwift */; };
+		BBC2A32B2E719333000BEABE /* FFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3122E719333000BEABE /* FFL.txt */; };
+		BBC2A3302E719333000BEABE /* Office Notes.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2CC2E719333000BEABE /* Office Notes.ttf */; };
 		BBC2A33D2E719333000BEABE /* SharpGrotesk-SemiBold.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3202E719333000BEABE /* SharpGrotesk-SemiBold.otf */; };
 		BBC2A3472E719333000BEABE /* SharpGrotesk-LightItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A31D2E719333000BEABE /* SharpGrotesk-LightItalic.otf */; };
+		BBC2A3492E719333000BEABE /* Office Notes.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2CB2E719333000BEABE /* Office Notes.otf */; };
 		BBC2A34C2E719333000BEABE /* SharpGrotesk-BookItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A31B2E719333000BEABE /* SharpGrotesk-BookItalic.otf */; };
 		BBC2A34D2E719333000BEABE /* SharpGrotesk-Book.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A31A2E719333000BEABE /* SharpGrotesk-Book.otf */; };
 		BBC2A3572E719333000BEABE /* SharpGrotesk-Medium.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A31E2E719333000BEABE /* SharpGrotesk-Medium.otf */; };
+		BBC2A3592E719333000BEABE /* Cloud.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2C72E719333000BEABE /* Cloud.otf */; };
 		BBC2A35F2E719333000BEABE /* SharpGrotesk-Thin.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3212E719333000BEABE /* SharpGrotesk-Thin.otf */; };
+		BBC2A3692E719333000BEABE /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A30F2E719333000BEABE /* README.md */; };
+		BBC2A36C2E719333000BEABE /* Hadley.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2C92E719333000BEABE /* Hadley.otf */; };
 		BBC2A3712E719333000BEABE /* SharpGrotesk-Light.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A31C2E719333000BEABE /* SharpGrotesk-Light.otf */; };
 		BBC2A3722E719333000BEABE /* SharpGrotesk-ThinItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3222E719333000BEABE /* SharpGrotesk-ThinItalic.otf */; };
 		BBC2A3732E719333000BEABE /* SharpGrotesk-MediumItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A31F2E719333000BEABE /* SharpGrotesk-MediumItalic.otf */; };
@@ -45,6 +51,12 @@
 		AA304E7A2F6F72980054DD41 /* AnalyticsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsManager.swift; sourceTree = "<group>"; };
 		BB304E792E6F9E750054DD40 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		BB304E862E6FA71E0054DD40 /* Scrap.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Scrap.entitlements; sourceTree = "<group>"; };
+		BBC2A2C72E719333000BEABE /* Cloud.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Cloud.otf; sourceTree = "<group>"; };
+		BBC2A2C92E719333000BEABE /* Hadley.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Hadley.otf; sourceTree = "<group>"; };
+		BBC2A2CB2E719333000BEABE /* Office Notes.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Office Notes.otf"; sourceTree = "<group>"; };
+		BBC2A2CC2E719333000BEABE /* Office Notes.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Office Notes.ttf"; sourceTree = "<group>"; };
+		BBC2A30F2E719333000BEABE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		BBC2A3122E719333000BEABE /* FFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = FFL.txt; sourceTree = "<group>"; };
 		BBC2A31A2E719333000BEABE /* SharpGrotesk-Book.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-Book.otf"; sourceTree = "<group>"; };
 		BBC2A31B2E719333000BEABE /* SharpGrotesk-BookItalic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-BookItalic.otf"; sourceTree = "<group>"; };
 		BBC2A31C2E719333000BEABE /* SharpGrotesk-Light.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-Light.otf"; sourceTree = "<group>"; };
@@ -125,6 +137,7 @@
 		BBC2A2C82E719333000BEABE /* Cloud */ = {
 			isa = PBXGroup;
 			children = (
+				BBC2A2C72E719333000BEABE /* Cloud.otf */,
 			);
 			path = Cloud;
 			sourceTree = "<group>";
@@ -132,6 +145,7 @@
 		BBC2A2CA2E719333000BEABE /* Hadley */ = {
 			isa = PBXGroup;
 			children = (
+				BBC2A2C92E719333000BEABE /* Hadley.otf */,
 			);
 			path = Hadley;
 			sourceTree = "<group>";
@@ -139,6 +153,8 @@
 		BBC2A2CD2E719333000BEABE /* Office Notes */ = {
 			isa = PBXGroup;
 			children = (
+				BBC2A2CB2E719333000BEABE /* Office Notes.otf */,
+				BBC2A2CC2E719333000BEABE /* Office Notes.ttf */,
 			);
 			path = "Office Notes";
 			sourceTree = "<group>";
@@ -307,12 +323,18 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BBC2A32B2E719333000BEABE /* FFL.txt in Resources */,
+				BBC2A3302E719333000BEABE /* Office Notes.ttf in Resources */,
 				BBC2A33D2E719333000BEABE /* SharpGrotesk-SemiBold.otf in Resources */,
 				BBC2A3472E719333000BEABE /* SharpGrotesk-LightItalic.otf in Resources */,
+				BBC2A3492E719333000BEABE /* Office Notes.otf in Resources */,
 				BBC2A34C2E719333000BEABE /* SharpGrotesk-BookItalic.otf in Resources */,
 				BBC2A34D2E719333000BEABE /* SharpGrotesk-Book.otf in Resources */,
 				BBC2A3572E719333000BEABE /* SharpGrotesk-Medium.otf in Resources */,
+				BBC2A3592E719333000BEABE /* Cloud.otf in Resources */,
 				BBC2A35F2E719333000BEABE /* SharpGrotesk-Thin.otf in Resources */,
+				BBC2A3692E719333000BEABE /* README.md in Resources */,
+				BBC2A36C2E719333000BEABE /* Hadley.otf in Resources */,
 				BBC2A3712E719333000BEABE /* SharpGrotesk-Light.otf in Resources */,
 				BBC2A3722E719333000BEABE /* SharpGrotesk-ThinItalic.otf in Resources */,
 				BBC2A3732E719333000BEABE /* SharpGrotesk-MediumItalic.otf in Resources */,
