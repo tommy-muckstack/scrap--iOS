@@ -50,15 +50,15 @@
     <true/>
     <key>UIAppFonts</key>
     <array>
-        <string>Fonts/SharpGrotesk/SharpGrotesk-Thin.otf</string>
-        <string>Fonts/SharpGrotesk/SharpGrotesk-ThinItalic.otf</string>
-        <string>Fonts/SharpGrotesk/SharpGrotesk-Light.otf</string>
-        <string>Fonts/SharpGrotesk/SharpGrotesk-LightItalic.otf</string>
-        <string>Fonts/SharpGrotesk/SharpGrotesk-Book.otf</string>
-        <string>Fonts/SharpGrotesk/SharpGrotesk-BookItalic.otf</string>
-        <string>Fonts/SharpGrotesk/SharpGrotesk-Medium.otf</string>
-        <string>Fonts/SharpGrotesk/SharpGrotesk-MediumItalic.otf</string>
-        <string>Fonts/SharpGrotesk/SharpGrotesk-SemiBold.otf</string>
+        <string>SharpGrotesk-Thin.otf</string>
+        <string>SharpGrotesk-ThinItalic.otf</string>
+        <string>SharpGrotesk-Light.otf</string>
+        <string>SharpGrotesk-LightItalic.otf</string>
+        <string>SharpGrotesk-Book.otf</string>
+        <string>SharpGrotesk-BookItalic.otf</string>
+        <string>SharpGrotesk-Medium.otf</string>
+        <string>SharpGrotesk-MediumItalic.otf</string>
+        <string>SharpGrotesk-SemiBold.otf</string>
     </array>
     <key>NSMicrophoneUsageDescription</key>
     <string>Scrap uses your microphone to transcribe voice notes, making it easy to capture your thoughts hands-free.</string>
@@ -71,7 +71,7 @@
             <string>GoogleSignIn</string>
             <key>CFBundleURLSchemes</key>
             <array>
-                <string>com.googleusercontent.apps.520567341698-h372oqpma77ge4o0v42pssnh20iesk91</string>
+                <string>com.googleusercontent.apps.520567341698-5iaa5pophadnrechc4h5bi140u72ek6l</string>
             </array>
         </dict>
         <dict>
