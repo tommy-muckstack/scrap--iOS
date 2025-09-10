@@ -22,12 +22,12 @@ struct GentleLightning {
     }
     
     struct Typography {
-        static let hero = Font.custom("Cloud", size: 36)
-        static let body = Font.custom("Cloud", size: 17)
-        static let bodyInput = Font.custom("Cloud", size: 18)
-        static let title = Font.custom("Cloud", size: 22)
-        static let caption = Font.custom("Cloud", size: 14)
-        static let small = Font.custom("Cloud", size: 12)
+        static let hero = Font.custom("SharpGrotesk-SemiBold", size: 34)
+        static let body = Font.custom("SharpGrotesk-Book", size: 16)
+        static let bodyInput = Font.custom("SharpGrotesk-Book", size: 17)
+        static let title = Font.custom("SharpGrotesk-Medium", size: 20)
+        static let caption = Font.custom("SharpGrotesk-Book", size: 13)
+        static let small = Font.custom("SharpGrotesk-Book", size: 11)
     }
     
     struct Layout {
