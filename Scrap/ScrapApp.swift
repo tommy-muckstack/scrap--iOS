@@ -24,25 +24,25 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 }
 
 @main
-struct SparkApp: App {
+struct ScrapApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     
     init() {
-        print("SparkApp: Initializing app...")
+        print("ScrapApp: Initializing app...")
         
         // Initialize Firebase
         FirebaseApp.configure()
-        print("SparkApp: Firebase configured")
+        print("ScrapApp: Firebase configured")
         
         // Configure Google Sign In
         if let path = Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist"),
            let plist = NSDictionary(contentsOfFile: path),
            let clientId = plist["CLIENT_ID"] as? String {
-            print("SparkApp: Configuring Google Sign-In with client ID: \(clientId)")
+            print("ScrapApp: Configuring Google Sign-In with client ID: \(clientId)")
             GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientId)
-            print("SparkApp: Google Sign-In configured successfully")
+            print("ScrapApp: Google Sign-In configured successfully")
         } else {
-            print("SparkApp: ERROR - Failed to configure Google Sign-In")
+            print("ScrapApp: ERROR - Failed to configure Google Sign-In")
         }
         
         // Initialize analytics when app launches

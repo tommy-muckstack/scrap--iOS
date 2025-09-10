@@ -665,7 +665,6 @@ struct ItemRowSimple: View {
             .background(
                 RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.medium)
                     .fill(GentleLightning.Colors.surface)
-                    .shadow(color: GentleLightning.Colors.shadowLight, radius: 8, x: 0, y: 2)
             )
         }
         .buttonStyle(PlainButtonStyle())
@@ -690,6 +689,8 @@ struct NoteEditView: View {
     @FocusState private var isTextFieldFocused: Bool
     @State private var showingActionSheet = false
     @State private var showingDeleteAlert = false
+    @State private var isContentReady = false
+    @State private var hasValidGeometry = false
     
     init(isPresented: Binding<Bool>, item: SparkItem, dataManager: FirebaseDataManager) {
         self._isPresented = isPresented
@@ -710,36 +711,57 @@ struct NoteEditView: View {
         NavigationView {
             GeometryReader { geometry in
                 VStack(spacing: 0) {
-                    // Text Editor with safe bounds
-                    ScrollView {
-                        TextEditor(text: $editedText)
-                            .font(GentleLightning.Typography.bodyInput)
-                            .foregroundColor(GentleLightning.Colors.textPrimary)
-                            .padding(GentleLightning.Layout.Padding.lg)
-                            .frame(
-                                minWidth: max(200, geometry.size.width - 32),
-                                maxWidth: .infinity,
-                                minHeight: max(120, geometry.size.height * 0.6),
-                                maxHeight: .infinity,
-                                alignment: .topLeading
-                            )
-                            .background(Color.white)
-                            .focused($isTextFieldFocused)
-                            .onAppear {
-                                print("📝 NoteEditView: onAppear - geometry: \(geometry.size), item.content: '\(item.content)', editedText: '\(editedText)'")
-                                
-                                // Double-check our content is safe
-                                let safeContent = sanitizeTextContent(item.content)
-                                if editedText != safeContent {
-                                    print("📝 NoteEditView: Updating to safe content: '\(safeContent)'")
-                                    editedText = safeContent
+                    if isContentReady && hasValidGeometry {
+                        // Text Editor with safe bounds
+                        ScrollView {
+                            TextEditor(text: $editedText)
+                                .font(GentleLightning.Typography.bodyInput)
+                                .foregroundColor(GentleLightning.Colors.textPrimary)
+                                .padding(GentleLightning.Layout.Padding.lg)
+                                .frame(
+                                    minWidth: max(200, validWidth(from: geometry.size.width)),
+                                    maxWidth: .infinity,
+                                    minHeight: max(120, validHeight(from: geometry.size.height)),
+                                    maxHeight: .infinity,
+                                    alignment: .topLeading
+                                )
+                                .background(Color.white)
+                                .focused($isTextFieldFocused)
+                                .onAppear {
+                                    print("📝 NoteEditView: TextEditor appeared - focusing field")
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                        isTextFieldFocused = true
+                                    }
                                 }
-                                
-                                // Focus with a small delay to ensure layout is stable
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                    isTextFieldFocused = true
-                                }
-                            }
+                        }
+                    } else {
+                        // Loading state
+                        VStack(spacing: 16) {
+                            ProgressView()
+                                .scaleEffect(1.2)
+                                .tint(GentleLightning.Colors.accentNeutral)
+                            
+                            Text("Loading note...")
+                                .font(GentleLightning.Typography.body)
+                                .foregroundColor(GentleLightning.Colors.textSecondary)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color.white)
+                    }
+                }
+                .onAppear {
+                    print("📝 NoteEditView: onAppear - geometry: \(geometry.size), item.content: '\(item.content)', editedText: '\(editedText)'")
+                    
+                    // Validate geometry
+                    validateGeometry(geometry.size)
+                    
+                    // Double-check our content is safe
+                    let safeContent = sanitizeTextContent(item.content)
+                    if editedText != safeContent {
+                        print("📝 NoteEditView: Updating to safe content: '\(safeContent)'")
+                        editedText = safeContent
+                    }
+                }
                     .onChange(of: editedText) { newValue in
                         // Sanitize input to prevent NaN errors
                         let safeValue = sanitizeTextContent(newValue)
@@ -772,12 +794,11 @@ struct NoteEditView: View {
                             editedText = safeNewContent
                         }
                     }
-                    }
-                
-                    Spacer()
                 }
-                .background(Color.white)
+                
+                Spacer()
             }
+            .background(Color.white)
             .navigationTitle("Edit Note")
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarBackButtonHidden()
@@ -796,31 +817,32 @@ struct NoteEditView: View {
                         .foregroundColor(GentleLightning.Colors.textPrimary)
                 }
             )
-        }
-        .actionSheet(isPresented: $showingActionSheet) {
-            ActionSheet(
-                title: Text("Note Options"),
-                buttons: [
-                    .default(Text("Share")) {
-                        shareNote()
-                    },
-                    .destructive(Text("Delete")) {
-                        showingDeleteAlert = true
-                    },
-                    .cancel()
-                ]
-            )
-        }
-        .alert("Delete Note", isPresented: $showingDeleteAlert) {
-            Button("Delete", role: .destructive) {
-                dataManager.deleteItem(item)
-                isPresented = false
+            .actionSheet(isPresented: $showingActionSheet) {
+                ActionSheet(
+                    title: Text("Note Options"),
+                    buttons: [
+                        .default(Text("Share")) {
+                            shareNote()
+                        },
+                        .destructive(Text("Delete")) {
+                            showingDeleteAlert = true
+                        },
+                        .cancel()
+                    ]
+                )
             }
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text("This note will be permanently deleted. This action cannot be undone.")
+            .alert("Delete Note", isPresented: $showingDeleteAlert) {
+                Button("Delete", role: .destructive) {
+                    dataManager.deleteItem(item)
+                    isPresented = false
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("This note will be permanently deleted. This action cannot be undone.")
+            }
         }
-    }
+    
+    // MARK: - Helper Methods
     
     // Share note using iOS share sheet
     private func shareNote() {
@@ -1001,6 +1023,40 @@ struct NoteEditView: View {
         // Replace all instances of -> with →
         let result = text.replacingOccurrences(of: "->", with: "→")
         return result
+    }
+    
+    // MARK: - Geometry Validation
+    
+    private func validateGeometry(_ size: CGSize) {
+        let isValid = size.width > 0 && size.height > 0 && 
+                     size.width.isFinite && size.height.isFinite &&
+                     !size.width.isNaN && !size.height.isNaN
+        
+        print("📏 NoteEditView: Geometry validation - size: \(size), isValid: \(isValid)")
+        
+        if isValid {
+            hasValidGeometry = true
+            // Mark content as ready after a brief delay to ensure everything is stable
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                isContentReady = true
+            }
+        }
+    }
+    
+    private func validWidth(from width: CGFloat) -> CGFloat {
+        guard width.isFinite && !width.isNaN && width > 0 else {
+            print("⚠️ NoteEditView: Invalid width \(width), using fallback")
+            return 300 // Fallback width
+        }
+        return max(200, width - 32)
+    }
+    
+    private func validHeight(from height: CGFloat) -> CGFloat {
+        guard height.isFinite && !height.isNaN && height > 0 else {
+            print("⚠️ NoteEditView: Invalid height \(height), using fallback")
+            return 400 // Fallback height
+        }
+        return max(120, height * 0.6)
     }
 }
 

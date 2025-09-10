@@ -210,7 +210,7 @@ struct AuthenticationView: View {
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                         
-                        Text("Capture thoughts. Spark ideas.")
+                        Text("The world's simplest notepad")
                             .font(GentleLightning.Typography.title)
                             .foregroundColor(GentleLightning.Colors.textSecondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -345,7 +345,7 @@ struct AuthenticationView: View {
                     
                     // Privacy links
                     HStack(spacing: 4) {
-                        Link("Terms of Service", destination: URL(string: "https://spark-app.com/terms")!)
+                        Link("Terms of Service", destination: URL(string: "https://scrap-app.com/terms")!)
                             .font(GentleLightning.Typography.small)
                             .foregroundColor(GentleLightning.Colors.textSecondary)
                         
@@ -353,7 +353,7 @@ struct AuthenticationView: View {
                             .font(GentleLightning.Typography.small)
                             .foregroundColor(GentleLightning.Colors.textSecondary)
                         
-                        Link("Privacy Policy", destination: URL(string: "https://spark-app.com/privacy")!)
+                        Link("Privacy Policy", destination: URL(string: "https://scrap-app.com/privacy")!)
                             .font(GentleLightning.Typography.small)
                             .foregroundColor(GentleLightning.Colors.textSecondary)
                     }
@@ -684,17 +684,10 @@ struct EmailAuthView: View {
             // Simulate API call to check if email exists
             try await Task.sleep(nanoseconds: 500_000_000) // 0.5 second delay
             
-            // Demo implementation - checks against hardcoded list of existing emails
-            let existingEmails = [
-                "tommy@muckstack.com",
-                "test@example.com",
-                "user@test.com",
-                "demo@spark.com"
-            ]
-            
+            // Since you have no users in your userbase, treat everyone as new user
             await MainActor.run {
                 isCheckingEmail = false
-                isSignUp = !existingEmails.contains(email.lowercased())
+                isSignUp = true // Always show create account flow since no existing users
                 
                 withAnimation(.easeInOut(duration: 0.3)) {
                     showingPasswordFields = true
