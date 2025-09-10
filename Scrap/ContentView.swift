@@ -28,6 +28,7 @@ struct GentleLightning {
         static let title = Font.custom("SharpGrotesk-Medium", size: 20)
         static let caption = Font.custom("SharpGrotesk-Book", size: 13)
         static let small = Font.custom("SharpGrotesk-Book", size: 11)
+        static let ultraLight = Font.custom("SharpGrotesk-Thin", size: 14)
     }
     
     struct Layout {
