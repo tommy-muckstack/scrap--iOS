@@ -704,7 +704,7 @@ struct NoteEditView: View {
     @State private var showingActionSheet = false
     @State private var showingDeleteAlert = false
     @State private var isContentReady = false
-    @State private var hasValidGeometry = false
+    @State private var hasValidGeometry = true
     
     init(isPresented: Binding<Bool>, item: SparkItem, dataManager: FirebaseDataManager) {
         self._isPresented = isPresented
@@ -725,29 +725,20 @@ struct NoteEditView: View {
         NavigationView {
             GeometryReader { geometry in
                 VStack(spacing: 0) {
-                    if isContentReady && hasValidGeometry {
-                        // Text Editor with safe bounds
-                        ScrollView {
-                            TextEditor(text: $editedText)
-                                .font(GentleLightning.Typography.bodyInput)
-                                .foregroundColor(GentleLightning.Colors.textPrimary)
-                                .padding(GentleLightning.Layout.Padding.lg)
-                                .frame(
-                                    minWidth: max(200, validWidth(from: geometry.size.width)),
-                                    maxWidth: .infinity,
-                                    minHeight: max(120, validHeight(from: geometry.size.height)),
-                                    maxHeight: .infinity,
-                                    alignment: .topLeading
-                                )
-                                .background(Color.white)
-                                .focused($isTextFieldFocused)
-                                .onAppear {
-                                    print("📝 NoteEditView: TextEditor appeared - focusing field")
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                        isTextFieldFocused = true
-                                    }
+                    if isContentReady {
+                        // Simplified Text Editor without ScrollView wrapper
+                        TextEditor(text: $editedText)
+                            .font(GentleLightning.Typography.bodyInput)
+                            .foregroundColor(GentleLightning.Colors.textPrimary)
+                            .padding(GentleLightning.Layout.Padding.lg)
+                            .background(Color.white)
+                            .focused($isTextFieldFocused)
+                            .onAppear {
+                                print("📝 NoteEditView: TextEditor appeared - focusing field")
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                    isTextFieldFocused = true
                                 }
-                        }
+                            }
                     } else {
                         // Loading state
                         VStack(spacing: 16) {
@@ -1048,13 +1039,9 @@ struct NoteEditView: View {
         
         print("📏 NoteEditView: Geometry validation - size: \(size), isValid: \(isValid)")
         
-        if isValid {
-            hasValidGeometry = true
-            // Mark content as ready after a brief delay to ensure everything is stable
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                isContentReady = true
-            }
-        }
+        // Set content ready immediately with basic validation
+        hasValidGeometry = isValid
+        isContentReady = true
     }
     
     private func validWidth(from width: CGFloat) -> CGFloat {
