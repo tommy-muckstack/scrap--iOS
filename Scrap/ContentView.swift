@@ -301,11 +301,16 @@ struct InputField: View {
                                 AnalyticsManager.shared.trackNewNoteStarted(method: "text")
                             }
                             
-                            // Process arrow replacement: -> becomes →
-                            let processedText = newValue.replacingOccurrences(of: "->", with: "→")
+                            // Apply rich text transformations using centralized RichTextTransformer
+                            let processedText = RichTextTransformer.transform(newValue, oldText: text)
                             if processedText != newValue {
                                 text = processedText
-                                AnalyticsManager.shared.trackArrowConversion()
+                                if processedText.contains("→") && !newValue.contains("→") {
+                                    AnalyticsManager.shared.trackArrowConversion()
+                                }
+                                if processedText.contains("• ") && !newValue.contains("• ") {
+                                    AnalyticsManager.shared.trackBulletPointCreated()
+                                }
                                 return
                             }
                             
@@ -776,10 +781,10 @@ struct NoteEditView: View {
                             return
                         }
                         
-                        // Auto-convert bullet markers to bullet points
+                        // Apply rich text transformations (bullets, arrows, etc.)
                         guard !safeValue.isEmpty else { return }
                         
-                        let processedText = processMarkdownBullets(safeValue, oldValue: editedText)
+                        let processedText = RichTextTransformer.transform(safeValue, oldText: editedText)
                         if processedText != safeValue && processedText != editedText {
                             editedText = processedText
                         }
@@ -933,102 +938,6 @@ struct NoteEditView: View {
         return sanitizedLines.joined(separator: "\n")
     }
     
-    // Process markdown-style bullets and smart bullet continuation
-    private func processMarkdownBullets(_ text: String, oldValue: String) -> String {
-        // Handle Enter key - continue bullet lists
-        if text.count > oldValue.count && text.hasSuffix("\n") {
-            return processBulletContinuation(text)
-        }
-        
-        // Handle backspace - remove bullets when appropriate
-        if text.count < oldValue.count {
-            return processBackspaceBulletRemoval(text, oldValue: oldValue)
-        }
-        
-        // Handle space after * or - (original markdown conversion)
-        if text.count > oldValue.count && text.hasSuffix(" ") {
-            let processed = processMarkdownConversion(text)
-            if processed != text {
-                AnalyticsManager.shared.trackBulletPointCreated()
-            }
-            return processArrowReplacement(processed)
-        }
-        
-        // Handle arrow replacement when typing -> followed by space or any character
-        if text.count > oldValue.count {
-            return processArrowReplacement(text)
-        }
-        
-        return text
-    }
-    
-    private func processMarkdownConversion(_ text: String) -> String {
-        var lines = text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
-        var modified = false
-        
-        for (index, line) in lines.enumerated() {
-            // Check if line starts with "* " or "- "
-            if line.hasPrefix("* ") || line.hasPrefix("- ") {
-                // Replace with bullet point
-                lines[index] = "• " + line.dropFirst(2)
-                modified = true
-            }
-        }
-        
-        return modified ? lines.joined(separator: "\n") : text
-    }
-    
-    private func processBulletContinuation(_ text: String) -> String {
-        let lines = text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
-        
-        guard lines.count >= 2 else { return text }
-        
-        let previousLine = lines[lines.count - 2] // Line before the new empty line
-        let currentLine = lines.last ?? ""
-        
-        // If previous line starts with bullet and current line is empty, add bullet to current line
-        if previousLine.hasPrefix("• ") && currentLine.isEmpty {
-            var newLines = lines
-            newLines[newLines.count - 1] = "• "
-            return newLines.joined(separator: "\n")
-        }
-        
-        return text
-    }
-    
-    private func processBackspaceBulletRemoval(_ text: String, oldValue: String) -> String {
-        let newLines = text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
-        let oldLines = oldValue.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
-        
-        // Find which line was modified (text was removed)
-        for (index, line) in newLines.enumerated() {
-            if index < oldLines.count {
-                let oldLine = oldLines[index]
-                
-                // If we had "• " and now we have just "•" (user backspaced the space after bullet)
-                if oldLine.hasPrefix("• ") && line == "•" {
-                    var modifiedLines = newLines
-                    modifiedLines[index] = "" // Remove the bullet entirely
-                    return modifiedLines.joined(separator: "\n")
-                }
-                
-                // If we had "• " and now we have nothing (user backspaced everything)
-                if oldLine.hasPrefix("• ") && line.isEmpty && oldLine.count > line.count {
-                    // Keep the empty line as-is (normal behavior)
-                    return text
-                }
-            }
-        }
-        
-        return text
-    }
-    
-    // Process arrow replacement: -> becomes →
-    private func processArrowReplacement(_ text: String) -> String {
-        // Replace all instances of -> with →
-        let result = text.replacingOccurrences(of: "->", with: "→")
-        return result
-    }
     
     // MARK: - Geometry Validation
     
