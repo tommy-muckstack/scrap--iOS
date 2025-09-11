@@ -1337,6 +1337,7 @@ struct NavigationNoteEditView: View {
     @State private var isContentReady = true
     @State private var selectedCategoryIds: [String] = []
     @State private var editedTitle: String = ""
+    @State private var showingFormatting = false
     
     init(item: SparkItem, dataManager: FirebaseDataManager) {
         print("🏗️ NavigationNoteEditView init: STARTING - item.id = '\(item.id)'")
@@ -1400,6 +1401,16 @@ struct NavigationNoteEditView: View {
                     .padding(GentleLightning.Layout.Padding.lg)
                     .background(Color.white)
                     .focused($isTextFieldFocused)
+                    .toolbar {
+                        ToolbarItemGroup(placement: .keyboard) {
+                            if isTextFieldFocused {
+                                FormattingToolbar(
+                                    text: $editedText,
+                                    showingFormatting: $showingFormatting
+                                )
+                            }
+                        }
+                    }
                     .onAppear {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                             isTextFieldFocused = true
