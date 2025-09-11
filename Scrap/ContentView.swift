@@ -9,18 +9,58 @@ import AVFoundation
 // MARK: - Gentle Lightning Design System
 struct GentleLightning {
     struct Colors {
+        // MARK: - Theme-Aware Colors
+        static func background(isDark: Bool) -> Color {
+            isDark ? Color(red: 0.08, green: 0.08, blue: 0.09) : Color.white
+        }
+        
+        static func backgroundWarm(isDark: Bool) -> Color {
+            isDark ? Color(red: 0.09, green: 0.09, blue: 0.10) : Color.white
+        }
+        
+        static func surface(isDark: Bool) -> Color {
+            isDark ? Color(red: 0.12, green: 0.12, blue: 0.14) : Color.white
+        }
+        
+        static func surfaceSecondary(isDark: Bool) -> Color {
+            isDark ? Color(red: 0.15, green: 0.15, blue: 0.17) : Color(red: 0.98, green: 0.98, blue: 0.99)
+        }
+        
+        static func textPrimary(isDark: Bool) -> Color {
+            isDark ? Color(red: 0.95, green: 0.95, blue: 0.97) : Color(red: 0.12, green: 0.12, blue: 0.15)
+        }
+        
+        static func textSecondary(isDark: Bool) -> Color {
+            isDark ? Color(red: 0.65, green: 0.65, blue: 0.70) : Color(red: 0.45, green: 0.45, blue: 0.5)
+        }
+        
+        static func textTertiary(isDark: Bool) -> Color {
+            isDark ? Color(red: 0.50, green: 0.50, blue: 0.55) : Color(red: 0.60, green: 0.60, blue: 0.65)
+        }
+        
+        static func border(isDark: Bool) -> Color {
+            isDark ? Color(red: 0.25, green: 0.25, blue: 0.28) : Color(red: 0.90, green: 0.90, blue: 0.92)
+        }
+        
+        static func shadow(isDark: Bool) -> Color {
+            isDark ? Color.black.opacity(0.15) : Color.black.opacity(0.03)
+        }
+        
+        // MARK: - Static Colors (Theme Independent)
+        static let textBlack = Color.black
+        static let accentIdea = Color(red: 1.0, green: 0.85, blue: 0.4)
+        static let accentTask = Color(red: 0.4, green: 0.65, blue: 1.0)
+        static let accentNeutral = Color(red: 0.65, green: 0.7, blue: 1.0)
+        static let error = Color(red: 0.95, green: 0.26, blue: 0.21)
+        static let success = Color(red: 0.29, green: 0.76, blue: 0.49)
+        
+        // MARK: - Legacy Static Colors (for backward compatibility)
         static let background = Color.white
         static let backgroundWarm = Color.white
         static let surface = Color.white
         static let textPrimary = Color(red: 0.12, green: 0.12, blue: 0.15)
         static let textSecondary = Color(red: 0.45, green: 0.45, blue: 0.5)
-        static let textBlack = Color.black // New option for stronger contrast
-        static let accentIdea = Color(red: 1.0, green: 0.85, blue: 0.4)
-        static let accentTask = Color(red: 0.4, green: 0.65, blue: 1.0)
-        static let accentNeutral = Color(red: 0.65, green: 0.7, blue: 1.0)
         static let shadowLight = Color.black.opacity(0.03)
-        static let error = Color(red: 0.95, green: 0.26, blue: 0.21)
-        static let success = Color(red: 0.29, green: 0.76, blue: 0.49)
     }
     
     struct Typography {
@@ -1183,8 +1223,10 @@ struct AccountDrawerView: View {
 struct ContentView: View {
     @StateObject private var dataManager = FirebaseDataManager()
     @StateObject private var viewModel = ContentViewModel()
+    @StateObject private var themeManager = ThemeManager.shared
     @State private var navigationPath = NavigationPath()
     @State private var showingAccountDrawer = false
+    @State private var showingSettings = false
     @FocusState private var isInputFieldFocused: Bool
     
     var body: some View {
@@ -1192,15 +1234,23 @@ struct ContentView: View {
         ZStack {
             // Main content
             VStack(spacing: 0) {
-                // Header with Spark title
+                // Header with Spark title and settings
                 HStack {
                     Spacer()
                     
                     Text("Scrap")
                         .font(GentleLightning.Typography.hero)
-                        .foregroundColor(GentleLightning.Colors.textPrimary)
+                        .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
                     
                     Spacer()
+                    
+                    Button(action: {
+                        showingSettings = true
+                    }) {
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
+                    }
                 }
                 .padding(.horizontal, GentleLightning.Layout.Padding.xl)
                 .padding(.top, GentleLightning.Layout.Padding.xl)
@@ -1287,18 +1337,18 @@ struct ContentView: View {
                     }) {
                         Text("My Account")
                             .font(GentleLightning.Typography.body)
-                            .foregroundColor(GentleLightning.Colors.textSecondary)
+                            .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
                             .padding(.vertical, 16)
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(PlainButtonStyle())
-                    .background(Color.white)
+                    .background(GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
                 }
-                .background(Color.white)
+                .background(GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
             }
             .ignoresSafeArea(.keyboard, edges: .bottom)
         }
-        .background(Color.white)
+        .background(GentleLightning.Colors.background(isDark: themeManager.isDarkMode))
         .contentShape(Rectangle()) // Make the entire area tappable for keyboard dismissal
         .onTapGesture {
             // Dismiss keyboard when tapping outside input area
@@ -1319,6 +1369,9 @@ struct ContentView: View {
                     AnalyticsManager.shared.trackAccountDrawerClosed()
                 }
         }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView(themeManager: themeManager)
+        }
         } // NavigationStack
     }
 }
@@ -1337,6 +1390,7 @@ struct NavigationNoteEditView: View {
     @State private var isContentReady = true
     @State private var selectedCategoryIds: [String] = []
     @State private var editedTitle: String = ""
+    @State private var showingFormattingSheet = false
     
     init(item: SparkItem, dataManager: FirebaseDataManager) {
         print("🏗️ NavigationNoteEditView init: STARTING - item.id = '\(item.id)'")
@@ -1368,10 +1422,43 @@ struct NavigationNoteEditView: View {
     }
     
     private var textEditorSection: some View {
-        TextEditor(text: $editedText)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(GentleLightning.Layout.Padding.lg)
-            .background(Color.white)
+        VStack(alignment: .leading, spacing: 0) {
+            // Inline formatting button at start of content area
+            HStack {
+                Button(action: { showingFormattingSheet.toggle() }) {
+                    HStack(spacing: 2) {
+                        Text("B")
+                            .font(.system(size: 14, weight: .bold))
+                        Text("7")
+                            .font(.system(size: 12))
+                            .underline()
+                        Text("U")
+                            .font(.system(size: 14))
+                            .underline()
+                    }
+                    .foregroundColor(GentleLightning.Colors.accentNeutral)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(GentleLightning.Colors.surface)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .stroke(GentleLightning.Colors.textSecondary.opacity(0.2), lineWidth: 1)
+                            )
+                    )
+                }
+                Spacer()
+            }
+            .padding(.horizontal, GentleLightning.Layout.Padding.lg)
+            .padding(.bottom, 8)
+            
+            // Text editor
+            TextEditor(text: $editedText)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(GentleLightning.Layout.Padding.lg)
+                .background(Color.white)
+        }
     }
     
     var body: some View {
@@ -1490,6 +1577,9 @@ struct NavigationNoteEditView: View {
         } message: {
             Text("This note will be permanently deleted. This action cannot be undone.")
         }
+        .sheet(isPresented: $showingFormattingSheet) {
+            FormattingSheet(text: $editedText)
+        }
     }
     
     private func shareNote() {
@@ -1559,6 +1649,87 @@ struct NavigationNoteEditView: View {
         }
         
         return sanitizedLines.joined(separator: "\n")
+    }
+}
+
+// MARK: - Formatting Sheet
+struct FormattingSheet: View {
+    @Binding var text: String
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                Text("Text Formatting")
+                    .font(GentleLightning.Typography.title)
+                    .foregroundColor(GentleLightning.Colors.textPrimary)
+                    .padding(.top, 20)
+                
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 16) {
+                    FormatButton(title: "Bold", symbol: "bold", action: { applyFormat("**", "**") })
+                    FormatButton(title: "Italic", symbol: "italic", action: { applyFormat("*", "*") })
+                    FormatButton(title: "Underline", symbol: "underline", action: { applyFormat("<u>", "</u>") })
+                    FormatButton(title: "Strikethrough", symbol: "strikethrough", action: { applyFormat("~~", "~~") })
+                    FormatButton(title: "Code", symbol: "curlybraces", action: { applyFormat("`", "`") })
+                    FormatButton(title: "Quote", symbol: "quote.bubble", action: { applyFormat("> ", "") })
+                    FormatButton(title: "Bullet", symbol: "list.bullet", action: { applyFormat("• ", "") })
+                    FormatButton(title: "Number", symbol: "list.number", action: { applyFormat("1. ", "") })
+                    FormatButton(title: "Header 1", symbol: "textformat.size.larger", action: { applyFormat("# ", "") })
+                    FormatButton(title: "Header 2", symbol: "textformat.size", action: { applyFormat("## ", "") })
+                    FormatButton(title: "Link", symbol: "link", action: { applyFormat("[", "](url)") })
+                    FormatButton(title: "Highlight", symbol: "highlighter", action: { applyFormat("==", "==") })
+                }
+                .padding(.horizontal, 20)
+                
+                Spacer()
+            }
+            .navigationTitle("Formatting")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .foregroundColor(GentleLightning.Colors.accentNeutral)
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+    
+    private func applyFormat(_ prefix: String, _ suffix: String) {
+        text += prefix + "text" + suffix
+        dismiss()
+    }
+}
+
+// MARK: - Format Button
+struct FormatButton: View {
+    let title: String
+    let symbol: String
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 8) {
+                Image(systemName: symbol)
+                    .font(.system(size: 24))
+                    .foregroundColor(GentleLightning.Colors.accentNeutral)
+                
+                Text(title)
+                    .font(GentleLightning.Typography.caption)
+                    .foregroundColor(GentleLightning.Colors.textSecondary)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 80)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(GentleLightning.Colors.surface)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(GentleLightning.Colors.textSecondary.opacity(0.2), lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 

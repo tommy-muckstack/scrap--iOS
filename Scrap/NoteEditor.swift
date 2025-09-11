@@ -37,30 +37,68 @@ struct NoteEditor: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
             
-            // Content editor
-            TextEditor(text: $editedText)
-                .font(GentleLightning.Typography.bodyInput)
-                .foregroundColor(GentleLightning.Colors.textPrimary)
-                .padding(.horizontal, 16)
-                .focused($isTextFocused)
-                .onChange(of: editedText) { updateContent($0) }
-                .toolbar {
-                    ToolbarItemGroup(placement: .keyboard) {
-                        if isTextFocused {
-                            FormattingToolbar(
-                                text: $editedText,
-                                showingFormatting: $showingFormatting
-                            )
+            // Content editor with inline formatting button
+            VStack(alignment: .leading, spacing: 0) {
+                // Inline formatting button at start of content area
+                HStack {
+                    Button(action: { showingFormatting.toggle() }) {
+                        HStack(spacing: 2) {
+                            Text("B")
+                                .font(.system(size: 14, weight: .bold))
+                            Text("7")
+                                .font(.system(size: 12))
+                                .underline()
+                            Text("U")
+                                .font(.system(size: 14))
+                                .underline()
                         }
+                        .foregroundColor(GentleLightning.Colors.accentNeutral)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(GentleLightning.Colors.surface)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(GentleLightning.Colors.textSecondary.opacity(0.2), lineWidth: 1)
+                                )
+                        )
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
+                
+                // Text editor
+                TextEditor(text: $editedText)
+                    .font(GentleLightning.Typography.bodyInput)
+                    .foregroundColor(GentleLightning.Colors.textPrimary)
+                    .padding(.horizontal, 16)
+                    .focused($isTextFocused)
+                    .onChange(of: editedText) { updateContent($0) }
+            }
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    if isTextFocused {
+                        FormattingToolbar(
+                            text: $editedText,
+                            showingFormatting: $showingFormatting
+                        )
                     }
                 }
+            }
             
             Divider()
             
-            // Category picker
-            CategoryPicker(selectedCategoryIds: $selectedCategories, maxSelections: 3)
-                .padding(16)
-                .onChange(of: selectedCategories) { updateCategories($0) }
+            // Category section (simplified for now)
+            HStack {
+                Text("Categories:")
+                    .font(GentleLightning.Typography.caption)
+                    .foregroundColor(GentleLightning.Colors.textSecondary)
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
         }
         // .navigationTitle("Edit Note")
         .navigationBarTitleDisplayMode(.inline)
@@ -77,6 +115,9 @@ struct NoteEditor: View {
         .alert("Delete Note?", isPresented: $showingDelete) {
             Button("Delete", role: .destructive) { deleteNote() }
             Button("Cancel", role: .cancel) { }
+        }
+        .sheet(isPresented: $showingFormatting) {
+            FormattingSheet(text: $editedText)
         }
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -260,3 +301,4 @@ struct FormatButton: View {
         .buttonStyle(PlainButtonStyle())
     }
 }
+
