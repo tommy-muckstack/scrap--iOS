@@ -128,3 +128,4 @@ AmplitudeConfig.plist
 # Any other sensitive configuration
 Config.plist
 Secrets.plist
+Config.xcconfig

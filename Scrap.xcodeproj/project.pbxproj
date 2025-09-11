@@ -13,6 +13,7 @@
 		1D1A2B312B1234567890ABD0 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1D1A2B302B1234567890ABD0 /* Preview Assets.xcassets */; };
 		AA304E792F6F72980054DD41 /* AnalyticsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA304E7A2F6F72980054DD41 /* AnalyticsManager.swift */; };
 		BB304E782E6F72970054DD40 /* AmplitudeSwift in Frameworks */ = {isa = PBXBuildFile; productRef = BB304E772E6F72970054DD40 /* AmplitudeSwift */; };
+		BB304E782E6F72970054DD42 /* AmplitudeSwiftSessionReplayPlugin in Frameworks */ = {isa = PBXBuildFile; productRef = BB304E772E6F72970054DD42 /* AmplitudeSwiftSessionReplayPlugin */; };
 		BB304E7A2E6F9E750054DD40 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB304E792E6F9E750054DD40 /* GoogleService-Info.plist */; };
 		BB304E7D2E6F9EEA0054DD40 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = BB304E7C2E6F9EEA0054DD40 /* FirebaseAuth */; };
 		BB304E7F2E6F9EEA0054DD40 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = BB304E7E2E6F9EEA0054DD40 /* FirebaseCore */; };
@@ -64,6 +65,7 @@
 		RT6C1C6BFA551F /* RichTextTransformer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextTransformer.swift; sourceTree = "<group>"; };
 		SM988B63B7218D59C335B7 /* SparkModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparkModels.swift; sourceTree = "<group>"; };
 		SS42E11169D5C6456E0538 /* SparkServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparkServices.swift; sourceTree = "<group>"; };
+		CONFIG001000000000000001 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -72,6 +74,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				BB304E782E6F72970054DD40 /* AmplitudeSwift in Frameworks */,
+				BB304E782E6F72970054DD42 /* AmplitudeSwiftSessionReplayPlugin in Frameworks */,
 				BB304E812E6F9EEA0054DD40 /* FirebaseFirestore in Frameworks */,
 				BB304E832E6F9F0A0054DD40 /* FirebaseFunctions in Frameworks */,
 				BB304E8B2E6FA8650054DD40 /* GoogleSignInSwift in Frameworks */,
@@ -117,6 +120,7 @@
 				CC304E7C3F6F72990054DD42 /* TestContentView.swift */,
 				SM988B63B7218D59C335B7 /* SparkModels.swift */,
 				SS42E11169D5C6456E0538 /* SparkServices.swift */,
+				CONFIG001000000000000001 /* Config.xcconfig */,
 				1D1A2B2D2B1234567890ABCF /* Assets.xcassets */,
 				1D1A2B2F2B1234567890ABD0 /* Preview Content */,
 			);
@@ -201,6 +205,7 @@
 			mainGroup = 1D1A2B1D2B1234567890ABCA;
 			packageReferences = (
 				BB304E762E6F72970054DD40 /* XCRemoteSwiftPackageReference "Amplitude-Swift" */,
+				BB304E762E6F72970054DD41 /* XCRemoteSwiftPackageReference "AmplitudeSessionReplay-iOS" */,
 				BB304E7B2E6F9EEA0054DD40 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				BB304E872E6FA8650054DD40 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 			);
@@ -469,6 +474,14 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/amplitude/Amplitude-Swift";
 			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.9.0;
+			};
+		};
+		BB304E762E6F72970054DD41 /* XCRemoteSwiftPackageReference "AmplitudeSessionReplay-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/amplitude/AmplitudeSessionReplay-iOS";
+			requirement = {
 				branch = main;
 				kind = branch;
 			};
@@ -496,6 +509,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = BB304E762E6F72970054DD40 /* XCRemoteSwiftPackageReference "Amplitude-Swift" */;
 			productName = AmplitudeSwift;
+		};
+		BB304E772E6F72970054DD42 /* AmplitudeSwiftSessionReplayPlugin */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BB304E762E6F72970054DD41 /* XCRemoteSwiftPackageReference "AmplitudeSessionReplay-iOS" */;
+			productName = AmplitudeSwiftSessionReplayPlugin;
 		};
 		BB304E7C2E6F9EEA0054DD40 /* FirebaseAuth */ = {
 			isa = XCSwiftPackageProductDependency;
