@@ -1,12 +1,12 @@
 import Foundation
 import AmplitudeSwift
-import AmplitudeSessionReplayPlugin
+import AmplitudeSwiftSessionReplayPlugin
 import UIKit
 
 class AnalyticsManager: ObservableObject {
     static let shared = AnalyticsManager()
     private var amplitude: Amplitude?
-    private var sessionReplayPlugin: AmplitudeSessionReplayPlugin?
+    private var sessionReplayPlugin: AmplitudeSwiftSessionReplayPlugin?
     
     private init() {}
     
@@ -16,7 +16,7 @@ class AnalyticsManager: ObservableObject {
         )
         
         // Configure Session Replay
-        sessionReplayPlugin = AmplitudeSessionReplayPlugin()
+        sessionReplayPlugin = AmplitudeSwiftSessionReplayPlugin()
         
         // Optional: Configure privacy settings
         // sessionReplayPlugin?.sampleRate = 1.0 // Sample 100% of sessions
