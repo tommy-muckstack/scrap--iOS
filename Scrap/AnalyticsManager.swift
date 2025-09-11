@@ -15,8 +15,16 @@ class AnalyticsManager: ObservableObject {
             apiKey: "693800f793945567021a62721d3713c9"
         )
         
-        // Configure Session Replay
-        let sampleRate: Float = 1.0 // 100% sample rate
+        // Optimize storage to reduce I/O operations
+        configuration.flushQueueSize = 30           // Batch more events before flushing
+        configuration.flushIntervalMillis = 30000   // Flush less frequently (30 seconds)
+        configuration.minIdLength = 5               // Reduce minimum ID length validation
+        configuration.partnerId = nil               // Disable partner tracking
+        configuration.plan = nil                    // Disable plan tracking
+        configuration.ingestionMetadata = nil       // Disable ingestion metadata
+        
+        // Reduce Session Replay I/O impact
+        let sampleRate: Float = 0.1 // Reduce to 10% to minimize I/O
         sessionReplayPlugin = AmplitudeSwiftSessionReplayPlugin(sampleRate: sampleRate)
         
         amplitude = Amplitude(configuration: configuration)
@@ -180,10 +188,16 @@ class AnalyticsManager: ObservableObject {
         trackEvent("app_background")
     }
     
+    // MARK: - Storage and Performance Control
+    func flushEvents() {
+        // Manually flush events - use sparingly to reduce I/O
+        amplitude?.flush()
+    }
+    
     // MARK: - Session Replay Control
     func startSessionReplay() {
         // Session replay starts automatically, but you can manually control it
-        amplitude?.flush()
+        print("Session Replay is active with optimized I/O settings")
     }
     
     func pauseSessionReplay() {
@@ -198,7 +212,7 @@ class AnalyticsManager: ObservableObject {
     }
     
     func setSessionReplaySampleRate(_ rate: Double) {
-        // Sample rate is set during initialization
+        // Sample rate is set during initialization (currently 10% to reduce I/O)
         print("Session Replay sample rate change requested: \(rate) - requires reinitialization")
     }
     
