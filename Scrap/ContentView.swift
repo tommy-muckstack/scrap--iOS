@@ -1337,7 +1337,6 @@ struct NavigationNoteEditView: View {
     @State private var isContentReady = true
     @State private var selectedCategoryIds: [String] = []
     @State private var editedTitle: String = ""
-    @State private var showingFormatting = false
     
     init(item: SparkItem, dataManager: FirebaseDataManager) {
         print("🏗️ NavigationNoteEditView init: STARTING - item.id = '\(item.id)'")
@@ -1356,100 +1355,64 @@ struct NavigationNoteEditView: View {
         print("🏗️ NavigationNoteEditView init: COMPLETED - all properties initialized")
     }
     
+    // MARK: - View Components
+    private var titleSection: some View {
+        TextField("Title", text: $editedTitle)
+            .font(.headline)
+            .padding(GentleLightning.Layout.Padding.lg)
+            .background(Color.white)
+            .onChange(of: editedTitle) { newTitle in
+                guard !newTitle.isEmpty else { return }
+                item.title = newTitle
+            }
+    }
+    
+    private var textEditorSection: some View {
+        TextEditor(text: $editedText)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(GentleLightning.Layout.Padding.lg)
+            .background(Color.white)
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
             if isContentReady {
-                // Title field
-                VStack(alignment: .leading, spacing: 8) {
-                    TextField("Title (optional)", text: $editedTitle)
-                        .font(GentleLightning.Typography.title)
-                        .foregroundColor(GentleLightning.Colors.textPrimary)
-                        .textFieldStyle(PlainTextFieldStyle())
-                        .onChange(of: editedTitle) { newTitle in
-                            // Update the item's title
-                            Task {
-                                if let firebaseId = item.firebaseId {
-                                    do {
-                                        try await FirebaseManager.shared.updateNoteTitle(noteId: firebaseId, title: newTitle)
-                                        await MainActor.run {
-                                            item.title = newTitle
-                                        }
-                                    } catch {
-                                        print("Failed to update title: \(error)")
-                                    }
-                                }
-                            }
-                        }
-                    
-                    Divider()
-                        .background(GentleLightning.Colors.textSecondary.opacity(0.3))
-                }
-                .padding(.horizontal, GentleLightning.Layout.Padding.lg)
-                .padding(.top, GentleLightning.Layout.Padding.lg)
-                
-                // Text content
-                TextEditor(text: Binding(
-                    get: {
-                        return editedText
-                    },
-                    set: { newValue in
-                        editedText = newValue
-                    }
-                ))
-                    .font(GentleLightning.Typography.bodyInput)
-                    .foregroundColor(GentleLightning.Colors.textPrimary)
-                    .padding(GentleLightning.Layout.Padding.lg)
-                    .background(Color.white)
-                    .focused($isTextFieldFocused)
-                    .toolbar {
-                        ToolbarItemGroup(placement: .keyboard) {
-                            if isTextFieldFocused {
-                                FormattingToolbar(
-                                    text: $editedText,
-                                    showingFormatting: $showingFormatting
-                                )
-                            }
-                        }
-                    }
-                    .onAppear {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            isTextFieldFocused = true
-                        }
-                    }
-                
-                // Category picker at bottom
-                VStack(spacing: 0) {
-                    Divider()
-                        .background(GentleLightning.Colors.textSecondary.opacity(0.3))
-                    
-                    // TODO: Uncomment when CategoryPicker is added to project
-                    /*
-                    CategoryPicker(selectedCategoryIds: $selectedCategoryIds, maxSelections: 3)
-                        .padding(GentleLightning.Layout.Padding.lg)
-                        .onChange(of: selectedCategoryIds) { newCategoryIds in
-                            // Update the item's categories
-                            Task {
-                                if let firebaseId = item.firebaseId {
-                                    do {
-                                        try await FirebaseManager.shared.updateNoteCategories(noteId: firebaseId, categoryIds: newCategoryIds)
-                                        await MainActor.run {
-                                            item.categoryIds = newCategoryIds
-                                        }
-                                        
-                                        // Update usage count for selected categories
-                                        for categoryId in newCategoryIds {
-                                            await categoryService.updateCategoryUsage(categoryId)
-                                        }
-                                    } catch {
-                                        print("Failed to update categories: \(error)")
-                                    }
-                                }
-                            }
-                        }
-                    */
-                }
-                .background(Color.white)
+                titleSection
+                textEditorSection
             }
+                
+            // Category picker at bottom
+            VStack(spacing: 0) {
+                Divider()
+                    .background(GentleLightning.Colors.textSecondary.opacity(0.3))
+                
+                // TODO: Uncomment when CategoryPicker is added to project
+                /*
+                CategoryPicker(selectedCategoryIds: $selectedCategoryIds, maxSelections: 3)
+                    .padding(GentleLightning.Layout.Padding.lg)
+                    .onChange(of: selectedCategoryIds) { newCategoryIds in
+                        // Update the item's categories
+                        Task {
+                            if let firebaseId = item.firebaseId {
+                                do {
+                                    try await FirebaseManager.shared.updateNoteCategories(noteId: firebaseId, categoryIds: newCategoryIds)
+                                    await MainActor.run {
+                                        item.categoryIds = newCategoryIds
+                                    }
+                                    
+                                    // Update usage count for selected categories
+                                    for categoryId in newCategoryIds {
+                                        await categoryService.updateCategoryUsage(categoryId)
+                                    }
+                                } catch {
+                                    print("Failed to update categories: \(error)")
+                                }
+                            }
+                        }
+                    }
+                */
+            }
+            .background(Color.white)
         }
         .onAppear {
             print("🚀 NavigationNoteEditView VStack onAppear: TRIGGERED")
