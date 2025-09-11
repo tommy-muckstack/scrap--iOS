@@ -12,6 +12,7 @@ struct NoteEditor: View {
     @FocusState private var isTextFocused: Bool
     @State private var showingOptions = false
     @State private var showingDelete = false
+    @State private var showingFormatting = false
     
     init(item: SparkItem, dataManager: FirebaseDataManager) {
         self.item = item
@@ -43,6 +44,16 @@ struct NoteEditor: View {
                 .padding(.horizontal, 16)
                 .focused($isTextFocused)
                 .onChange(of: editedText) { updateContent($0) }
+                .toolbar {
+                    ToolbarItemGroup(placement: .keyboard) {
+                        if isTextFocused {
+                            FormattingToolbar(
+                                text: $editedText,
+                                showingFormatting: $showingFormatting
+                            )
+                        }
+                    }
+                }
             
             Divider()
             
@@ -118,5 +129,134 @@ struct NoteEditor: View {
     private func deleteNote() {
         dataManager.deleteItem(item)
         dismiss()
+    }
+}
+
+// MARK: - Formatting Toolbar
+struct FormattingToolbar: View {
+    @Binding var text: String
+    @Binding var showingFormatting: Bool
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            // Format button (like B7U in your screenshot)
+            Button(action: { showingFormatting.toggle() }) {
+                HStack(spacing: 2) {
+                    Text("B")
+                        .font(.system(size: 16, weight: .bold))
+                    Text("7")
+                        .font(.system(size: 14))
+                        .underline()
+                    Text("U")
+                        .font(.system(size: 16))
+                        .underline()
+                }
+                .foregroundColor(GentleLightning.Colors.accentNeutral)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(GentleLightning.Colors.surface)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .stroke(GentleLightning.Colors.textSecondary.opacity(0.2), lineWidth: 1)
+                        )
+                )
+            }
+            
+            Spacer()
+            
+            // Done button
+            Button("Done") {
+                // Dismiss keyboard
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
+            .foregroundColor(GentleLightning.Colors.accentNeutral)
+        }
+        .padding(.horizontal, 16)
+        .sheet(isPresented: $showingFormatting) {
+            FormattingSheet(text: $text)
+        }
+    }
+}
+
+// MARK: - Formatting Sheet
+struct FormattingSheet: View {
+    @Binding var text: String
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                Text("Text Formatting")
+                    .font(GentleLightning.Typography.title)
+                    .foregroundColor(GentleLightning.Colors.textPrimary)
+                    .padding(.top, 20)
+                
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 16) {
+                    FormatButton(title: "Bold", symbol: "bold", action: { applyFormat("**", "**") })
+                    FormatButton(title: "Italic", symbol: "italic", action: { applyFormat("*", "*") })
+                    FormatButton(title: "Underline", symbol: "underline", action: { applyFormat("<u>", "</u>") })
+                    FormatButton(title: "Strikethrough", symbol: "strikethrough", action: { applyFormat("~~", "~~") })
+                    FormatButton(title: "Code", symbol: "curlybraces", action: { applyFormat("`", "`") })
+                    FormatButton(title: "Quote", symbol: "quote.bubble", action: { applyFormat("> ", "") })
+                    FormatButton(title: "Bullet", symbol: "list.bullet", action: { applyFormat("• ", "") })
+                    FormatButton(title: "Number", symbol: "list.number", action: { applyFormat("1. ", "") })
+                    FormatButton(title: "Header 1", symbol: "textformat.size.larger", action: { applyFormat("# ", "") })
+                    FormatButton(title: "Header 2", symbol: "textformat.size", action: { applyFormat("## ", "") })
+                    FormatButton(title: "Link", symbol: "link", action: { applyFormat("[", "](url)") })
+                    FormatButton(title: "Highlight", symbol: "highlighter", action: { applyFormat("==", "==") })
+                }
+                .padding(.horizontal, 20)
+                
+                Spacer()
+            }
+            .navigationTitle("Formatting")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .foregroundColor(GentleLightning.Colors.accentNeutral)
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+    
+    private func applyFormat(_ prefix: String, _ suffix: String) {
+        text += prefix + "text" + suffix
+        dismiss()
+    }
+}
+
+// MARK: - Format Button
+struct FormatButton: View {
+    let title: String
+    let symbol: String
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 8) {
+                Image(systemName: symbol)
+                    .font(.system(size: 24))
+                    .foregroundColor(GentleLightning.Colors.accentNeutral)
+                
+                Text(title)
+                    .font(GentleLightning.Typography.caption)
+                    .foregroundColor(GentleLightning.Colors.textSecondary)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 80)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(GentleLightning.Colors.surface)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(GentleLightning.Colors.textSecondary.opacity(0.2), lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }
