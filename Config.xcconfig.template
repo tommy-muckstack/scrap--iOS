@@ -1,0 +1,9 @@
+// Configuration template - Copy to Config.xcconfig and add your API keys
+// DO NOT commit Config.xcconfig to Git (it's in .gitignore)
+
+// Instructions:
+// 1. Copy this file to Config.xcconfig
+// 2. Replace YOUR_OPENAI_API_KEY_HERE with your actual OpenAI API key
+// 3. Get your API key from: https://platform.openai.com/api-keys
+
+OPENAI_API_KEY = YOUR_OPENAI_API_KEY_HERE
