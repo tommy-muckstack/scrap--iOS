@@ -1,12 +1,12 @@
 import Foundation
 import AmplitudeSwift
-// import AmplitudeSwiftSessionReplayPlugin
+import AmplitudeSwiftSessionReplayPlugin
 import UIKit
 
 class AnalyticsManager: ObservableObject {
     static let shared = AnalyticsManager()
     private var amplitude: Amplitude?
-    // private var sessionReplayPlugin: AmplitudeSwiftSessionReplayPlugin?
+    private var sessionReplayPlugin: AmplitudeSwiftSessionReplayPlugin?
     
     private init() {}
     
@@ -16,14 +16,14 @@ class AnalyticsManager: ObservableObject {
         )
         
         // Configure Session Replay
-        // sessionReplayPlugin = AmplitudeSwiftSessionReplayPlugin()
+        sessionReplayPlugin = AmplitudeSwiftSessionReplayPlugin()
         
         // Optional: Configure privacy settings
         // sessionReplayPlugin?.sampleRate = 1.0 // Sample 100% of sessions
         // sessionReplayPlugin?.maskAllTextInputs = true // Mask sensitive text inputs
         // sessionReplayPlugin?.maskAllImages = false // Don't mask images by default
         
-        // configuration.add(plugin: sessionReplayPlugin!)
+        configuration.add(plugin: sessionReplayPlugin!)
         
         amplitude = Amplitude(configuration: configuration)
         
@@ -189,17 +189,17 @@ class AnalyticsManager: ObservableObject {
     
     func pauseSessionReplay() {
         // Temporarily pause session replay (useful for privacy-sensitive screens)
-        // sessionReplayPlugin?.isEnabled = false
+        sessionReplayPlugin?.isEnabled = false
     }
     
     func resumeSessionReplay() {
         // Resume session replay
-        // sessionReplayPlugin?.isEnabled = true
+        sessionReplayPlugin?.isEnabled = true
     }
     
     func setSessionReplaySampleRate(_ rate: Double) {
         // Set the percentage of sessions to record (0.0 to 1.0)
-        // sessionReplayPlugin?.sampleRate = rate
+        sessionReplayPlugin?.sampleRate = rate
     }
     
     func maskSensitiveViews(_ views: [UIView]) {
