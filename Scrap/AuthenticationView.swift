@@ -457,6 +457,14 @@ struct AuthenticationView: View {
         .sheet(isPresented: $showingEmailEntry) {
             EmailAuthView()
         }
+        .onAppear {
+            // Pause session replay for privacy during authentication
+            AnalyticsManager.shared.pauseSessionReplay()
+        }
+        .onDisappear {
+            // Resume session replay after authentication
+            AnalyticsManager.shared.resumeSessionReplay()
+        }
     }
     
     // MARK: - Authentication Actions
@@ -715,6 +723,12 @@ struct EmailAuthView: View {
         }
         .onAppear {
             isEmailFocused = true
+            // Pause session replay for privacy during authentication
+            AnalyticsManager.shared.pauseSessionReplay()
+        }
+        .onDisappear {
+            // Resume session replay after authentication
+            AnalyticsManager.shared.resumeSessionReplay()
         }
     }
     

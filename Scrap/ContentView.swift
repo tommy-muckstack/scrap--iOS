@@ -33,7 +33,7 @@ struct GentleLightning {
         
         // BODY TEXT → SharpGrotesk-Book (regular reading weight)
         static let body = Font.custom("SharpGrotesk-Book", size: 16)               // Primary body text
-        static let bodyInput = Font.custom("SharpGrotesk-Book", size: 17)          // Input fields
+        static let bodyInput = Font.custom("SharpGrotesk-Book", size: 19)          // Input fields
         static let bodyLarge = Font.custom("SharpGrotesk-Book", size: 18)          // Larger body text
         
         // SECONDARY / SUBTLE TEXT → SharpGrotesk-Light

@@ -1,19 +1,31 @@
 import Foundation
 import AmplitudeSwift
+import AmplitudeSessionReplayPlugin
 import UIKit
 
 class AnalyticsManager: ObservableObject {
     static let shared = AnalyticsManager()
     private var amplitude: Amplitude?
+    private var sessionReplayPlugin: AmplitudeSessionReplayPlugin?
     
     private init() {}
     
     func initialize() {
-        amplitude = Amplitude(
-            configuration: Configuration(
-                apiKey: "693800f793945567021a62721d3713c9"
-            )
+        let configuration = Configuration(
+            apiKey: "693800f793945567021a62721d3713c9"
         )
+        
+        // Configure Session Replay
+        sessionReplayPlugin = AmplitudeSessionReplayPlugin()
+        
+        // Optional: Configure privacy settings
+        // sessionReplayPlugin?.sampleRate = 1.0 // Sample 100% of sessions
+        // sessionReplayPlugin?.maskAllTextInputs = true // Mask sensitive text inputs
+        // sessionReplayPlugin?.maskAllImages = false // Don't mask images by default
+        
+        configuration.add(plugin: sessionReplayPlugin!)
+        
+        amplitude = Amplitude(configuration: configuration)
         
         // Set initial user ID to device ID
         setUserIdToDeviceId()
@@ -167,5 +179,35 @@ class AnalyticsManager: ObservableObject {
     
     func trackAppBackground() {
         trackEvent("app_background")
+    }
+    
+    // MARK: - Session Replay Control
+    func startSessionReplay() {
+        // Session replay starts automatically, but you can manually control it
+        amplitude?.flush()
+    }
+    
+    func pauseSessionReplay() {
+        // Temporarily pause session replay (useful for privacy-sensitive screens)
+        sessionReplayPlugin?.isEnabled = false
+    }
+    
+    func resumeSessionReplay() {
+        // Resume session replay
+        sessionReplayPlugin?.isEnabled = true
+    }
+    
+    func setSessionReplaySampleRate(_ rate: Double) {
+        // Set the percentage of sessions to record (0.0 to 1.0)
+        sessionReplayPlugin?.sampleRate = rate
+    }
+    
+    func maskSensitiveViews(_ views: [UIView]) {
+        // Mark specific views as sensitive to be masked in recordings
+        for view in views {
+            // This is typically handled by the SDK automatically,
+            // but you can add custom masking logic here if needed
+            view.accessibilityIdentifier = "amplitude_mask"
+        }
     }
 }
