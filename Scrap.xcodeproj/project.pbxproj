@@ -1,1234 +1,538 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>archiveVersion</key>
-	<string>1</string>
-	<key>classes</key>
-	<dict/>
-	<key>objectVersion</key>
-	<string>56</string>
-	<key>objects</key>
-	<dict>
-		<key>1D1A2B1D2B1234567890ABCA</key>
-		<dict>
-			<key>children</key>
-			<array>
-				<string>1D1A2B282B1234567890ABCC</string>
-				<string>1D1A2B272B1234567890ABCC</string>
-			</array>
-			<key>isa</key>
-			<string>PBXGroup</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>1D1A2B1E2B1234567890ABCA</key>
-		<dict>
-			<key>attributes</key>
-			<dict>
-				<key>BuildIndependentTargetsInParallel</key>
-				<string>1</string>
-				<key>LastSwiftUpdateCheck</key>
-				<string>1430</string>
-				<key>LastUpgradeCheck</key>
-				<string>1640</string>
-				<key>TargetAttributes</key>
-				<dict>
-					<key>1D1A2B252B1234567890ABCA</key>
-					<dict>
-						<key>CreatedOnToolsVersion</key>
-						<string>14.3</string>
-					</dict>
-				</dict>
-			</dict>
-			<key>buildConfigurationList</key>
-			<string>1D1A2B212B1234567890ABCA</string>
-			<key>compatibilityVersion</key>
-			<string>Xcode 14.0</string>
-			<key>developmentRegion</key>
-			<string>en</string>
-			<key>hasScannedForEncodings</key>
-			<string>0</string>
-			<key>isa</key>
-			<string>PBXProject</string>
-			<key>knownRegions</key>
-			<array>
-				<string>en</string>
-				<string>Base</string>
-			</array>
-			<key>mainGroup</key>
-			<string>1D1A2B1D2B1234567890ABCA</string>
-			<key>packageReferences</key>
-			<array>
-				<string>BB304E762E6F72970054DD40</string>
-				<string>BB304E7B2E6F9EEA0054DD40</string>
-				<string>BB304E872E6FA8650054DD40</string>
-			</array>
-			<key>productRefGroup</key>
-			<string>1D1A2B272B1234567890ABCC</string>
-			<key>projectDirPath</key>
-			<string></string>
-			<key>projectRoot</key>
-			<string></string>
-			<key>targets</key>
-			<array>
-				<string>1D1A2B252B1234567890ABCA</string>
-			</array>
-		</dict>
-		<key>1D1A2B212B1234567890ABCA</key>
-		<dict>
-			<key>buildConfigurations</key>
-			<array>
-				<string>1D1A2B342B1234567890ABD2</string>
-				<string>1D1A2B352B1234567890ABD3</string>
-			</array>
-			<key>defaultConfigurationIsVisible</key>
-			<string>0</string>
-			<key>defaultConfigurationName</key>
-			<string>Release</string>
-			<key>isa</key>
-			<string>XCConfigurationList</string>
-		</dict>
-		<key>1D1A2B222B1234567890ABC9</key>
-		<dict>
-			<key>buildActionMask</key>
-			<string>2147483647</string>
-			<key>files</key>
-			<array>
-				<string>1D1A2B2C2B1234567890ABCE</string>
-				<string>AA304E792F6F72980054DD41</string>
-				<string>DD304E862E6FA0000054DD42</string>
-				<string>RTB79366E98E99</string>
-				<string>EE304E882E6FA1000054DD43</string>
-				<string>FF304E8A2E6FA2000054DD44</string>
-				<string>CC304E7B3F6F72990054DD42</string>
-				<string>1D1A2B2A2B1234567890ABCD</string>
-				<string>SM746984E3905E9248F740</string>
-				<string>SS7CB67F2F072D9CA9AE6D</string>
-			</array>
-			<key>isa</key>
-			<string>PBXSourcesBuildPhase</string>
-			<key>runOnlyForDeploymentPostprocessing</key>
-			<string>0</string>
-		</dict>
-		<key>1D1A2B232B1234567890ABCB</key>
-		<dict>
-			<key>buildActionMask</key>
-			<string>2147483647</string>
-			<key>files</key>
-			<array>
-				<string>BB304E782E6F72970054DD40</string>
-				<string>BB304E812E6F9EEA0054DD40</string>
-				<string>BB304E832E6F9F0A0054DD40</string>
-				<string>BB304E8B2E6FA8650054DD40</string>
-				<string>BB304E7F2E6F9EEA0054DD40</string>
-				<string>BB304E7D2E6F9EEA0054DD40</string>
-				<string>BB304E852E6F9F0A0054DD40</string>
-				<string>BB304E892E6FA8650054DD40</string>
-			</array>
-			<key>isa</key>
-			<string>PBXFrameworksBuildPhase</string>
-			<key>runOnlyForDeploymentPostprocessing</key>
-			<string>0</string>
-		</dict>
-		<key>1D1A2B242B1234567890ABCA</key>
-		<dict>
-			<key>buildActionMask</key>
-			<string>2147483647</string>
-			<key>files</key>
-			<array>
-				<string>BBC2A33D2E719333000BEABE</string>
-				<string>BBC2A3472E719333000BEABE</string>
-				<string>BBC2A34C2E719333000BEABE</string>
-				<string>BBC2A34D2E719333000BEABE</string>
-				<string>BBC2A3572E719333000BEABE</string>
-				<string>BBC2A35F2E719333000BEABE</string>
-				<string>BBC2A3712E719333000BEABE</string>
-				<string>BBC2A3722E719333000BEABE</string>
-				<string>BBC2A3732E719333000BEABE</string>
-				<string>1D1A2B312B1234567890ABD0</string>
-				<string>1D1A2B2E2B1234567890ABCF</string>
-				<string>BB304E7A2E6F9E750054DD40</string>
-			</array>
-			<key>isa</key>
-			<string>PBXResourcesBuildPhase</string>
-			<key>runOnlyForDeploymentPostprocessing</key>
-			<string>0</string>
-		</dict>
-		<key>1D1A2B252B1234567890ABCA</key>
-		<dict>
-			<key>buildConfigurationList</key>
-			<string>1D1A2B362B1234567890ABD2</string>
-			<key>buildPhases</key>
-			<array>
-				<string>1D1A2B222B1234567890ABC9</string>
-				<string>1D1A2B232B1234567890ABCB</string>
-				<string>1D1A2B242B1234567890ABCA</string>
-			</array>
-			<key>buildRules</key>
-			<array/>
-			<key>dependencies</key>
-			<array/>
-			<key>isa</key>
-			<string>PBXNativeTarget</string>
-			<key>name</key>
-			<string>Scrap</string>
-			<key>productName</key>
-			<string>Scrap</string>
-			<key>productReference</key>
-			<string>1D1A2B262B1234567890ABCC</string>
-			<key>productType</key>
-			<string>com.apple.product-type.application</string>
-		</dict>
-		<key>1D1A2B262B1234567890ABCC</key>
-		<dict>
-			<key>explicitFileType</key>
-			<string>wrapper.application</string>
-			<key>includeInIndex</key>
-			<string>0</string>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>path</key>
-			<string>Scrap.app</string>
-			<key>sourceTree</key>
-			<string>BUILT_PRODUCTS_DIR</string>
-		</dict>
-		<key>1D1A2B272B1234567890ABCC</key>
-		<dict>
-			<key>children</key>
-			<array>
-				<string>1D1A2B262B1234567890ABCC</string>
-			</array>
-			<key>isa</key>
-			<string>PBXGroup</string>
-			<key>name</key>
-			<string>Products</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>1D1A2B282B1234567890ABCC</key>
-		<dict>
-			<key>children</key>
-			<array>
-				<string>BBC2A3242E719333000BEABE</string>
-				<string>BB304E862E6FA71E0054DD40</string>
-				<string>BB304E792E6F9E750054DD40</string>
-				<string>1D1A2B292B1234567890ABCD</string>
-				<string>1D1A2B2B2B1234567890ABCE</string>
-				<string>AA304E7A2F6F72980054DD41</string>
-				<string>DD304E872E6FA0000054DD42</string>
-				<string>RT6C1C6BFA551F</string>
-				<string>EE304E892E6FA1000054DD43</string>
-				<string>FF304E8B2E6FA2000054DD44</string>
-				<string>CC304E7C3F6F72990054DD42</string>
-				<string>SM988B63B7218D59C335B7</string>
-				<string>SS42E11169D5C6456E0538</string>
-				<string>1D1A2B2D2B1234567890ABCF</string>
-				<string>1D1A2B2F2B1234567890ABD0</string>
-			</array>
-			<key>isa</key>
-			<string>PBXGroup</string>
-			<key>path</key>
-			<string>Scrap</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>1D1A2B292B1234567890ABCD</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>sourcecode.swift</string>
-			<key>path</key>
-			<string>ScrapApp.swift</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>1D1A2B2A2B1234567890ABCD</key>
-		<dict>
-			<key>fileRef</key>
-			<string>1D1A2B292B1234567890ABCD</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-		<key>1D1A2B2B2B1234567890ABCE</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>sourcecode.swift</string>
-			<key>path</key>
-			<string>ContentView.swift</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>1D1A2B2C2B1234567890ABCE</key>
-		<dict>
-			<key>fileRef</key>
-			<string>1D1A2B2B2B1234567890ABCE</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-		<key>1D1A2B2D2B1234567890ABCF</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>folder.assetcatalog</string>
-			<key>path</key>
-			<string>Assets.xcassets</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>1D1A2B2E2B1234567890ABCF</key>
-		<dict>
-			<key>fileRef</key>
-			<string>1D1A2B2D2B1234567890ABCF</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-		<key>1D1A2B2F2B1234567890ABD0</key>
-		<dict>
-			<key>children</key>
-			<array>
-				<string>1D1A2B302B1234567890ABD0</string>
-			</array>
-			<key>isa</key>
-			<string>PBXGroup</string>
-			<key>path</key>
-			<string>Preview Content</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>1D1A2B302B1234567890ABD0</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>folder.assetcatalog</string>
-			<key>path</key>
-			<string>Preview Assets.xcassets</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>1D1A2B312B1234567890ABD0</key>
-		<dict>
-			<key>fileRef</key>
-			<string>1D1A2B302B1234567890ABD0</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-		<key>1D1A2B342B1234567890ABD2</key>
-		<dict>
-			<key>buildSettings</key>
-			<dict>
-				<key>ALWAYS_SEARCH_USER_PATHS</key>
-				<string>NO</string>
-				<key>ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS</key>
-				<string>YES</string>
-				<key>CLANG_ANALYZER_NONNULL</key>
-				<string>YES</string>
-				<key>CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION</key>
-				<string>YES_AGGRESSIVE</string>
-				<key>CLANG_CXX_LANGUAGE_STANDARD</key>
-				<string>gnu++20</string>
-				<key>CLANG_ENABLE_MODULES</key>
-				<string>YES</string>
-				<key>CLANG_ENABLE_OBJC_ARC</key>
-				<string>YES</string>
-				<key>CLANG_ENABLE_OBJC_WEAK</key>
-				<string>YES</string>
-				<key>CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING</key>
-				<string>YES</string>
-				<key>CLANG_WARN_BOOL_CONVERSION</key>
-				<string>YES</string>
-				<key>CLANG_WARN_COMMA</key>
-				<string>YES</string>
-				<key>CLANG_WARN_CONSTANT_CONVERSION</key>
-				<string>YES</string>
-				<key>CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS</key>
-				<string>YES</string>
-				<key>CLANG_WARN_DIRECT_OBJC_ISA_USAGE</key>
-				<string>YES_ERROR</string>
-				<key>CLANG_WARN_EMPTY_BODY</key>
-				<string>YES</string>
-				<key>CLANG_WARN_ENUM_CONVERSION</key>
-				<string>YES</string>
-				<key>CLANG_WARN_INFINITE_RECURSION</key>
-				<string>YES</string>
-				<key>CLANG_WARN_INT_CONVERSION</key>
-				<string>YES</string>
-				<key>CLANG_WARN_NON_LITERAL_NULL_CONVERSION</key>
-				<string>YES</string>
-				<key>CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF</key>
-				<string>YES</string>
-				<key>CLANG_WARN_OBJC_LITERAL_CONVERSION</key>
-				<string>YES</string>
-				<key>CLANG_WARN_OBJC_ROOT_CLASS</key>
-				<string>YES_ERROR</string>
-				<key>CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER</key>
-				<string>YES</string>
-				<key>CLANG_WARN_RANGE_LOOP_ANALYSIS</key>
-				<string>YES</string>
-				<key>CLANG_WARN_STRICT_PROTOTYPES</key>
-				<string>YES</string>
-				<key>CLANG_WARN_SUSPICIOUS_MOVE</key>
-				<string>YES</string>
-				<key>CLANG_WARN_UNREACHABLE_CODE</key>
-				<string>YES</string>
-				<key>CLANG_WARN__DUPLICATE_METHOD_MATCH</key>
-				<string>YES</string>
-				<key>COPY_PHASE_STRIP</key>
-				<string>NO</string>
-				<key>DEBUG_INFORMATION_FORMAT</key>
-				<string>dwarf</string>
-				<key>DEVELOPMENT_TEAM</key>
-				<string>K8NAZ76CBQ</string>
-				<key>ENABLE_STRICT_OBJC_MSGSEND</key>
-				<string>YES</string>
-				<key>ENABLE_TESTABILITY</key>
-				<string>YES</string>
-				<key>ENABLE_USER_SCRIPT_SANDBOXING</key>
-				<string>YES</string>
-				<key>GCC_C_LANGUAGE_STANDARD</key>
-				<string>gnu11</string>
-				<key>GCC_DYNAMIC_NO_PIC</key>
-				<string>NO</string>
-				<key>GCC_NO_COMMON_BLOCKS</key>
-				<string>YES</string>
-				<key>GCC_OPTIMIZATION_LEVEL</key>
-				<string>0</string>
-				<key>GCC_WARN_64_TO_32_BIT_CONVERSION</key>
-				<string>YES</string>
-				<key>GCC_WARN_ABOUT_RETURN_TYPE</key>
-				<string>YES_ERROR</string>
-				<key>GCC_WARN_UNDECLARED_SELECTOR</key>
-				<string>YES</string>
-				<key>GCC_WARN_UNINITIALIZED_AUTOS</key>
-				<string>YES_AGGRESSIVE</string>
-				<key>GCC_WARN_UNUSED_FUNCTION</key>
-				<string>YES</string>
-				<key>GCC_WARN_UNUSED_VARIABLE</key>
-				<string>YES</string>
-				<key>IPHONEOS_DEPLOYMENT_TARGET</key>
-				<string>16.0</string>
-				<key>MTL_ENABLE_DEBUG_INFO</key>
-				<string>INCLUDE_SOURCE</string>
-				<key>MTL_FAST_MATH</key>
-				<string>YES</string>
-				<key>ONLY_ACTIVE_ARCH</key>
-				<string>YES</string>
-				<key>SDKROOT</key>
-				<string>iphoneos</string>
-				<key>SWIFT_ACTIVE_COMPILATION_CONDITIONS</key>
-				<string>DEBUG</string>
-				<key>SWIFT_OPTIMIZATION_LEVEL</key>
-				<string>-Onone</string>
-			</dict>
-			<key>isa</key>
-			<string>XCBuildConfiguration</string>
-			<key>name</key>
-			<string>Debug</string>
-		</dict>
-		<key>1D1A2B352B1234567890ABD3</key>
-		<dict>
-			<key>buildSettings</key>
-			<dict>
-				<key>ALWAYS_SEARCH_USER_PATHS</key>
-				<string>NO</string>
-				<key>ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS</key>
-				<string>YES</string>
-				<key>CLANG_ANALYZER_NONNULL</key>
-				<string>YES</string>
-				<key>CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION</key>
-				<string>YES_AGGRESSIVE</string>
-				<key>CLANG_CXX_LANGUAGE_STANDARD</key>
-				<string>gnu++20</string>
-				<key>CLANG_ENABLE_MODULES</key>
-				<string>YES</string>
-				<key>CLANG_ENABLE_OBJC_ARC</key>
-				<string>YES</string>
-				<key>CLANG_ENABLE_OBJC_WEAK</key>
-				<string>YES</string>
-				<key>CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING</key>
-				<string>YES</string>
-				<key>CLANG_WARN_BOOL_CONVERSION</key>
-				<string>YES</string>
-				<key>CLANG_WARN_COMMA</key>
-				<string>YES</string>
-				<key>CLANG_WARN_CONSTANT_CONVERSION</key>
-				<string>YES</string>
-				<key>CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS</key>
-				<string>YES</string>
-				<key>CLANG_WARN_DIRECT_OBJC_ISA_USAGE</key>
-				<string>YES_ERROR</string>
-				<key>CLANG_WARN_EMPTY_BODY</key>
-				<string>YES</string>
-				<key>CLANG_WARN_ENUM_CONVERSION</key>
-				<string>YES</string>
-				<key>CLANG_WARN_INFINITE_RECURSION</key>
-				<string>YES</string>
-				<key>CLANG_WARN_INT_CONVERSION</key>
-				<string>YES</string>
-				<key>CLANG_WARN_NON_LITERAL_NULL_CONVERSION</key>
-				<string>YES</string>
-				<key>CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF</key>
-				<string>YES</string>
-				<key>CLANG_WARN_OBJC_LITERAL_CONVERSION</key>
-				<string>YES</string>
-				<key>CLANG_WARN_OBJC_ROOT_CLASS</key>
-				<string>YES_ERROR</string>
-				<key>CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER</key>
-				<string>YES</string>
-				<key>CLANG_WARN_RANGE_LOOP_ANALYSIS</key>
-				<string>YES</string>
-				<key>CLANG_WARN_STRICT_PROTOTYPES</key>
-				<string>YES</string>
-				<key>CLANG_WARN_SUSPICIOUS_MOVE</key>
-				<string>YES</string>
-				<key>CLANG_WARN_UNREACHABLE_CODE</key>
-				<string>YES</string>
-				<key>CLANG_WARN__DUPLICATE_METHOD_MATCH</key>
-				<string>YES</string>
-				<key>COPY_PHASE_STRIP</key>
-				<string>NO</string>
-				<key>DEBUG_INFORMATION_FORMAT</key>
-				<string>dwarf-with-dsym</string>
-				<key>DEVELOPMENT_TEAM</key>
-				<string>K8NAZ76CBQ</string>
-				<key>ENABLE_NS_ASSERTIONS</key>
-				<string>NO</string>
-				<key>ENABLE_STRICT_OBJC_MSGSEND</key>
-				<string>YES</string>
-				<key>ENABLE_USER_SCRIPT_SANDBOXING</key>
-				<string>YES</string>
-				<key>GCC_C_LANGUAGE_STANDARD</key>
-				<string>gnu11</string>
-				<key>GCC_NO_COMMON_BLOCKS</key>
-				<string>YES</string>
-				<key>GCC_WARN_64_TO_32_BIT_CONVERSION</key>
-				<string>YES</string>
-				<key>GCC_WARN_ABOUT_RETURN_TYPE</key>
-				<string>YES_ERROR</string>
-				<key>GCC_WARN_UNDECLARED_SELECTOR</key>
-				<string>YES</string>
-				<key>GCC_WARN_UNINITIALIZED_AUTOS</key>
-				<string>YES_AGGRESSIVE</string>
-				<key>GCC_WARN_UNUSED_FUNCTION</key>
-				<string>YES</string>
-				<key>GCC_WARN_UNUSED_VARIABLE</key>
-				<string>YES</string>
-				<key>IPHONEOS_DEPLOYMENT_TARGET</key>
-				<string>16.0</string>
-				<key>MTL_ENABLE_DEBUG_INFO</key>
-				<string>NO</string>
-				<key>MTL_FAST_MATH</key>
-				<string>YES</string>
-				<key>SDKROOT</key>
-				<string>iphoneos</string>
-				<key>SWIFT_COMPILATION_MODE</key>
-				<string>wholemodule</string>
-				<key>SWIFT_OPTIMIZATION_LEVEL</key>
-				<string>-O</string>
-				<key>VALIDATE_PRODUCT</key>
-				<string>YES</string>
-			</dict>
-			<key>isa</key>
-			<string>XCBuildConfiguration</string>
-			<key>name</key>
-			<string>Release</string>
-		</dict>
-		<key>1D1A2B362B1234567890ABD2</key>
-		<dict>
-			<key>buildConfigurations</key>
-			<array>
-				<string>1D1A2B372B1234567890ABD4</string>
-				<string>1D1A2B382B1234567890ABD5</string>
-			</array>
-			<key>defaultConfigurationIsVisible</key>
-			<string>0</string>
-			<key>defaultConfigurationName</key>
-			<string>Release</string>
-			<key>isa</key>
-			<string>XCConfigurationList</string>
-		</dict>
-		<key>1D1A2B372B1234567890ABD4</key>
-		<dict>
-			<key>buildSettings</key>
-			<dict>
-				<key>ASSETCATALOG_COMPILER_APPICON_NAME</key>
-				<string>AppIcon</string>
-				<key>ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME</key>
-				<string>AccentColor</string>
-				<key>CODE_SIGN_ENTITLEMENTS</key>
-				<string>Scrap/Scrap.entitlements</string>
-				<key>CODE_SIGN_STYLE</key>
-				<string>Automatic</string>
-				<key>CURRENT_PROJECT_VERSION</key>
-				<string>1</string>
-				<key>DEVELOPMENT_ASSET_PATHS</key>
-				<string>"Scrap/Preview Content"</string>
-				<key>DEVELOPMENT_TEAM</key>
-				<string>K8NAZ76CBQ</string>
-				<key>ENABLE_PREVIEWS</key>
-				<string>YES</string>
-				<key>GENERATE_INFOPLIST_FILE</key>
-				<string>NO</string>
-				<key>INFOPLIST_FILE</key>
-				<string>Scrap/Info.plist</string>
-				<key>INFOPLIST_KEY_CFBundleDisplayName</key>
-				<string>Scrap</string>
-				<key>INFOPLIST_KEY_LSApplicationCategoryType</key>
-				<string>public.app-category.lifestyle</string>
-				<key>INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents</key>
-				<string>YES</string>
-				<key>INFOPLIST_KEY_UILaunchScreen_Generation</key>
-				<string>YES</string>
-				<key>INFOPLIST_KEY_UISupportedInterfaceOrientations</key>
-				<string>UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight</string>
-				<key>IPHONEOS_DEPLOYMENT_TARGET</key>
-				<string>16.0</string>
-				<key>LD_RUNPATH_SEARCH_PATHS</key>
-				<array>
-					<string>$(inherited)</string>
-					<string>@executable_path/Frameworks</string>
-				</array>
-				<key>MARKETING_VERSION</key>
-				<string>1.0</string>
-				<key>PRODUCT_BUNDLE_IDENTIFIER</key>
-				<string>com.muckstack.scrap</string>
-				<key>PRODUCT_NAME</key>
-				<string>Scrap</string>
-				<key>SUPPORTED_PLATFORMS</key>
-				<string>iphoneos iphonesimulator</string>
-				<key>SUPPORTS_MACCATALYST</key>
-				<string>NO</string>
-				<key>SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD</key>
-				<string>NO</string>
-				<key>SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD</key>
-				<string>NO</string>
-				<key>SWIFT_EMIT_LOC_STRINGS</key>
-				<string>YES</string>
-				<key>SWIFT_VERSION</key>
-				<string>5.0</string>
-				<key>TARGETED_DEVICE_FAMILY</key>
-				<string>1</string>
-			</dict>
-			<key>isa</key>
-			<string>XCBuildConfiguration</string>
-			<key>name</key>
-			<string>Debug</string>
-		</dict>
-		<key>1D1A2B382B1234567890ABD5</key>
-		<dict>
-			<key>buildSettings</key>
-			<dict>
-				<key>ASSETCATALOG_COMPILER_APPICON_NAME</key>
-				<string>AppIcon</string>
-				<key>ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME</key>
-				<string>AccentColor</string>
-				<key>CODE_SIGN_ENTITLEMENTS</key>
-				<string>Scrap/Scrap.entitlements</string>
-				<key>CODE_SIGN_IDENTITY</key>
-				<string>Apple Development</string>
-				<key>CODE_SIGN_STYLE</key>
-				<string>Automatic</string>
-				<key>CURRENT_PROJECT_VERSION</key>
-				<string>1</string>
-				<key>DEVELOPMENT_ASSET_PATHS</key>
-				<string>"Scrap/Preview Content"</string>
-				<key>DEVELOPMENT_TEAM</key>
-				<string>K8NAZ76CBQ</string>
-				<key>ENABLE_PREVIEWS</key>
-				<string>YES</string>
-				<key>GENERATE_INFOPLIST_FILE</key>
-				<string>NO</string>
-				<key>INFOPLIST_FILE</key>
-				<string>Scrap/Info.plist</string>
-				<key>INFOPLIST_KEY_CFBundleDisplayName</key>
-				<string>Scrap</string>
-				<key>INFOPLIST_KEY_LSApplicationCategoryType</key>
-				<string>public.app-category.lifestyle</string>
-				<key>INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents</key>
-				<string>YES</string>
-				<key>INFOPLIST_KEY_UILaunchScreen_Generation</key>
-				<string>YES</string>
-				<key>INFOPLIST_KEY_UISupportedInterfaceOrientations</key>
-				<string>UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight</string>
-				<key>IPHONEOS_DEPLOYMENT_TARGET</key>
-				<string>16.0</string>
-				<key>LD_RUNPATH_SEARCH_PATHS</key>
-				<array>
-					<string>$(inherited)</string>
-					<string>@executable_path/Frameworks</string>
-				</array>
-				<key>MARKETING_VERSION</key>
-				<string>1.0</string>
-				<key>PRODUCT_BUNDLE_IDENTIFIER</key>
-				<string>com.muckstack.scrap</string>
-				<key>PRODUCT_NAME</key>
-				<string>Scrap</string>
-				<key>SUPPORTED_PLATFORMS</key>
-				<string>iphoneos iphonesimulator</string>
-				<key>SUPPORTS_MACCATALYST</key>
-				<string>NO</string>
-				<key>SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD</key>
-				<string>NO</string>
-				<key>SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD</key>
-				<string>NO</string>
-				<key>SWIFT_EMIT_LOC_STRINGS</key>
-				<string>YES</string>
-				<key>SWIFT_VERSION</key>
-				<string>5.0</string>
-				<key>TARGETED_DEVICE_FAMILY</key>
-				<string>1</string>
-			</dict>
-			<key>isa</key>
-			<string>XCBuildConfiguration</string>
-			<key>name</key>
-			<string>Release</string>
-		</dict>
-		<key>AA304E792F6F72980054DD41</key>
-		<dict>
-			<key>fileRef</key>
-			<string>AA304E7A2F6F72980054DD41</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-		<key>AA304E7A2F6F72980054DD41</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>sourcecode.swift</string>
-			<key>path</key>
-			<string>AnalyticsManager.swift</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>BB304E762E6F72970054DD40</key>
-		<dict>
-			<key>isa</key>
-			<string>XCRemoteSwiftPackageReference</string>
-			<key>repositoryURL</key>
-			<string>https://github.com/amplitude/Amplitude-Swift</string>
-			<key>requirement</key>
-			<dict>
-				<key>branch</key>
-				<string>main</string>
-				<key>kind</key>
-				<string>branch</string>
-			</dict>
-		</dict>
-		<key>BB304E772E6F72970054DD40</key>
-		<dict>
-			<key>isa</key>
-			<string>XCSwiftPackageProductDependency</string>
-			<key>package</key>
-			<string>BB304E762E6F72970054DD40</string>
-			<key>productName</key>
-			<string>AmplitudeSwift</string>
-		</dict>
-		<key>BB304E782E6F72970054DD40</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-			<key>productRef</key>
-			<string>BB304E772E6F72970054DD40</string>
-		</dict>
-		<key>BB304E792E6F9E750054DD40</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>text.plist.xml</string>
-			<key>path</key>
-			<string>GoogleService-Info.plist</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>BB304E7A2E6F9E750054DD40</key>
-		<dict>
-			<key>fileRef</key>
-			<string>BB304E792E6F9E750054DD40</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-		<key>BB304E7B2E6F9EEA0054DD40</key>
-		<dict>
-			<key>isa</key>
-			<string>XCRemoteSwiftPackageReference</string>
-			<key>repositoryURL</key>
-			<string>https://github.com/firebase/firebase-ios-sdk</string>
-			<key>requirement</key>
-			<dict>
-				<key>kind</key>
-				<string>upToNextMajorVersion</string>
-				<key>minimumVersion</key>
-				<string>12.2.0</string>
-			</dict>
-		</dict>
-		<key>BB304E7C2E6F9EEA0054DD40</key>
-		<dict>
-			<key>isa</key>
-			<string>XCSwiftPackageProductDependency</string>
-			<key>package</key>
-			<string>BB304E7B2E6F9EEA0054DD40</string>
-			<key>productName</key>
-			<string>FirebaseAuth</string>
-		</dict>
-		<key>BB304E7D2E6F9EEA0054DD40</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-			<key>productRef</key>
-			<string>BB304E7C2E6F9EEA0054DD40</string>
-		</dict>
-		<key>BB304E7E2E6F9EEA0054DD40</key>
-		<dict>
-			<key>isa</key>
-			<string>XCSwiftPackageProductDependency</string>
-			<key>package</key>
-			<string>BB304E7B2E6F9EEA0054DD40</string>
-			<key>productName</key>
-			<string>FirebaseCore</string>
-		</dict>
-		<key>BB304E7F2E6F9EEA0054DD40</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-			<key>productRef</key>
-			<string>BB304E7E2E6F9EEA0054DD40</string>
-		</dict>
-		<key>BB304E802E6F9EEA0054DD40</key>
-		<dict>
-			<key>isa</key>
-			<string>XCSwiftPackageProductDependency</string>
-			<key>package</key>
-			<string>BB304E7B2E6F9EEA0054DD40</string>
-			<key>productName</key>
-			<string>FirebaseFirestore</string>
-		</dict>
-		<key>BB304E812E6F9EEA0054DD40</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-			<key>productRef</key>
-			<string>BB304E802E6F9EEA0054DD40</string>
-		</dict>
-		<key>BB304E822E6F9F0A0054DD40</key>
-		<dict>
-			<key>isa</key>
-			<string>XCSwiftPackageProductDependency</string>
-			<key>package</key>
-			<string>BB304E7B2E6F9EEA0054DD40</string>
-			<key>productName</key>
-			<string>FirebaseFunctions</string>
-		</dict>
-		<key>BB304E832E6F9F0A0054DD40</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-			<key>productRef</key>
-			<string>BB304E822E6F9F0A0054DD40</string>
-		</dict>
-		<key>BB304E842E6F9F0A0054DD40</key>
-		<dict>
-			<key>isa</key>
-			<string>XCSwiftPackageProductDependency</string>
-			<key>package</key>
-			<string>BB304E7B2E6F9EEA0054DD40</string>
-			<key>productName</key>
-			<string>FirebaseStorage</string>
-		</dict>
-		<key>BB304E852E6F9F0A0054DD40</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-			<key>productRef</key>
-			<string>BB304E842E6F9F0A0054DD40</string>
-		</dict>
-		<key>BB304E862E6FA71E0054DD40</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>text.plist.entitlements</string>
-			<key>path</key>
-			<string>Scrap.entitlements</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>BB304E872E6FA8650054DD40</key>
-		<dict>
-			<key>isa</key>
-			<string>XCRemoteSwiftPackageReference</string>
-			<key>repositoryURL</key>
-			<string>https://github.com/google/GoogleSignIn-iOS</string>
-			<key>requirement</key>
-			<dict>
-				<key>kind</key>
-				<string>upToNextMajorVersion</string>
-				<key>minimumVersion</key>
-				<string>9.0.0</string>
-			</dict>
-		</dict>
-		<key>BB304E882E6FA8650054DD40</key>
-		<dict>
-			<key>isa</key>
-			<string>XCSwiftPackageProductDependency</string>
-			<key>package</key>
-			<string>BB304E872E6FA8650054DD40</string>
-			<key>productName</key>
-			<string>GoogleSignIn</string>
-		</dict>
-		<key>BB304E892E6FA8650054DD40</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-			<key>productRef</key>
-			<string>BB304E882E6FA8650054DD40</string>
-		</dict>
-		<key>BB304E8A2E6FA8650054DD40</key>
-		<dict>
-			<key>isa</key>
-			<string>XCSwiftPackageProductDependency</string>
-			<key>package</key>
-			<string>BB304E872E6FA8650054DD40</string>
-			<key>productName</key>
-			<string>GoogleSignInSwift</string>
-		</dict>
-		<key>BB304E8B2E6FA8650054DD40</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-			<key>productRef</key>
-			<string>BB304E8A2E6FA8650054DD40</string>
-		</dict>
-		<key>BBC2A31A2E719333000BEABE</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>file</string>
-			<key>path</key>
-			<string>SharpGrotesk-Book.otf</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>BBC2A31B2E719333000BEABE</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>file</string>
-			<key>path</key>
-			<string>SharpGrotesk-BookItalic.otf</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>BBC2A31C2E719333000BEABE</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>file</string>
-			<key>path</key>
-			<string>SharpGrotesk-Light.otf</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>BBC2A31D2E719333000BEABE</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>file</string>
-			<key>path</key>
-			<string>SharpGrotesk-LightItalic.otf</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>BBC2A31E2E719333000BEABE</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>file</string>
-			<key>path</key>
-			<string>SharpGrotesk-Medium.otf</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>BBC2A31F2E719333000BEABE</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>file</string>
-			<key>path</key>
-			<string>SharpGrotesk-MediumItalic.otf</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>BBC2A3202E719333000BEABE</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>file</string>
-			<key>path</key>
-			<string>SharpGrotesk-SemiBold.otf</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>BBC2A3212E719333000BEABE</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>file</string>
-			<key>path</key>
-			<string>SharpGrotesk-Thin.otf</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>BBC2A3222E719333000BEABE</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>file</string>
-			<key>path</key>
-			<string>SharpGrotesk-ThinItalic.otf</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>BBC2A3232E719333000BEABE</key>
-		<dict>
-			<key>children</key>
-			<array>
-				<string>BBC2A31A2E719333000BEABE</string>
-				<string>BBC2A31B2E719333000BEABE</string>
-				<string>BBC2A31C2E719333000BEABE</string>
-				<string>BBC2A31D2E719333000BEABE</string>
-				<string>BBC2A31E2E719333000BEABE</string>
-				<string>BBC2A31F2E719333000BEABE</string>
-				<string>BBC2A3202E719333000BEABE</string>
-				<string>BBC2A3212E719333000BEABE</string>
-				<string>BBC2A3222E719333000BEABE</string>
-			</array>
-			<key>isa</key>
-			<string>PBXGroup</string>
-			<key>path</key>
-			<string>SharpGrotesk</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>BBC2A3242E719333000BEABE</key>
-		<dict>
-			<key>children</key>
-			<array>
-				<string>BBC2A3232E719333000BEABE</string>
-			</array>
-			<key>isa</key>
-			<string>PBXGroup</string>
-			<key>path</key>
-			<string>Fonts</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>BBC2A33D2E719333000BEABE</key>
-		<dict>
-			<key>fileRef</key>
-			<string>BBC2A3202E719333000BEABE</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-		<key>BBC2A3472E719333000BEABE</key>
-		<dict>
-			<key>fileRef</key>
-			<string>BBC2A31D2E719333000BEABE</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-		<key>BBC2A34C2E719333000BEABE</key>
-		<dict>
-			<key>fileRef</key>
-			<string>BBC2A31B2E719333000BEABE</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-		<key>BBC2A34D2E719333000BEABE</key>
-		<dict>
-			<key>fileRef</key>
-			<string>BBC2A31A2E719333000BEABE</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-		<key>BBC2A3572E719333000BEABE</key>
-		<dict>
-			<key>fileRef</key>
-			<string>BBC2A31E2E719333000BEABE</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-		<key>BBC2A35F2E719333000BEABE</key>
-		<dict>
-			<key>fileRef</key>
-			<string>BBC2A3212E719333000BEABE</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-		<key>BBC2A3712E719333000BEABE</key>
-		<dict>
-			<key>fileRef</key>
-			<string>BBC2A31C2E719333000BEABE</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-		<key>BBC2A3722E719333000BEABE</key>
-		<dict>
-			<key>fileRef</key>
-			<string>BBC2A3222E719333000BEABE</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-		<key>BBC2A3732E719333000BEABE</key>
-		<dict>
-			<key>fileRef</key>
-			<string>BBC2A31F2E719333000BEABE</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-		<key>CC304E7B3F6F72990054DD42</key>
-		<dict>
-			<key>fileRef</key>
-			<string>CC304E7C3F6F72990054DD42</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-		<key>CC304E7C3F6F72990054DD42</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>sourcecode.swift</string>
-			<key>path</key>
-			<string>TestContentView.swift</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>DD304E862E6FA0000054DD42</key>
-		<dict>
-			<key>fileRef</key>
-			<string>DD304E872E6FA0000054DD42</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-		<key>DD304E872E6FA0000054DD42</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>sourcecode.swift</string>
-			<key>path</key>
-			<string>FirebaseManager.swift</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>EE304E882E6FA1000054DD43</key>
-		<dict>
-			<key>fileRef</key>
-			<string>EE304E892E6FA1000054DD43</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-		<key>EE304E892E6FA1000054DD43</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>sourcecode.swift</string>
-			<key>path</key>
-			<string>AuthenticationView.swift</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>FF304E8A2E6FA2000054DD44</key>
-		<dict>
-			<key>fileRef</key>
-			<string>FF304E8B2E6FA2000054DD44</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-		<key>FF304E8B2E6FA2000054DD44</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>sourcecode.swift</string>
-			<key>path</key>
-			<string>ChromaService.swift</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>RT6C1C6BFA551F</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>sourcecode.swift</string>
-			<key>path</key>
-			<string>RichTextTransformer.swift</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>RTB79366E98E99</key>
-		<dict>
-			<key>fileRef</key>
-			<string>RT6C1C6BFA551F</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-		<key>SM746984E3905E9248F740</key>
-		<dict>
-			<key>fileRef</key>
-			<string>SM988B63B7218D59C335B7</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-		<key>SM988B63B7218D59C335B7</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>sourcecode.swift</string>
-			<key>path</key>
-			<string>SparkModels.swift</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>SS42E11169D5C6456E0538</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>sourcecode.swift</string>
-			<key>path</key>
-			<string>SparkServices.swift</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>SS7CB67F2F072D9CA9AE6D</key>
-		<dict>
-			<key>fileRef</key>
-			<string>SS42E11169D5C6456E0538</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-	</dict>
-	<key>rootObject</key>
-	<string>1D1A2B1E2B1234567890ABCA</string>
-</dict>
-</plist>
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		1D1A2B2A2B1234567890ABCD /* ScrapApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1A2B292B1234567890ABCD /* ScrapApp.swift */; };
+		1D1A2B2C2B1234567890ABCE /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1A2B2B2B1234567890ABCE /* ContentView.swift */; };
+		1D1A2B2E2B1234567890ABCF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1D1A2B2D2B1234567890ABCF /* Assets.xcassets */; };
+		1D1A2B312B1234567890ABD0 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1D1A2B302B1234567890ABD0 /* Preview Assets.xcassets */; };
+		AA304E792F6F72980054DD41 /* AnalyticsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA304E7A2F6F72980054DD41 /* AnalyticsManager.swift */; };
+		BB304E782E6F72970054DD40 /* AmplitudeSwift in Frameworks */ = {isa = PBXBuildFile; productRef = BB304E772E6F72970054DD40 /* AmplitudeSwift */; };
+		BB304E7A2E6F9E750054DD40 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB304E792E6F9E750054DD40 /* GoogleService-Info.plist */; };
+		BB304E7D2E6F9EEA0054DD40 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = BB304E7C2E6F9EEA0054DD40 /* FirebaseAuth */; };
+		BB304E7F2E6F9EEA0054DD40 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = BB304E7E2E6F9EEA0054DD40 /* FirebaseCore */; };
+		BB304E812E6F9EEA0054DD40 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = BB304E802E6F9EEA0054DD40 /* FirebaseFirestore */; };
+		BB304E832E6F9F0A0054DD40 /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = BB304E822E6F9F0A0054DD40 /* FirebaseFunctions */; };
+		BB304E852E6F9F0A0054DD40 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = BB304E842E6F9F0A0054DD40 /* FirebaseStorage */; };
+		BB304E892E6FA8650054DD40 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = BB304E882E6FA8650054DD40 /* GoogleSignIn */; };
+		BB304E8B2E6FA8650054DD40 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = BB304E8A2E6FA8650054DD40 /* GoogleSignInSwift */; };
+		BBC2A33D2E719333000BEABE /* SharpGrotesk-SemiBold.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3202E719333000BEABE /* SharpGrotesk-SemiBold.otf */; };
+		BBC2A3472E719333000BEABE /* SharpGrotesk-LightItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A31D2E719333000BEABE /* SharpGrotesk-LightItalic.otf */; };
+		BBC2A34C2E719333000BEABE /* SharpGrotesk-BookItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A31B2E719333000BEABE /* SharpGrotesk-BookItalic.otf */; };
+		BBC2A34D2E719333000BEABE /* SharpGrotesk-Book.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A31A2E719333000BEABE /* SharpGrotesk-Book.otf */; };
+		BBC2A3572E719333000BEABE /* SharpGrotesk-Medium.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A31E2E719333000BEABE /* SharpGrotesk-Medium.otf */; };
+		BBC2A35F2E719333000BEABE /* SharpGrotesk-Thin.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3212E719333000BEABE /* SharpGrotesk-Thin.otf */; };
+		BBC2A3712E719333000BEABE /* SharpGrotesk-Light.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A31C2E719333000BEABE /* SharpGrotesk-Light.otf */; };
+		BBC2A3722E719333000BEABE /* SharpGrotesk-ThinItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3222E719333000BEABE /* SharpGrotesk-ThinItalic.otf */; };
+		BBC2A3732E719333000BEABE /* SharpGrotesk-MediumItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A31F2E719333000BEABE /* SharpGrotesk-MediumItalic.otf */; };
+		CC304E7B3F6F72990054DD42 /* TestContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC304E7C3F6F72990054DD42 /* TestContentView.swift */; };
+		DD304E862E6FA0000054DD42 /* FirebaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD304E872E6FA0000054DD42 /* FirebaseManager.swift */; };
+		EE304E882E6FA1000054DD43 /* AuthenticationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE304E892E6FA1000054DD43 /* AuthenticationView.swift */; };
+		FF304E8A2E6FA2000054DD44 /* ChromaService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF304E8B2E6FA2000054DD44 /* ChromaService.swift */; };
+		RTB79366E98E99 /* RichTextTransformer.swift in Sources */ = {isa = PBXBuildFile; fileRef = RT6C1C6BFA551F /* RichTextTransformer.swift */; };
+		SM746984E3905E9248F740 /* SparkModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = SM988B63B7218D59C335B7 /* SparkModels.swift */; };
+		SS7CB67F2F072D9CA9AE6D /* SparkServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = SS42E11169D5C6456E0538 /* SparkServices.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		1D1A2B262B1234567890ABCC /* Scrap.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Scrap.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		1D1A2B292B1234567890ABCD /* ScrapApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrapApp.swift; sourceTree = "<group>"; };
+		1D1A2B2B2B1234567890ABCE /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		1D1A2B2D2B1234567890ABCF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		1D1A2B302B1234567890ABD0 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		AA304E7A2F6F72980054DD41 /* AnalyticsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsManager.swift; sourceTree = "<group>"; };
+		BB304E792E6F9E750054DD40 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		BB304E862E6FA71E0054DD40 /* Scrap.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Scrap.entitlements; sourceTree = "<group>"; };
+		BBC2A31A2E719333000BEABE /* SharpGrotesk-Book.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-Book.otf"; sourceTree = "<group>"; };
+		BBC2A31B2E719333000BEABE /* SharpGrotesk-BookItalic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-BookItalic.otf"; sourceTree = "<group>"; };
+		BBC2A31C2E719333000BEABE /* SharpGrotesk-Light.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-Light.otf"; sourceTree = "<group>"; };
+		BBC2A31D2E719333000BEABE /* SharpGrotesk-LightItalic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-LightItalic.otf"; sourceTree = "<group>"; };
+		BBC2A31E2E719333000BEABE /* SharpGrotesk-Medium.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-Medium.otf"; sourceTree = "<group>"; };
+		BBC2A31F2E719333000BEABE /* SharpGrotesk-MediumItalic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-MediumItalic.otf"; sourceTree = "<group>"; };
+		BBC2A3202E719333000BEABE /* SharpGrotesk-SemiBold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-SemiBold.otf"; sourceTree = "<group>"; };
+		BBC2A3212E719333000BEABE /* SharpGrotesk-Thin.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-Thin.otf"; sourceTree = "<group>"; };
+		BBC2A3222E719333000BEABE /* SharpGrotesk-ThinItalic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-ThinItalic.otf"; sourceTree = "<group>"; };
+		CC304E7C3F6F72990054DD42 /* TestContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestContentView.swift; sourceTree = "<group>"; };
+		DD304E872E6FA0000054DD42 /* FirebaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseManager.swift; sourceTree = "<group>"; };
+		EE304E892E6FA1000054DD43 /* AuthenticationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationView.swift; sourceTree = "<group>"; };
+		FF304E8B2E6FA2000054DD44 /* ChromaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChromaService.swift; sourceTree = "<group>"; };
+		RT6C1C6BFA551F /* RichTextTransformer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextTransformer.swift; sourceTree = "<group>"; };
+		SM988B63B7218D59C335B7 /* SparkModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparkModels.swift; sourceTree = "<group>"; };
+		SS42E11169D5C6456E0538 /* SparkServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparkServices.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		1D1A2B232B1234567890ABCB /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BB304E782E6F72970054DD40 /* AmplitudeSwift in Frameworks */,
+				BB304E812E6F9EEA0054DD40 /* FirebaseFirestore in Frameworks */,
+				BB304E832E6F9F0A0054DD40 /* FirebaseFunctions in Frameworks */,
+				BB304E8B2E6FA8650054DD40 /* GoogleSignInSwift in Frameworks */,
+				BB304E7F2E6F9EEA0054DD40 /* FirebaseCore in Frameworks */,
+				BB304E7D2E6F9EEA0054DD40 /* FirebaseAuth in Frameworks */,
+				BB304E852E6F9F0A0054DD40 /* FirebaseStorage in Frameworks */,
+				BB304E892E6FA8650054DD40 /* GoogleSignIn in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		1D1A2B1D2B1234567890ABCA = {
+			isa = PBXGroup;
+			children = (
+				1D1A2B282B1234567890ABCC /* Scrap */,
+				1D1A2B272B1234567890ABCC /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		1D1A2B272B1234567890ABCC /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				1D1A2B262B1234567890ABCC /* Scrap.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		1D1A2B282B1234567890ABCC /* Scrap */ = {
+			isa = PBXGroup;
+			children = (
+				BBC2A3242E719333000BEABE /* Fonts */,
+				BB304E862E6FA71E0054DD40 /* Scrap.entitlements */,
+				BB304E792E6F9E750054DD40 /* GoogleService-Info.plist */,
+				1D1A2B292B1234567890ABCD /* ScrapApp.swift */,
+				1D1A2B2B2B1234567890ABCE /* ContentView.swift */,
+				AA304E7A2F6F72980054DD41 /* AnalyticsManager.swift */,
+				DD304E872E6FA0000054DD42 /* FirebaseManager.swift */,
+				RT6C1C6BFA551F /* RichTextTransformer.swift */,
+				EE304E892E6FA1000054DD43 /* AuthenticationView.swift */,
+				FF304E8B2E6FA2000054DD44 /* ChromaService.swift */,
+				CC304E7C3F6F72990054DD42 /* TestContentView.swift */,
+				SM988B63B7218D59C335B7 /* SparkModels.swift */,
+				SS42E11169D5C6456E0538 /* SparkServices.swift */,
+				1D1A2B2D2B1234567890ABCF /* Assets.xcassets */,
+				1D1A2B2F2B1234567890ABD0 /* Preview Content */,
+			);
+			path = Scrap;
+			sourceTree = "<group>";
+		};
+		1D1A2B2F2B1234567890ABD0 /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				1D1A2B302B1234567890ABD0 /* Preview Assets.xcassets */,
+			);
+			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		BBC2A3232E719333000BEABE /* SharpGrotesk */ = {
+			isa = PBXGroup;
+			children = (
+				BBC2A31A2E719333000BEABE /* SharpGrotesk-Book.otf */,
+				BBC2A31B2E719333000BEABE /* SharpGrotesk-BookItalic.otf */,
+				BBC2A31C2E719333000BEABE /* SharpGrotesk-Light.otf */,
+				BBC2A31D2E719333000BEABE /* SharpGrotesk-LightItalic.otf */,
+				BBC2A31E2E719333000BEABE /* SharpGrotesk-Medium.otf */,
+				BBC2A31F2E719333000BEABE /* SharpGrotesk-MediumItalic.otf */,
+				BBC2A3202E719333000BEABE /* SharpGrotesk-SemiBold.otf */,
+				BBC2A3212E719333000BEABE /* SharpGrotesk-Thin.otf */,
+				BBC2A3222E719333000BEABE /* SharpGrotesk-ThinItalic.otf */,
+			);
+			path = SharpGrotesk;
+			sourceTree = "<group>";
+		};
+		BBC2A3242E719333000BEABE /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				BBC2A3232E719333000BEABE /* SharpGrotesk */,
+			);
+			path = Fonts;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		1D1A2B252B1234567890ABCA /* Scrap */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1D1A2B362B1234567890ABD2 /* Build configuration list for PBXNativeTarget "Scrap" */;
+			buildPhases = (
+				1D1A2B222B1234567890ABC9 /* Sources */,
+				1D1A2B232B1234567890ABCB /* Frameworks */,
+				1D1A2B242B1234567890ABCA /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Scrap;
+			productName = Scrap;
+			productReference = 1D1A2B262B1234567890ABCC /* Scrap.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		1D1A2B1E2B1234567890ABCA /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1430;
+				LastUpgradeCheck = 1640;
+				TargetAttributes = {
+					1D1A2B252B1234567890ABCA = {
+						CreatedOnToolsVersion = 14.3;
+					};
+				};
+			};
+			buildConfigurationList = 1D1A2B212B1234567890ABCA /* Build configuration list for PBXProject "Scrap" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 1D1A2B1D2B1234567890ABCA;
+			packageReferences = (
+				BB304E762E6F72970054DD40 /* XCRemoteSwiftPackageReference "Amplitude-Swift" */,
+				BB304E7B2E6F9EEA0054DD40 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				BB304E872E6FA8650054DD40 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+			);
+			productRefGroup = 1D1A2B272B1234567890ABCC /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				1D1A2B252B1234567890ABCA /* Scrap */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		1D1A2B242B1234567890ABCA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BBC2A33D2E719333000BEABE /* SharpGrotesk-SemiBold.otf in Resources */,
+				BBC2A3472E719333000BEABE /* SharpGrotesk-LightItalic.otf in Resources */,
+				BBC2A34C2E719333000BEABE /* SharpGrotesk-BookItalic.otf in Resources */,
+				BBC2A34D2E719333000BEABE /* SharpGrotesk-Book.otf in Resources */,
+				BBC2A3572E719333000BEABE /* SharpGrotesk-Medium.otf in Resources */,
+				BBC2A35F2E719333000BEABE /* SharpGrotesk-Thin.otf in Resources */,
+				BBC2A3712E719333000BEABE /* SharpGrotesk-Light.otf in Resources */,
+				BBC2A3722E719333000BEABE /* SharpGrotesk-ThinItalic.otf in Resources */,
+				BBC2A3732E719333000BEABE /* SharpGrotesk-MediumItalic.otf in Resources */,
+				1D1A2B312B1234567890ABD0 /* Preview Assets.xcassets in Resources */,
+				1D1A2B2E2B1234567890ABCF /* Assets.xcassets in Resources */,
+				BB304E7A2E6F9E750054DD40 /* GoogleService-Info.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		1D1A2B222B1234567890ABC9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1D1A2B2C2B1234567890ABCE /* ContentView.swift in Sources */,
+				AA304E792F6F72980054DD41 /* AnalyticsManager.swift in Sources */,
+				DD304E862E6FA0000054DD42 /* FirebaseManager.swift in Sources */,
+				RTB79366E98E99 /* RichTextTransformer.swift in Sources */,
+				EE304E882E6FA1000054DD43 /* AuthenticationView.swift in Sources */,
+				FF304E8A2E6FA2000054DD44 /* ChromaService.swift in Sources */,
+				CC304E7B3F6F72990054DD42 /* TestContentView.swift in Sources */,
+				1D1A2B2A2B1234567890ABCD /* ScrapApp.swift in Sources */,
+				SM746984E3905E9248F740 /* SparkModels.swift in Sources */,
+				SS7CB67F2F072D9CA9AE6D /* SparkServices.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		1D1A2B342B1234567890ABD2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = K8NAZ76CBQ;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		1D1A2B352B1234567890ABD3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = K8NAZ76CBQ;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		1D1A2B372B1234567890ABD4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Scrap/Scrap.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"Scrap/Preview Content\"";
+				DEVELOPMENT_TEAM = K8NAZ76CBQ;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Scrap/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Scrap;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.muckstack.scrap;
+				PRODUCT_NAME = Scrap;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		1D1A2B382B1234567890ABD5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Scrap/Scrap.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"Scrap/Preview Content\"";
+				DEVELOPMENT_TEAM = K8NAZ76CBQ;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Scrap/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Scrap;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.muckstack.scrap;
+				PRODUCT_NAME = Scrap;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1D1A2B212B1234567890ABCA /* Build configuration list for PBXProject "Scrap" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1D1A2B342B1234567890ABD2 /* Debug */,
+				1D1A2B352B1234567890ABD3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		1D1A2B362B1234567890ABD2 /* Build configuration list for PBXNativeTarget "Scrap" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1D1A2B372B1234567890ABD4 /* Debug */,
+				1D1A2B382B1234567890ABD5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		BB304E762E6F72970054DD40 /* XCRemoteSwiftPackageReference "Amplitude-Swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/amplitude/Amplitude-Swift";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+		BB304E7B2E6F9EEA0054DD40 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.2.0;
+			};
+		};
+		BB304E872E6FA8650054DD40 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 9.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		BB304E772E6F72970054DD40 /* AmplitudeSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BB304E762E6F72970054DD40 /* XCRemoteSwiftPackageReference "Amplitude-Swift" */;
+			productName = AmplitudeSwift;
+		};
+		BB304E7C2E6F9EEA0054DD40 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BB304E7B2E6F9EEA0054DD40 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		BB304E7E2E6F9EEA0054DD40 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BB304E7B2E6F9EEA0054DD40 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		BB304E802E6F9EEA0054DD40 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BB304E7B2E6F9EEA0054DD40 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		BB304E822E6F9F0A0054DD40 /* FirebaseFunctions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BB304E7B2E6F9EEA0054DD40 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFunctions;
+		};
+		BB304E842E6F9F0A0054DD40 /* FirebaseStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BB304E7B2E6F9EEA0054DD40 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseStorage;
+		};
+		BB304E882E6FA8650054DD40 /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BB304E872E6FA8650054DD40 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
+		BB304E8A2E6FA8650054DD40 /* GoogleSignInSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BB304E872E6FA8650054DD40 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignInSwift;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 1D1A2B1E2B1234567890ABCA /* Project object */;
+}
