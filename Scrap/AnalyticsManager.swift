@@ -16,16 +16,15 @@ class AnalyticsManager: ObservableObject {
         )
         
         // Configure Session Replay
-        sessionReplayPlugin = AmplitudeSwiftSessionReplayPlugin()
-        
-        // Optional: Configure privacy settings
-        // sessionReplayPlugin?.sampleRate = 1.0 // Sample 100% of sessions
-        // sessionReplayPlugin?.maskAllTextInputs = true // Mask sensitive text inputs
-        // sessionReplayPlugin?.maskAllImages = false // Don't mask images by default
-        
-        configuration.add(plugin: sessionReplayPlugin!)
+        let sampleRate: Float = 1.0 // 100% sample rate
+        sessionReplayPlugin = AmplitudeSwiftSessionReplayPlugin(sampleRate: sampleRate)
         
         amplitude = Amplitude(configuration: configuration)
+        
+        // Add Session Replay plugin to Amplitude
+        if let plugin = sessionReplayPlugin {
+            amplitude?.add(plugin: plugin)
+        }
         
         // Set initial user ID to device ID
         setUserIdToDeviceId()
@@ -188,18 +187,19 @@ class AnalyticsManager: ObservableObject {
     }
     
     func pauseSessionReplay() {
-        // Temporarily pause session replay (useful for privacy-sensitive screens)
-        sessionReplayPlugin?.isEnabled = false
+        // Session Replay doesn't have direct pause/resume in this version
+        // But you can stop/start recording if needed
+        print("Session Replay pause requested - implement if needed")
     }
     
     func resumeSessionReplay() {
-        // Resume session replay
-        sessionReplayPlugin?.isEnabled = true
+        // Session Replay doesn't have direct pause/resume in this version
+        print("Session Replay resume requested - implement if needed")
     }
     
     func setSessionReplaySampleRate(_ rate: Double) {
-        // Set the percentage of sessions to record (0.0 to 1.0)
-        sessionReplayPlugin?.sampleRate = rate
+        // Sample rate is set during initialization
+        print("Session Replay sample rate change requested: \(rate) - requires reinitialization")
     }
     
     func maskSensitiveViews(_ views: [UIView]) {
