@@ -65,7 +65,6 @@
 		RT6C1C6BFA551F /* RichTextTransformer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextTransformer.swift; sourceTree = "<group>"; };
 		SM988B63B7218D59C335B7 /* SparkModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparkModels.swift; sourceTree = "<group>"; };
 		SS42E11169D5C6456E0538 /* SparkServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparkServices.swift; sourceTree = "<group>"; };
-		CONFIG001000000000000001 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -120,7 +119,6 @@
 				CC304E7C3F6F72990054DD42 /* TestContentView.swift */,
 				SM988B63B7218D59C335B7 /* SparkModels.swift */,
 				SS42E11169D5C6456E0538 /* SparkServices.swift */,
-				CONFIG001000000000000001 /* Config.xcconfig */,
 				1D1A2B2D2B1234567890ABCF /* Assets.xcassets */,
 				1D1A2B2F2B1234567890ABD0 /* Preview Content */,
 			);
