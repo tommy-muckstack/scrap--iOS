@@ -218,7 +218,27 @@ class FirebaseDataManager: ObservableObject {
     }
     
     func createItem(from text: String, creationType: String = "text") {
+        // Create RTF document from the start
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: UIFont(name: "SharpGrotesk-Book", size: 17) ?? UIFont.systemFont(ofSize: 17),
+            .foregroundColor: UIColor.black
+        ]
+        let attributedText = NSAttributedString(string: text, attributes: attributes)
+        
+        // Convert to RTF data
+        var rtfData: Data? = nil
+        do {
+            rtfData = try attributedText.data(
+                from: NSRange(location: 0, length: attributedText.length),
+                documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
+            )
+        } catch {
+            print("❌ Failed to create RTF data: \(error)")
+        }
+        
         let newItem = SparkItem(content: text, isTask: false)
+        newItem.rtfData = rtfData
+        
         withAnimation(GentleLightning.Animation.elastic) {
             items.insert(newItem, at: 0)
         }
@@ -233,13 +253,15 @@ class FirebaseDataManager: ObservableObject {
                     print("Title generation failed: \(error)")
                 }
                 
+                // Create note with RTF content from the start
                 let firebaseId = try await firebaseManager.createNote(
                     content: text,
                     title: title,
                     categoryIds: [],
                     isTask: false,
                     categories: [],
-                    creationType: creationType
+                    creationType: creationType,
+                    rtfData: rtfData
                 )
                 
                 await MainActor.run {
@@ -258,6 +280,39 @@ class FirebaseDataManager: ObservableObject {
         if let firebaseId = item.firebaseId {
             Task {
                 try? await firebaseManager.updateNote(noteId: firebaseId, newContent: newContent)
+            }
+        }
+    }
+    
+    func updateItemWithRTF(_ item: SparkItem, rtfData: Data) {
+        // Store RTF data in the item for persistence
+        item.rtfData = rtfData
+        
+        // Extract plain text from RTF for local display/search, but only if needed
+        // Don't update item.content during active editing to prevent formatting loss
+        if !item.content.isEmpty {
+            do {
+                let attributedString = try NSAttributedString(
+                    data: rtfData,
+                    options: [.documentType: NSAttributedString.DocumentType.rtf],
+                    documentAttributes: nil
+                )
+                // Only update if the plain text content has actually changed significantly
+                let plainText = attributedString.string
+                if abs(plainText.count - item.content.count) > 5 || !plainText.contains(item.content.prefix(10)) {
+                    print("💾 updateItemWithRTF: Significant content change, updating item.content")
+                    item.content = plainText
+                } else {
+                    print("💾 updateItemWithRTF: Minor changes, preserving existing item.content to prevent sync issues")
+                }
+            } catch {
+                print("❌ Failed to extract plain text from RTF: \(error)")
+            }
+        }
+        
+        if let firebaseId = item.firebaseId {
+            Task {
+                try? await firebaseManager.updateNoteWithRTF(noteId: firebaseId, rtfData: rtfData)
             }
         }
     }

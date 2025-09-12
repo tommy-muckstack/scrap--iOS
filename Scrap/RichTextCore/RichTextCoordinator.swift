@@ -223,20 +223,20 @@ public class RichTextCoordinator: NSObject {
     
     private func toggleUnderlineInRange(_ mutableText: NSMutableAttributedString, _ range: NSRange) {
         mutableText.enumerateAttribute(.underlineStyle, in: range) { value, subRange, _ in
-            let currentStyle = value as? Int ?? NSUnderlineStyle.none.rawValue
-            let newStyle = currentStyle == NSUnderlineStyle.none.rawValue ? 
+            let currentStyle = value as? Int ?? 0
+            let newStyle = currentStyle == 0 ? 
                           NSUnderlineStyle.single.rawValue : 
-                          NSUnderlineStyle.none.rawValue
+                          0
             mutableText.addAttribute(.underlineStyle, value: newStyle, range: subRange)
         }
     }
     
     private func toggleStrikethroughInRange(_ mutableText: NSMutableAttributedString, _ range: NSRange) {
         mutableText.enumerateAttribute(.strikethroughStyle, in: range) { value, subRange, _ in
-            let currentStyle = value as? Int ?? NSUnderlineStyle.none.rawValue
-            let newStyle = currentStyle == NSUnderlineStyle.none.rawValue ? 
+            let currentStyle = value as? Int ?? 0
+            let newStyle = currentStyle == 0 ? 
                           NSUnderlineStyle.single.rawValue : 
-                          NSUnderlineStyle.none.rawValue
+                          0
             mutableText.addAttribute(.strikethroughStyle, value: newStyle, range: subRange)
         }
     }

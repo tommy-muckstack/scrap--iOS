@@ -12,6 +12,7 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
     @Published var isCompleted: Bool
     let createdAt: Date
     var firebaseId: String?
+    var rtfData: Data? // Stored RTF data for rich text formatting
     
     init(content: String, title: String = "", categoryIds: [String] = [], isTask: Bool = false, id: String = UUID().uuidString) {
         self.id = id
@@ -32,6 +33,11 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
         self.isCompleted = false
         self.createdAt = firebaseNote.createdAt
         self.firebaseId = firebaseNote.id
+        
+        // Load RTF data if available
+        if let base64RTF = firebaseNote.rtfContent {
+            self.rtfData = Data(base64Encoded: base64RTF)
+        }
     }
     
     var displayTitle: String {
@@ -109,6 +115,7 @@ struct FirebaseNote: Identifiable, Codable {
     let updatedAt: Date
     let pineconeId: String?
     let creationType: String
+    let rtfContent: String? // RTF data stored as base64 string
     
     var wrappedContent: String { content }
 }

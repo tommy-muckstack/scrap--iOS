@@ -320,7 +320,7 @@ class FirebaseManager: ObservableObject {
     }
     
     // MARK: - Notes Operations
-    func createNote(content: String, title: String? = nil, categoryIds: [String] = [], isTask: Bool, categories: [String] = [], creationType: String = "text") async throws -> String {
+    func createNote(content: String, title: String? = nil, categoryIds: [String] = [], isTask: Bool, categories: [String] = [], creationType: String = "text", rtfData: Data? = nil) async throws -> String {
         print("🔥 FirebaseManager: createNote called with content: '\(content)' type: '\(creationType)'")
         
         guard let userId = user?.uid else {
@@ -329,6 +329,9 @@ class FirebaseManager: ObservableObject {
         }
         
         print("✅ FirebaseManager: User authenticated with ID: \(userId)")
+        
+        // Convert RTF data to base64 string for Firebase storage
+        let rtfContentString = rtfData?.base64EncodedString()
         
         let note = FirebaseNote(
             userId: userId,
@@ -340,7 +343,8 @@ class FirebaseManager: ObservableObject {
             createdAt: Date(),
             updatedAt: Date(),
             pineconeId: nil, // Will be updated after Pinecone insertion
-            creationType: creationType
+            creationType: creationType,
+            rtfContent: rtfContentString // Store RTF from the start
         )
         
         print("📝 FirebaseManager: Created note object: \(note)")
@@ -363,6 +367,15 @@ class FirebaseManager: ObservableObject {
     func updateNote(noteId: String, newContent: String) async throws {
         try await db.collection("notes").document(noteId).updateData([
             "content": newContent,
+            "updatedAt": Date()
+        ])
+    }
+    
+    func updateNoteWithRTF(noteId: String, rtfData: Data) async throws {
+        // Store RTF data as base64 string for Firebase compatibility
+        let base64RTF = rtfData.base64EncodedString()
+        try await db.collection("notes").document(noteId).updateData([
+            "rtfContent": base64RTF,
             "updatedAt": Date()
         ])
     }
@@ -493,7 +506,8 @@ class FirebaseManager: ObservableObject {
                 createdAt: calendar.date(byAdding: .hour, value: -2, to: now) ?? now,
                 updatedAt: calendar.date(byAdding: .hour, value: -2, to: now) ?? now,
                 pineconeId: nil,
-                creationType: "text"
+                creationType: "text",
+                rtfContent: nil
             ),
             FirebaseNote(
                 id: "demo2",
@@ -506,7 +520,8 @@ class FirebaseManager: ObservableObject {
                 createdAt: calendar.date(byAdding: .hour, value: -5, to: now) ?? now,
                 updatedAt: calendar.date(byAdding: .hour, value: -5, to: now) ?? now,
                 pineconeId: nil,
-                creationType: "text"
+                creationType: "text",
+                rtfContent: nil
             ),
             FirebaseNote(
                 id: "demo3",
@@ -519,7 +534,8 @@ class FirebaseManager: ObservableObject {
                 createdAt: calendar.date(byAdding: .day, value: -1, to: now) ?? now,
                 updatedAt: calendar.date(byAdding: .day, value: -1, to: now) ?? now,
                 pineconeId: nil,
-                creationType: "voice"
+                creationType: "voice",
+                rtfContent: nil
             ),
             FirebaseNote(
                 id: "demo4",
@@ -532,7 +548,8 @@ class FirebaseManager: ObservableObject {
                 createdAt: calendar.date(byAdding: .day, value: -2, to: now) ?? now,
                 updatedAt: calendar.date(byAdding: .day, value: -2, to: now) ?? now,
                 pineconeId: nil,
-                creationType: "text"
+                creationType: "text",
+                rtfContent: nil
             ),
             FirebaseNote(
                 id: "demo5",
@@ -545,7 +562,8 @@ class FirebaseManager: ObservableObject {
                 createdAt: calendar.date(byAdding: .day, value: -3, to: now) ?? now,
                 updatedAt: calendar.date(byAdding: .day, value: -3, to: now) ?? now,
                 pineconeId: nil,
-                creationType: "voice"
+                creationType: "voice",
+                rtfContent: nil
             )
         ]
     }
