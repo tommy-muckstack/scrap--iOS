@@ -185,7 +185,7 @@ public class RichTextContext: ObservableObject {
     
     private func updateUnderlineState(from attributes: [NSAttributedString.Key: Any]) {
         if let underlineStyle = attributes[.underlineStyle] as? Int {
-            isUnderlineActive = underlineStyle != NSUnderlineStyle.none.rawValue
+            isUnderlineActive = underlineStyle != 0
         } else {
             isUnderlineActive = false
         }
@@ -193,7 +193,7 @@ public class RichTextContext: ObservableObject {
     
     private func updateStrikethroughState(from attributes: [NSAttributedString.Key: Any]) {
         if let strikethroughStyle = attributes[.strikethroughStyle] as? Int {
-            isStrikethroughActive = strikethroughStyle != NSUnderlineStyle.none.rawValue
+            isStrikethroughActive = strikethroughStyle != 0
         } else {
             isStrikethroughActive = false
         }
