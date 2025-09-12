@@ -2054,8 +2054,8 @@ struct NavigationNoteEditView: View {
         .background(Color.white)
         .safeAreaInset(edge: .bottom) {
             // Formatting toolbar that appears above keyboard
-            let _ = print("🎯 DEBUG safeAreaInset: isTextFieldFocused=\(isTextFieldFocused), keyboardHeight=\(keyboardHeight)")
-            if isTextFieldFocused && keyboardHeight > 0 {
+            let _ = print("🎯 DEBUG safeAreaInset: isRichTextFocused=\(isRichTextFocused), isTextFieldFocused=\(isTextFieldFocused), keyboardHeight=\(keyboardHeight)")
+            if isRichTextFocused && keyboardHeight > 0 {
                 let _ = print("🎯 DEBUG safeAreaInset: SHOWING TOOLBAR")
                 FormattingToolbarView(
                     formattingState: $formattingState,
@@ -2090,8 +2090,10 @@ struct NavigationNoteEditView: View {
         .onChange(of: isRichTextFocused) { newValue in
             // Sync rich text focus with the original focus state for toolbar visibility
             print("🎯 NavigationNoteEditView: isRichTextFocused changed to \(newValue), setting isTextFieldFocused = \(newValue)")
-            isTextFieldFocused = newValue
-            print("🎯 DEBUG: Focus state updated - isTextFieldFocused=\(isTextFieldFocused), keyboardHeight=\(keyboardHeight)")
+            DispatchQueue.main.async {
+                isTextFieldFocused = newValue
+                print("🎯 DEBUG: Focus state updated - isTextFieldFocused=\(isTextFieldFocused), keyboardHeight=\(keyboardHeight)")
+            }
         }
         .onChange(of: attributedText) { newValue in
             // Sync attributed text changes back to plain text for Firebase
@@ -2760,7 +2762,9 @@ struct RichTextEditor: UIViewRepresentable {
         
         func textViewDidBeginEditing(_ textView: UITextView) {
             print("🎯 RichTextEditor: textViewDidBeginEditing - setting isFocused = true")
-            parent.isFocused = true
+            DispatchQueue.main.async {
+                self.parent.isFocused = true
+            }
             updateToolbarState(for: textView)
             updateUndoRedoState()
         }
