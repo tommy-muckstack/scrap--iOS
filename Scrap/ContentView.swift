@@ -1031,21 +1031,26 @@ struct NoteEditView: View {
         print("🏗️ NoteEditView init: COMPLETED - editedText initialized with '\(initialContent.prefix(50))...'")
     }
     
+    // Computed property to break up complex expression
+    private var textEditorBinding: Binding<String> {
+        Binding(
+            get: {
+                print("📖 TextEditor binding GET: returning '\(editedText.prefix(30))...' (length: \(editedText.count))")
+                return editedText
+            },
+            set: { newValue in
+                print("✏️  TextEditor binding SET: received '\(newValue.prefix(30))...' (length: \(newValue.count))")
+                editedText = newValue
+            }
+        )
+    }
+    
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 if isContentReady {
                     // Simplified Text Editor without ScrollView wrapper
-                    TextEditor(text: Binding(
-                        get: {
-                            print("📖 TextEditor binding GET: returning '\(editedText.prefix(30))...' (length: \(editedText.count))")
-                            return editedText
-                        },
-                        set: { newValue in
-                            print("✏️  TextEditor binding SET: received '\(newValue.prefix(30))...' (length: \(newValue.count))")
-                            editedText = newValue
-                        }
-                    ))
+                    TextEditor(text: textEditorBinding)
                         .font(GentleLightning.Typography.bodyInput)
                         .foregroundColor(GentleLightning.Colors.textPrimary)
                         .padding(GentleLightning.Layout.Padding.lg)
@@ -1117,31 +1122,19 @@ struct NoteEditView: View {
                             editedText = processedText
                         }
                         
-                        // Auto-save changes with formatting
+                        // Auto-save changes
                         let trimmedContent = safeValue.trimmingCharacters(in: .whitespacesAndNewlines)
                         if !trimmedContent.isEmpty {
-                            isSavingContent = true
-                            // Convert attributed text to HTML for persistence
-                            let htmlContent = NavigationNoteEditView.attributedStringToHTML(attributedText)
-                            dataManager.updateItem(item, newContent: htmlContent)
+                            dataManager.updateItem(item, newContent: trimmedContent)
                             AnalyticsManager.shared.trackNoteEditSaved(noteId: item.id, contentLength: safeValue.count)
-                            isSavingContent = false
                         }
                     }
                     .onChange(of: item.content) { newContent in
-                        // Only update if we're not currently saving (prevents circular updates)
-                        if !isSavingContent {
-                            // Convert HTML content back to attributed string and plain text
-                            let newAttributedText = NavigationNoteEditView.htmlToAttributedString(newContent)
-                            let safeNewContent = sanitizeTextContent(newAttributedText.string)
-                            
-                            if editedText != safeNewContent {
-                                print("📝 NoteEditView: Item content changed, updating from HTML content")
-                                editedText = safeNewContent
-                                attributedText = newAttributedText
-                            }
-                        } else {
-                            print("📝 NoteEditView: Ignoring item content change during save operation")
+                        // Update edited text if the underlying item content changes (with sanitization)
+                        let safeNewContent = sanitizeTextContent(newContent)
+                        if editedText != safeNewContent {
+                            print("📝 NoteEditView: Item content changed, updating to safe content: '\(safeNewContent)'")
+                            editedText = safeNewContent
                         }
                     }
             .background(Color.white)
@@ -1885,7 +1878,7 @@ struct NavigationNoteEditView: View {
         let initialAttributedText: NSAttributedString
         if initialContent.contains("<") && initialContent.contains(">") {
             // Convert from HTML
-            initialAttributedText = NavigationNoteEditView.htmlToAttributedString(initialContent)
+            initialAttributedText = Self.htmlToAttributedString(initialContent)
             self._editedText = State(initialValue: initialAttributedText.string)
             print("🏗️ NavigationNoteEditView init: Converted HTML to attributed text")
         } else {
@@ -2205,7 +2198,7 @@ struct NavigationNoteEditView: View {
             if !trimmedContent.isEmpty {
                 isSavingContent = true
                 // Convert attributed text to HTML for persistence
-                let htmlContent = NavigationNoteEditView.attributedStringToHTML(attributedText)
+                let htmlContent = Self.attributedStringToHTML(attributedText)
                 dataManager.updateItem(item, newContent: htmlContent)
                 AnalyticsManager.shared.trackNoteEditSaved(noteId: item.id, contentLength: safeValue.count)
                 isSavingContent = false
@@ -2215,7 +2208,7 @@ struct NavigationNoteEditView: View {
             // Only update if we're not currently saving (prevents circular updates)
             if !isSavingContent {
                 // Convert HTML content back to attributed string and plain text
-                let newAttributedText = NavigationNoteEditView.htmlToAttributedString(newContent)
+                let newAttributedText = Self.htmlToAttributedString(newContent)
                 let safeNewContent = sanitizeTextContent(newAttributedText.string)
                 
                 if editedText != safeNewContent {
