@@ -1663,7 +1663,7 @@ struct FormattingToolbarView: View {
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(formattingState.isBoldActive ? .white : .black)
                         .frame(width: 32, height: 32)
-                        .background(formattingState.isBoldActive ? GentleLightning.Colors.accentNeutral : Color.clear)
+                        .background(formattingState.isBoldActive ? .black : Color.clear)
                         .clipShape(Circle())
                 }
                 
@@ -1679,7 +1679,7 @@ struct FormattingToolbarView: View {
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(formattingState.isItalicActive ? .white : .black)
                         .frame(width: 32, height: 32)
-                        .background(formattingState.isItalicActive ? GentleLightning.Colors.accentNeutral : Color.clear)
+                        .background(formattingState.isItalicActive ? .black : Color.clear)
                         .clipShape(Circle())
                 }
                 
@@ -1695,7 +1695,7 @@ struct FormattingToolbarView: View {
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(formattingState.isUnderlineActive ? .white : .black)
                         .frame(width: 32, height: 32)
-                        .background(formattingState.isUnderlineActive ? GentleLightning.Colors.accentNeutral : Color.clear)
+                        .background(formattingState.isUnderlineActive ? .black : Color.clear)
                         .clipShape(Circle())
                 }
                 
@@ -1711,7 +1711,7 @@ struct FormattingToolbarView: View {
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(formattingState.isStrikethroughActive ? .white : .black)
                         .frame(width: 32, height: 32)
-                        .background(formattingState.isStrikethroughActive ? GentleLightning.Colors.accentNeutral : Color.clear)
+                        .background(formattingState.isStrikethroughActive ? .black : Color.clear)
                         .clipShape(Circle())
                 }
                 
@@ -1733,7 +1733,7 @@ struct FormattingToolbarView: View {
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(formattingState.isBulletListActive ? .white : .black)
                         .frame(width: 32, height: 32)
-                        .background(formattingState.isBulletListActive ? GentleLightning.Colors.accentNeutral : Color.clear)
+                        .background(formattingState.isBulletListActive ? .black : Color.clear)
                         .clipShape(Circle())
                 }
                 
@@ -1749,7 +1749,7 @@ struct FormattingToolbarView: View {
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(formattingState.isCheckListActive ? .white : .black)
                         .frame(width: 32, height: 32)
-                        .background(formattingState.isCheckListActive ? GentleLightning.Colors.accentNeutral : Color.clear)
+                        .background(formattingState.isCheckListActive ? .black : Color.clear)
                         .clipShape(Circle())
                 }
             }
