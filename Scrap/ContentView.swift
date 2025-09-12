@@ -1654,7 +1654,7 @@ struct FormattingToolbarView: View {
                 }) {
                     Image(systemName: "bold")
                         .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(formattingState.isBoldActive ? .white : GentleLightning.Colors.accentNeutral)
+                        .foregroundColor(formattingState.isBoldActive ? .white : .black)
                         .frame(width: 32, height: 32)
                         .background(formattingState.isBoldActive ? GentleLightning.Colors.accentNeutral : Color.clear)
                         .clipShape(Circle())
@@ -1670,7 +1670,7 @@ struct FormattingToolbarView: View {
                 }) {
                     Image(systemName: "italic")
                         .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(formattingState.isItalicActive ? .white : GentleLightning.Colors.accentNeutral)
+                        .foregroundColor(formattingState.isItalicActive ? .white : .black)
                         .frame(width: 32, height: 32)
                         .background(formattingState.isItalicActive ? GentleLightning.Colors.accentNeutral : Color.clear)
                         .clipShape(Circle())
@@ -1686,7 +1686,7 @@ struct FormattingToolbarView: View {
                 }) {
                     Image(systemName: "underline")
                         .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(formattingState.isUnderlineActive ? .white : GentleLightning.Colors.accentNeutral)
+                        .foregroundColor(formattingState.isUnderlineActive ? .white : .black)
                         .frame(width: 32, height: 32)
                         .background(formattingState.isUnderlineActive ? GentleLightning.Colors.accentNeutral : Color.clear)
                         .clipShape(Circle())
@@ -1702,7 +1702,7 @@ struct FormattingToolbarView: View {
                 }) {
                     Image(systemName: "strikethrough")
                         .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(formattingState.isStrikethroughActive ? .white : GentleLightning.Colors.accentNeutral)
+                        .foregroundColor(formattingState.isStrikethroughActive ? .white : .black)
                         .frame(width: 32, height: 32)
                         .background(formattingState.isStrikethroughActive ? GentleLightning.Colors.accentNeutral : Color.clear)
                         .clipShape(Circle())
@@ -1710,7 +1710,7 @@ struct FormattingToolbarView: View {
                 
                 // Divider
                 Rectangle()
-                    .fill(GentleLightning.Colors.textSecondary.opacity(0.3))
+                    .fill(Color.gray.opacity(0.3))
                     .frame(width: 1, height: 24)
                 
                 // List buttons
@@ -1724,7 +1724,7 @@ struct FormattingToolbarView: View {
                 }) {
                     Image(systemName: "list.bullet")
                         .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(formattingState.isBulletListActive ? .white : GentleLightning.Colors.accentNeutral)
+                        .foregroundColor(formattingState.isBulletListActive ? .white : .black)
                         .frame(width: 32, height: 32)
                         .background(formattingState.isBulletListActive ? GentleLightning.Colors.accentNeutral : Color.clear)
                         .clipShape(Circle())
@@ -1740,7 +1740,7 @@ struct FormattingToolbarView: View {
                 }) {
                     Image(systemName: "checklist")
                         .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(formattingState.isCheckListActive ? .white : GentleLightning.Colors.accentNeutral)
+                        .foregroundColor(formattingState.isCheckListActive ? .white : .black)
                         .frame(width: 32, height: 32)
                         .background(formattingState.isCheckListActive ? GentleLightning.Colors.accentNeutral : Color.clear)
                         .clipShape(Circle())
@@ -1757,7 +1757,7 @@ struct FormattingToolbarView: View {
                     Button(action: { performUndo() }) {
                         Image(systemName: "arrow.uturn.backward")
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(canUndo ? GentleLightning.Colors.accentNeutral : GentleLightning.Colors.textSecondary)
+                            .foregroundColor(canUndo ? .black : .gray)
                             .frame(width: 32, height: 32)
                             .background(canUndo ? GentleLightning.Colors.accentNeutral.opacity(0.1) : Color.clear)
                             .clipShape(Circle())
@@ -1767,7 +1767,7 @@ struct FormattingToolbarView: View {
                     Button(action: { performRedo() }) {
                         Image(systemName: "arrow.uturn.forward")
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(canRedo ? GentleLightning.Colors.accentNeutral : GentleLightning.Colors.textSecondary)
+                            .foregroundColor(canRedo ? .black : .gray)
                             .frame(width: 32, height: 32)
                             .background(canRedo ? GentleLightning.Colors.accentNeutral.opacity(0.1) : Color.clear)
                             .clipShape(Circle())
@@ -1779,7 +1779,7 @@ struct FormattingToolbarView: View {
                 Button(action: { hideKeyboard() }) {
                     Image(systemName: "chevron.down")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(GentleLightning.Colors.accentNeutral)
+                        .foregroundColor(.black)
                         .frame(width: 32, height: 32)
                         .background(GentleLightning.Colors.accentNeutral.opacity(0.1))
                         .clipShape(Circle())
@@ -2085,12 +2085,6 @@ struct NavigationNoteEditView: View {
                     hideKeyboard: hideKeyboard
                 )
                 .background(Color(UIColor.systemBackground))
-                .overlay(
-                    Rectangle()
-                        .frame(height: 0.5)
-                        .foregroundColor(Color(UIColor.separator))
-                    , alignment: .top
-                )
                 .transition(.move(edge: .bottom))
             }
         }
