@@ -1,10 +1,188 @@
 import SwiftUI
+import WidgetKit
 import Foundation
 import Combine
 import NaturalLanguage
 import UIKit
 import Speech
 import AVFoundation
+
+// MARK: - Notification Names
+extension Notification.Name {
+    static let applyFormatting = Notification.Name("applyFormatting")
+    static let applyTextFormatting = Notification.Name("applyTextFormatting")
+    static let applyBlockFormatting = Notification.Name("applyBlockFormatting")
+    static let performUndo = Notification.Name("performUndo")
+    static let performRedo = Notification.Name("performRedo")
+    static let updateUndoRedoState = Notification.Name("updateUndoRedoState")
+    static let updateToolbarState = Notification.Name("updateToolbarState")
+}
+
+// MARK: - Formatting Enums
+enum TextFormat {
+    case bold, italic, underline, strikethrough
+    
+    var description: String {
+        switch self {
+        case .bold: return "Bold"
+        case .italic: return "Italic"
+        case .underline: return "Underline"
+        case .strikethrough: return "Strikethrough"
+        }
+    }
+}
+
+enum BlockFormat {
+    case bulletList, checkbox
+    
+    var description: String {
+        switch self {
+        case .bulletList: return "Bullet List"
+        case .checkbox: return "Checkbox"
+        }
+    }
+}
+
+// MARK: - Formatting State Management
+struct FormattingState {
+    var activeTextFormats: Set<TextFormat> = []
+    var activeBlockFormat: BlockFormat? = nil
+    
+    // Computed properties for individual format checks
+    var isBoldActive: Bool {
+        get { activeTextFormats.contains(.bold) }
+        set { 
+            if newValue {
+                activeTextFormats.insert(.bold)
+            } else {
+                activeTextFormats.remove(.bold)
+            }
+        }
+    }
+    
+    var isItalicActive: Bool {
+        get { activeTextFormats.contains(.italic) }
+        set { 
+            if newValue {
+                activeTextFormats.insert(.italic)
+            } else {
+                activeTextFormats.remove(.italic)
+            }
+        }
+    }
+    
+    var isUnderlineActive: Bool {
+        get { activeTextFormats.contains(.underline) }
+        set { 
+            if newValue {
+                activeTextFormats.insert(.underline)
+            } else {
+                activeTextFormats.remove(.underline)
+            }
+        }
+    }
+    
+    var isStrikethroughActive: Bool {
+        get { activeTextFormats.contains(.strikethrough) }
+        set { 
+            if newValue {
+                activeTextFormats.insert(.strikethrough)
+            } else {
+                activeTextFormats.remove(.strikethrough)
+            }
+        }
+    }
+    
+    var isListModeActive: Bool {
+        get { activeBlockFormat == .bulletList }
+        set { 
+            if newValue {
+                activeBlockFormat = .bulletList
+            } else if activeBlockFormat == .bulletList {
+                activeBlockFormat = nil
+            }
+        }
+    }
+    
+    var isCheckboxModeActive: Bool {
+        get { activeBlockFormat == .checkbox }
+        set { 
+            if newValue {
+                activeBlockFormat = .checkbox
+            } else if activeBlockFormat == .checkbox {
+                activeBlockFormat = nil
+            }
+        }
+    }
+    
+    // Utility methods
+    mutating func toggleTextFormat(_ format: TextFormat) {
+        if activeTextFormats.contains(format) {
+            activeTextFormats.remove(format)
+            print("🎨 FormattingState: Removed \(format) format. Active formats: \(activeFormatsDescription)")
+        } else {
+            activeTextFormats.insert(format)
+            print("🎨 FormattingState: Added \(format) format. Active formats: \(activeFormatsDescription)")
+        }
+    }
+    
+    mutating func setBlockFormat(_ format: BlockFormat?) {
+        let oldFormat = activeBlockFormat
+        activeBlockFormat = format
+        print("🎨 FormattingState: Block format changed from \(oldFormat?.description ?? "none") to \(format?.description ?? "none")")
+    }
+    
+    mutating func clearAllFormatting() {
+        activeTextFormats.removeAll()
+        activeBlockFormat = nil
+        print("🎨 FormattingState: Cleared all formatting")
+    }
+    
+    // Additional utility methods
+    func hasAnyTextFormatting() -> Bool {
+        return !activeTextFormats.isEmpty
+    }
+    
+    func hasBlockFormatting() -> Bool {
+        return activeBlockFormat != nil
+    }
+    
+    func hasAnyFormatting() -> Bool {
+        return hasAnyTextFormatting() || hasBlockFormatting()
+    }
+    
+    // Sync formatting state from text attributes (useful when cursor moves)
+    mutating func syncFromTextAttributes(bold: Bool, italic: Bool, underline: Bool, strikethrough: Bool) {
+        activeTextFormats.removeAll()
+        if bold { activeTextFormats.insert(.bold) }
+        if italic { activeTextFormats.insert(.italic) }
+        if underline { activeTextFormats.insert(.underline) }
+        if strikethrough { activeTextFormats.insert(.strikethrough) }
+    }
+    
+    // Get all active formats as a readable description
+    var activeFormatsDescription: String {
+        var formats: [String] = []
+        if isBoldActive { formats.append("Bold") }
+        if isItalicActive { formats.append("Italic") }
+        if isUnderlineActive { formats.append("Underline") }
+        if isStrikethroughActive { formats.append("Strikethrough") }
+        if isListModeActive { formats.append("List") }
+        if isCheckboxModeActive { formats.append("Checkbox") }
+        return formats.isEmpty ? "None" : formats.joined(separator: ", ")
+    }
+}
+
+// MARK: - Widget Helper Functions
+func updateWidgetData(noteCount: Int) {
+    // Use App Group to share data with widget extension
+    if let sharedDefaults = UserDefaults(suiteName: "group.scrap.app") {
+        sharedDefaults.set(noteCount, forKey: "ScrapNoteCount")
+    }
+    // Also update standard UserDefaults as fallback
+    UserDefaults.standard.set(noteCount, forKey: "ScrapNoteCount")
+    WidgetCenter.shared.reloadAllTimelines()
+}
 
 // MARK: - Gentle Lightning Design System
 struct GentleLightning {
@@ -156,6 +334,8 @@ class FirebaseDataManager: ObservableObject {
             let sparkItems = firebaseNotes.map { SparkItem(from: $0) }
             withAnimation(GentleLightning.Animation.gentle) {
                 self?.items = sparkItems
+                // Update widget with new note count
+                updateWidgetData(noteCount: sparkItems.count)
             }
         }
     }
@@ -206,6 +386,9 @@ class FirebaseDataManager: ObservableObject {
                         self.items.insert(newItem, at: 0)
                     }
                     print("📲 DataManager: Added item to list with title: '\(newItem.title)'")
+                    
+                    // Update widget with new count
+                    updateWidgetData(noteCount: self.items.count)
                 }
                 
                 // TODO: Save to Pinecone for vector search
@@ -245,6 +428,9 @@ class FirebaseDataManager: ObservableObject {
         
         // Remove from local array immediately (optimistic)
         items.removeAll { $0.id == item.id }
+        
+        // Update widget with new count
+        updateWidgetData(noteCount: items.count)
         
         // Delete from Firebase
         if let firebaseId = item.firebaseId {
@@ -1060,6 +1246,7 @@ struct AccountDrawerView: View {
     @State private var isDeletingAccount = false
     @State private var deleteError: String?
     @State private var showDeleteResult = false
+    @StateObject private var themeManager = ThemeManager.shared
     
     // Get app version info
     private var appVersion: String {
@@ -1079,9 +1266,52 @@ struct AccountDrawerView: View {
                 .padding(.top, 12)
                 .padding(.bottom, 24)
             
-            VStack(spacing: 24) {
-                // Account actions
-                VStack(spacing: 16) {
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Settings Section (from SettingsView)
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            Text("Settings")
+                                .font(GentleLightning.Typography.heading)
+                                .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+                            Spacer()
+                        }
+                        
+                        // Dark Mode Toggle
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Dark Mode")
+                                    .font(GentleLightning.Typography.body)
+                                    .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+                                
+                                Text("Switch between light and dark themes")
+                                    .font(GentleLightning.Typography.caption)
+                                    .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
+                            }
+                            
+                            Spacer()
+                            
+                            Toggle("", isOn: Binding(
+                                get: { themeManager.isDarkMode },
+                                set: { _ in themeManager.toggleDarkMode() }
+                            ))
+                            .tint(GentleLightning.Colors.accentNeutral)
+                        }
+                        .padding(16)
+                        .background(
+                            RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.medium)
+                                .fill(GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
+                                .shadow(
+                                    color: GentleLightning.Colors.shadow(isDark: themeManager.isDarkMode),
+                                    radius: 8,
+                                    x: 0,
+                                    y: 2
+                                )
+                        )
+                    }
+                    
+                    // Account actions
+                    VStack(spacing: 16) {
                     // Logout button
                     Button(action: {
                         do {
@@ -1132,23 +1362,24 @@ struct AccountDrawerView: View {
                     .buttonStyle(PlainButtonStyle())
                 }
                 
-                Spacer()
-                
-                // App info
-                VStack(spacing: 8) {
-                    Text("Scrap")
-                        .font(GentleLightning.Typography.title)
-                        .foregroundColor(GentleLightning.Colors.textBlack)
+                    Spacer()
                     
-                    Text("Version \(appVersion) (\(buildNumber))")
-                        .font(GentleLightning.Typography.small)
-                        .foregroundColor(GentleLightning.Colors.textSecondary)
+                    // App info
+                    VStack(spacing: 8) {
+                        Text("Scrap")
+                            .font(GentleLightning.Typography.title)
+                            .foregroundColor(GentleLightning.Colors.textBlack)
+                        
+                        Text("Version \(appVersion) (\(buildNumber))")
+                            .font(GentleLightning.Typography.small)
+                            .foregroundColor(GentleLightning.Colors.textSecondary)
+                    }
+                    .padding(.bottom, 40)
                 }
-                .padding(.bottom, 40)
+                .padding(.horizontal, 20)
             }
-            .padding(.horizontal, 20)
         }
-        .background(Color.white)
+        .background(GentleLightning.Colors.background(isDark: themeManager.isDarkMode))
         .alert("Delete Account", isPresented: $showDeleteConfirmation) {
             Button("Delete", role: .destructive) {
                 isDeletingAccount = true
@@ -1219,6 +1450,17 @@ struct AccountDrawerView: View {
     }
 }
 
+// MARK: - Note Edit View Wrapper (Prevents Multiple Inits)
+struct NoteEditViewWrapper: View {
+    let item: SparkItem
+    let dataManager: FirebaseDataManager
+    
+    var body: some View {
+        NavigationNoteEditView(item: item, dataManager: dataManager)
+            .id(item.id) // Use stable ID to prevent unnecessary reinitializations
+    }
+}
+
 // MARK: - Main Content View
 struct ContentView: View {
     @StateObject private var dataManager = FirebaseDataManager()
@@ -1226,7 +1468,6 @@ struct ContentView: View {
     @StateObject private var themeManager = ThemeManager.shared
     @State private var navigationPath = NavigationPath()
     @State private var showingAccountDrawer = false
-    @State private var showingSettings = false
     @FocusState private var isInputFieldFocused: Bool
     
     var body: some View {
@@ -1243,14 +1484,6 @@ struct ContentView: View {
                         .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
                     
                     Spacer()
-                    
-                    Button(action: {
-                        showingSettings = true
-                    }) {
-                        Image(systemName: "gearshape.fill")
-                            .font(.system(size: 20))
-                            .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
-                    }
                 }
                 .padding(.horizontal, GentleLightning.Layout.Padding.xl)
                 .padding(.top, GentleLightning.Layout.Padding.xl)
@@ -1277,7 +1510,7 @@ struct ContentView: View {
                 
                 // Items List - scrollable content
                 ScrollView {
-                    LazyVStack(spacing: GentleLightning.Layout.Spacing.comfortable) {
+                    LazyVStack(spacing: 4) {
                         if dataManager.items.isEmpty {
                             EmptyStateView()
                                 .padding(.top, 60)
@@ -1355,7 +1588,7 @@ struct ContentView: View {
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
         .navigationDestination(for: SparkItem.self) { item in
-            NavigationNoteEditView(item: item, dataManager: dataManager)
+            NoteEditViewWrapper(item: item, dataManager: dataManager)
                 .onAppear {
                     print("✅ Navigation NoteEditView: Successfully opened note with id = '\(item.id)'")
                     print("✅ Navigation NoteEditView: Note content = '\(item.content)' (length: \(item.content.count))")
@@ -1363,27 +1596,191 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showingAccountDrawer) {
             AccountDrawerView(isPresented: $showingAccountDrawer)
-                .presentationDetents([.fraction(0.4), .medium])
+                .presentationDetents([.fraction(0.6), .large])
                 .presentationDragIndicator(.hidden)
                 .onDisappear {
                     AnalyticsManager.shared.trackAccountDrawerClosed()
                 }
         }
-        .sheet(isPresented: $showingSettings) {
-            SettingsView(themeManager: themeManager)
-        }
         } // NavigationStack
+        .onAppear {
+            // Initialize widget with current note count when app starts
+            updateWidgetData(noteCount: dataManager.items.count)
+        }
+    }
+}
+
+// MARK: - Formatting Toolbar View (Extracted Component)
+struct FormattingToolbarView: View {
+    @Binding var formattingState: FormattingState
+    let canUndo: Bool
+    let canRedo: Bool
+    let performUndo: () -> Void
+    let performRedo: () -> Void
+    let hideKeyboard: () -> Void
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Bold/Italic/Underline/Strikethrough buttons
+            HStack(spacing: 16) {
+                Button(action: { 
+                    formattingState.toggleTextFormat(.bold)
+                    // Send formatting notification
+                    NotificationCenter.default.post(
+                        name: .applyTextFormatting,
+                        object: nil,
+                        userInfo: ["format": TextFormat.bold, "isActive": formattingState.isBoldActive]
+                    )
+                }) {
+                    Image(systemName: "bold")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(formattingState.isBoldActive ? .white : GentleLightning.Colors.accentNeutral)
+                        .frame(width: 32, height: 32)
+                        .background(formattingState.isBoldActive ? GentleLightning.Colors.accentNeutral : Color.clear)
+                        .clipShape(Circle())
+                }
+                
+                Button(action: { 
+                    formattingState.toggleTextFormat(.italic)
+                    NotificationCenter.default.post(
+                        name: .applyTextFormatting,
+                        object: nil,
+                        userInfo: ["format": TextFormat.italic, "isActive": formattingState.isItalicActive]
+                    )
+                }) {
+                    Image(systemName: "italic")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(formattingState.isItalicActive ? .white : GentleLightning.Colors.accentNeutral)
+                        .frame(width: 32, height: 32)
+                        .background(formattingState.isItalicActive ? GentleLightning.Colors.accentNeutral : Color.clear)
+                        .clipShape(Circle())
+                }
+                
+                Button(action: { 
+                    formattingState.toggleTextFormat(.underline)
+                    NotificationCenter.default.post(
+                        name: .applyTextFormatting,
+                        object: nil,
+                        userInfo: ["format": TextFormat.underline, "isActive": formattingState.isUnderlineActive]
+                    )
+                }) {
+                    Image(systemName: "underline")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(formattingState.isUnderlineActive ? .white : GentleLightning.Colors.accentNeutral)
+                        .frame(width: 32, height: 32)
+                        .background(formattingState.isUnderlineActive ? GentleLightning.Colors.accentNeutral : Color.clear)
+                        .clipShape(Circle())
+                }
+                
+                Button(action: { 
+                    formattingState.toggleTextFormat(.strikethrough)
+                    NotificationCenter.default.post(
+                        name: .applyTextFormatting,
+                        object: nil,
+                        userInfo: ["format": TextFormat.strikethrough, "isActive": formattingState.isStrikethroughActive]
+                    )
+                }) {
+                    Image(systemName: "strikethrough")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(formattingState.isStrikethroughActive ? .white : GentleLightning.Colors.accentNeutral)
+                        .frame(width: 32, height: 32)
+                        .background(formattingState.isStrikethroughActive ? GentleLightning.Colors.accentNeutral : Color.clear)
+                        .clipShape(Circle())
+                }
+                
+                // Divider
+                Rectangle()
+                    .fill(GentleLightning.Colors.textSecondary.opacity(0.3))
+                    .frame(width: 1, height: 24)
+                
+                // List buttons
+                Button(action: { 
+                    formattingState.toggleBlockFormat(.bulletList)
+                    NotificationCenter.default.post(
+                        name: .applyBlockFormatting,
+                        object: nil,
+                        userInfo: ["format": BlockFormat.bulletList, "isActive": formattingState.isBulletListActive]
+                    )
+                }) {
+                    Image(systemName: "list.bullet")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(formattingState.isBulletListActive ? .white : GentleLightning.Colors.accentNeutral)
+                        .frame(width: 32, height: 32)
+                        .background(formattingState.isBulletListActive ? GentleLightning.Colors.accentNeutral : Color.clear)
+                        .clipShape(Circle())
+                }
+                
+                Button(action: { 
+                    formattingState.toggleBlockFormat(.checkList)
+                    NotificationCenter.default.post(
+                        name: .applyBlockFormatting,
+                        object: nil,
+                        userInfo: ["format": BlockFormat.checkList, "isActive": formattingState.isCheckListActive]
+                    )
+                }) {
+                    Image(systemName: "checklist")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(formattingState.isCheckListActive ? .white : GentleLightning.Colors.accentNeutral)
+                        .frame(width: 32, height: 32)
+                        .background(formattingState.isCheckListActive ? GentleLightning.Colors.accentNeutral : Color.clear)
+                        .clipShape(Circle())
+                }
+            }
+            
+            HStack {
+                Spacer()
+                
+                // Undo/Redo buttons
+                HStack(spacing: 8) {
+                    Button(action: { performUndo() }) {
+                        Image(systemName: "arrow.uturn.backward")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(canUndo ? GentleLightning.Colors.accentNeutral : GentleLightning.Colors.textSecondary)
+                            .frame(width: 32, height: 32)
+                            .background(canUndo ? GentleLightning.Colors.accentNeutral.opacity(0.1) : Color.clear)
+                            .clipShape(Circle())
+                    }
+                    .disabled(!canUndo)
+                    
+                    Button(action: { performRedo() }) {
+                        Image(systemName: "arrow.uturn.forward")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(canRedo ? GentleLightning.Colors.accentNeutral : GentleLightning.Colors.textSecondary)
+                            .frame(width: 32, height: 32)
+                            .background(canRedo ? GentleLightning.Colors.accentNeutral.opacity(0.1) : Color.clear)
+                            .clipShape(Circle())
+                    }
+                    .disabled(!canRedo)
+                }
+                
+                // Collapse keyboard button
+                Button(action: { hideKeyboard() }) {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(GentleLightning.Colors.accentNeutral)
+                        .frame(width: 32, height: 32)
+                        .background(GentleLightning.Colors.accentNeutral.opacity(0.1))
+                        .clipShape(Circle())
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
     }
 }
 
 // MARK: - Navigation Note Edit View
 struct NavigationNoteEditView: View {
-    @ObservedObject var item: SparkItem
+    let item: SparkItem // Change from @ObservedObject to let to prevent unnecessary redraws
     let dataManager: FirebaseDataManager
     @Environment(\.dismiss) private var dismiss
     // @ObservedObject private var categoryService = CategoryService.shared
     
     @State private var editedText: String = ""
+    @State private var attributedText: NSAttributedString = NSAttributedString()
     @FocusState private var isTextFieldFocused: Bool
     @State private var showingActionSheet = false
     @State private var showingDeleteAlert = false
@@ -1391,6 +1788,13 @@ struct NavigationNoteEditView: View {
     @State private var selectedCategoryIds: [String] = []
     @State private var editedTitle: String = ""
     @State private var showingFormattingSheet = false
+    @State private var keyboardHeight: CGFloat = 0
+    
+    // Consolidated formatting state
+    @State private var formattingState = FormattingState()
+    @State private var isRichTextFocused = false
+    @State private var canUndo = false
+    @State private var canRedo = false
     
     init(item: SparkItem, dataManager: FirebaseDataManager) {
         print("🏗️ NavigationNoteEditView init: STARTING - item.id = '\(item.id)'")
@@ -1406,15 +1810,26 @@ struct NavigationNoteEditView: View {
         self._selectedCategoryIds = State(initialValue: item.categoryIds)
         self._editedTitle = State(initialValue: item.title)
         
+        // Initialize attributed text with default font
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: UIFont(name: "SharpGrotesk-Book", size: 19) ?? UIFont.systemFont(ofSize: 19),
+            .foregroundColor: UIColor(GentleLightning.Colors.textPrimary(isDark: false))
+        ]
+        self._attributedText = State(initialValue: NSAttributedString(string: initialContent, attributes: attributes))
+        
         print("🏗️ NavigationNoteEditView init: COMPLETED - all properties initialized")
     }
     
     // MARK: - View Components
     private var titleSection: some View {
-        TextField("Title", text: $editedTitle)
-            .font(.headline)
-            .padding(GentleLightning.Layout.Padding.lg)
-            .background(Color.white)
+        TextField("Give me a name", text: $editedTitle, axis: .vertical)
+            .font(GentleLightning.Typography.hero)
+            .foregroundColor(GentleLightning.Colors.textPrimary)
+            .padding(.horizontal, 20)
+            .padding(.top, 40)
+            .padding(.bottom, 8)
+            .lineLimit(1...3)
+            .multilineTextAlignment(.leading)
             .onChange(of: editedTitle) { newTitle in
                 guard !newTitle.isEmpty else { return }
                 item.title = newTitle
@@ -1423,83 +1838,218 @@ struct NavigationNoteEditView: View {
     
     private var textEditorSection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Inline formatting button at start of content area
-            HStack {
-                Button(action: { showingFormattingSheet.toggle() }) {
-                    HStack(spacing: 2) {
-                        Text("B")
-                            .font(.system(size: 14, weight: .bold))
-                        Text("7")
-                            .font(.system(size: 12))
-                            .underline()
-                        Text("U")
-                            .font(.system(size: 14))
-                            .underline()
-                    }
-                    .foregroundColor(GentleLightning.Colors.accentNeutral)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(GentleLightning.Colors.surface)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .stroke(GentleLightning.Colors.textSecondary.opacity(0.2), lineWidth: 1)
-                            )
-                    )
+            // Text editor with placeholder-like styling
+            ZStack(alignment: .topLeading) {
+                if attributedText.string.isEmpty || attributedText.string == " " {
+                    Text("Now write something brilliant")
+                        .font(GentleLightning.Typography.bodyLarge)
+                        .foregroundColor(Color.gray.opacity(0.5))
+                        .padding(.horizontal, 20)
+                        .padding(.top, 5)
+                        .allowsHitTesting(false)
                 }
-                Spacer()
+                
+                RichTextEditor(
+                    attributedText: $attributedText,
+                    isBoldActive: $formattingState.isBoldActive,
+                    isItalicActive: $formattingState.isItalicActive,
+                    isUnderlineActive: $formattingState.isUnderlineActive,
+                    isStrikethroughActive: $formattingState.isStrikethroughActive,
+                    isListModeActive: $formattingState.isListModeActive,
+                    isCheckboxModeActive: $formattingState.isCheckboxModeActive,
+                    isFocused: $isRichTextFocused,
+                    placeholder: "Now write something brilliant"
+                )
+                .padding(.horizontal, 16)
+                .background(Color.clear)
             }
-            .padding(.horizontal, GentleLightning.Layout.Padding.lg)
-            .padding(.bottom, 8)
-            
-            // Text editor
-            TextEditor(text: $editedText)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(GentleLightning.Layout.Padding.lg)
-                .background(Color.white)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
     
     var body: some View {
-        VStack(spacing: 0) {
-            if isContentReady {
-                titleSection
-                textEditorSection
-            }
-                
-            // Category picker at bottom
-            VStack(spacing: 0) {
-                Divider()
-                    .background(GentleLightning.Colors.textSecondary.opacity(0.3))
-                
-                // TODO: Uncomment when CategoryPicker is added to project
-                /*
-                CategoryPicker(selectedCategoryIds: $selectedCategoryIds, maxSelections: 3)
-                    .padding(GentleLightning.Layout.Padding.lg)
-                    .onChange(of: selectedCategoryIds) { newCategoryIds in
-                        // Update the item's categories
-                        Task {
-                            if let firebaseId = item.firebaseId {
-                                do {
-                                    try await FirebaseManager.shared.updateNoteCategories(noteId: firebaseId, categoryIds: newCategoryIds)
-                                    await MainActor.run {
-                                        item.categoryIds = newCategoryIds
+        GeometryReader { geometry in
+            ZStack(alignment: .bottom) {
+                // Main content area
+                VStack(spacing: 0) {
+                    if isContentReady {
+                        // Combined title and text editor for seamless flow
+                        VStack(alignment: .leading, spacing: 0) {
+                            titleSection
+                            textEditorSection
+                        }
+                        .background(Color.white)
+                    }
+                        
+                    // Category picker at bottom
+                    VStack(spacing: 0) {
+                        Divider()
+                            .background(GentleLightning.Colors.textSecondary.opacity(0.3))
+                        
+                        // TODO: Uncomment when CategoryPicker is added to project
+                        /*
+                        CategoryPicker(selectedCategoryIds: $selectedCategoryIds, maxSelections: 3)
+                            .padding(GentleLightning.Layout.Padding.lg)
+                            .onChange(of: selectedCategoryIds) { newCategoryIds in
+                                // Update the item's categories
+                                Task {
+                                    if let firebaseId = item.firebaseId {
+                                        do {
+                                            try await FirebaseManager.shared.updateNoteCategories(noteId: firebaseId, categoryIds: newCategoryIds)
+                                            await MainActor.run {
+                                                item.categoryIds = newCategoryIds
+                                            }
+                                            
+                                            // Update usage count for selected categories
+                                            for categoryId in newCategoryIds {
+                                                await categoryService.updateCategoryUsage(categoryId)
+                                            }
+                                        } catch {
+                                            print("Failed to update categories: \(error)")
+                                        }
                                     }
-                                    
-                                    // Update usage count for selected categories
-                                    for categoryId in newCategoryIds {
-                                        await categoryService.updateCategoryUsage(categoryId)
-                                    }
-                                } catch {
-                                    print("Failed to update categories: \(error)")
                                 }
                             }
-                        }
+                        */
                     }
-                */
+                    
+                    // Spacer to push content up when keyboard appears
+                    if isTextFieldFocused {
+                        Spacer()
+                            .frame(height: max(0, keyboardHeight + 50)) // 50pt for toolbar height
+                    }
+                }
+                .background(Color.white)
+                
+                // Formatting toolbar - positioned absolutely at bottom, above keyboard
+                if isRichTextFocused {
+                    let _ = print("🎯 DEBUG: Showing formatting toolbar - isRichTextFocused = \(isRichTextFocused)")
+                    VStack(spacing: 0) {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 12) {
+                                // Text formatting buttons
+                                FormattingToggleButton(
+                                    icon: "bold",
+                                    isActive: formattingState.isBoldActive,
+                                    action: { toggleBold() }
+                                )
+                                
+                                FormattingToggleButton(
+                                    icon: "italic",
+                                    isActive: formattingState.isItalicActive,
+                                    action: { toggleItalic() }
+                                )
+                                
+                                FormattingToggleButton(
+                                    icon: "underline",
+                                    isActive: formattingState.isUnderlineActive,
+                                    action: { toggleUnderline() }
+                                )
+                                
+                                FormattingToggleButton(
+                                    icon: "strikethrough",
+                                    isActive: formattingState.isStrikethroughActive,
+                                    action: { toggleStrikethrough() }
+                                )
+                                
+                                // Separator
+                                Rectangle()
+                                    .fill(GentleLightning.Colors.border(isDark: false))
+                                    .frame(width: 1, height: 24)
+                                
+                                // List formatting buttons
+                                FormattingToggleButton(
+                                    icon: "list.bullet",
+                                    isActive: formattingState.isListModeActive,
+                                    action: { toggleListMode() }
+                                )
+                                
+                                FormattingToggleButton(
+                                    icon: "checkmark.square",
+                                    isActive: formattingState.isCheckboxModeActive,
+                                    action: { toggleCheckboxMode() }
+                                )
+                            }
+                            .padding(.horizontal, 4)
+                        }
+                        
+                        HStack {
+                            Spacer()
+                            
+                            // Undo/Redo buttons
+                            HStack(spacing: 8) {
+                                Button(action: { performUndo() }) {
+                                    Image(systemName: "arrow.uturn.backward")
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(canUndo ? GentleLightning.Colors.accentNeutral : GentleLightning.Colors.textSecondary)
+                                        .frame(width: 32, height: 32)
+                                        .background(canUndo ? GentleLightning.Colors.accentNeutral.opacity(0.1) : Color.clear)
+                                        .clipShape(Circle())
+                                }
+                                .disabled(!canUndo)
+                                
+                                Button(action: { performRedo() }) {
+                                    Image(systemName: "arrow.uturn.forward")
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(canRedo ? GentleLightning.Colors.accentNeutral : GentleLightning.Colors.textSecondary)
+                                        .frame(width: 32, height: 32)
+                                        .background(canRedo ? GentleLightning.Colors.accentNeutral.opacity(0.1) : Color.clear)
+                                        .clipShape(Circle())
+                                }
+                                .disabled(!canRedo)
+                            }
+                            
+                            // Collapse keyboard button
+                            Button(action: { hideKeyboard() }) {
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(GentleLightning.Colors.accentNeutral)
+                                    .frame(width: 32, height: 32)
+                                    .background(GentleLightning.Colors.accentNeutral.opacity(0.1))
+                                    .clipShape(Circle())
+                            }
+                        }
+                        .padding(.horizontal, max(16, geometry.safeAreaInsets.leading + 16))
+                        .padding(.vertical, 12)
+                        .frame(maxWidth: .infinity)
+                        .background(
+                            Color(UIColor.systemBackground)
+                                .shadow(color: .white, radius: 1, x: 0, y: -1)
+                        )
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(maxHeight: .infinity, alignment: .bottom)
+                    .offset(y: {
+                        // Pin toolbar directly above keyboard
+                        // Use the keyboard height directly as the offset to position toolbar above keyboard
+                        let validKeyboardHeight = keyboardHeight.isFinite && keyboardHeight > 0 ? keyboardHeight : 0
+                        let toolbarHeight: CGFloat = 80 // Approximate height of our toolbar
+                        let finalOffset = validKeyboardHeight > 0 ? -(validKeyboardHeight + toolbarHeight) : 0
+                        print("🎯 Toolbar offset: keyboardHeight=\(validKeyboardHeight), toolbarHeight=\(toolbarHeight), finalOffset=\(finalOffset)")
+                        return finalOffset
+                    }())
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .animation(.easeInOut(duration: 0.25), value: keyboardHeight)
+                }
             }
-            .background(Color.white)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.white)
+        .safeAreaInset(edge: .bottom) {
+            // Formatting toolbar that appears above keyboard
+            if isTextFieldFocused && keyboardHeight > 0 {
+                FormattingToolbarView(
+                    formattingState: $formattingState,
+                    canUndo: canUndo,
+                    canRedo: canRedo,
+                    performUndo: performUndo,
+                    performRedo: performRedo,
+                    hideKeyboard: hideKeyboard
+                )
+                .background(Color(UIColor.systemBackground))
+                .shadow(color: .gray.opacity(0.3), radius: 2, x: 0, y: -1)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .animation(.easeInOut(duration: 0.25), value: keyboardHeight)
+            }
         }
         .onAppear {
             print("🚀 NavigationNoteEditView VStack onAppear: TRIGGERED")
@@ -1516,6 +2066,18 @@ struct NavigationNoteEditView: View {
             
             isContentReady = true
             print("✅ NavigationNoteEditView VStack onAppear: Content ready - TextEditor should show")
+        }
+        .onChange(of: isRichTextFocused) { newValue in
+            // Sync rich text focus with the original focus state for toolbar visibility
+            print("🎯 NavigationNoteEditView: isRichTextFocused changed to \(newValue), setting isTextFieldFocused = \(newValue)")
+            isTextFieldFocused = newValue
+        }
+        .onChange(of: attributedText) { newValue in
+            // Sync attributed text changes back to plain text for Firebase
+            let plainText = newValue.string
+            if plainText != editedText {
+                editedText = plainText
+            }
         }
         .onChange(of: editedText) { newValue in
             let safeValue = sanitizeTextContent(newValue)
@@ -1545,17 +2107,49 @@ struct NavigationNoteEditView: View {
                 editedText = safeNewContent
             }
         }
-        .background(Color.white)
-        // .navigationTitle("Edit Note")
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
+            if let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
+                let height = keyboardFrame.height
+                // Prevent NaN and invalid values
+                if height.isFinite && height > 0 {
+                    keyboardHeight = height
+                    print("⌨️ Keyboard will show with height: \(height)")
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            keyboardHeight = 0
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .updateUndoRedoState)) { notification in
+            if let userInfo = notification.userInfo {
+                canUndo = userInfo["canUndo"] as? Bool ?? false
+                canRedo = userInfo["canRedo"] as? Bool ?? false
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: keyboardHeight)
+        .navigationBarBackButtonHidden(true)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            // Back arrow on the left
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button(action: {
+                    dismiss()
+                }) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(GentleLightning.Colors.textBlack)
+                }
+            }
+            
+            // More options button (vertical dots)
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: {
                     showingActionSheet = true
                 }) {
                     Image(systemName: "ellipsis")
-                        .font(GentleLightning.Typography.bodyInput)
+                        .font(.system(size: 22))
                         .foregroundColor(GentleLightning.Colors.textPrimary)
+                        .rotationEffect(.degrees(90))
                 }
             }
         }
@@ -1579,6 +2173,7 @@ struct NavigationNoteEditView: View {
         }
         .sheet(isPresented: $showingFormattingSheet) {
             FormattingSheet(text: $editedText)
+        }
         }
     }
     
@@ -1649,6 +2244,618 @@ struct NavigationNoteEditView: View {
         }
         
         return sanitizedLines.joined(separator: "\n")
+    }
+    
+    // MARK: - Formatting Actions
+    private func toggleBold() {
+        formattingState.toggleTextFormat(.bold)
+        applyFormattingToSelection(format: .bold, isActive: formattingState.isBoldActive)
+    }
+    
+    private func toggleItalic() {
+        formattingState.toggleTextFormat(.italic)
+        applyFormattingToSelection(format: .italic, isActive: formattingState.isItalicActive)
+    }
+    
+    private func toggleUnderline() {
+        formattingState.toggleTextFormat(.underline)
+        applyFormattingToSelection(format: .underline, isActive: formattingState.isUnderlineActive)
+    }
+    
+    private func toggleStrikethrough() {
+        formattingState.toggleTextFormat(.strikethrough)
+        applyFormattingToSelection(format: .strikethrough, isActive: formattingState.isStrikethroughActive)
+    }
+    
+    private func toggleListMode() {
+        let newState = !formattingState.isListModeActive
+        formattingState.setBlockFormat(newState ? .bulletList : nil)
+        applyBlockFormatting(format: .bulletList, isActive: formattingState.isListModeActive)
+    }
+    
+    private func toggleCheckboxMode() {
+        let newState = !formattingState.isCheckboxModeActive
+        formattingState.setBlockFormat(newState ? .checkbox : nil)
+        applyBlockFormatting(format: .checkbox, isActive: formattingState.isCheckboxModeActive)
+    }
+    
+    // MARK: - Formatting Application
+    private func applyFormattingToSelection(format: TextFormat, isActive: Bool) {
+        // This function will trigger the RichTextEditor to apply formatting to selected text
+        // We'll send a notification to the RichTextEditor
+        NotificationCenter.default.post(
+            name: .applyFormatting,
+            object: nil,
+            userInfo: ["format": format, "isActive": isActive]
+        )
+        print("📝 Applying \(format) formatting - active: \(isActive)")
+    }
+    
+    private func applyBlockFormatting(format: BlockFormat, isActive: Bool) {
+        // This function will trigger the RichTextEditor to apply block formatting to current line(s)
+        // We'll send a notification to the RichTextEditor
+        NotificationCenter.default.post(
+            name: .applyBlockFormatting,
+            object: nil,
+            userInfo: ["format": format, "isActive": isActive]
+        )
+        print("📝 Applying \(format) block formatting - active: \(isActive)")
+    }
+    
+    private func performUndo() {
+        // Send undo notification to RichTextEditor
+        NotificationCenter.default.post(
+            name: .performUndo,
+            object: nil
+        )
+    }
+    
+    private func performRedo() {
+        // Send redo notification to RichTextEditor
+        NotificationCenter.default.post(
+            name: .performRedo,
+            object: nil
+        )
+    }
+    
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
+}
+
+// MARK: - Rich Text Editor
+struct RichTextEditor: UIViewRepresentable {
+    @Binding var attributedText: NSAttributedString
+    @Binding var isBoldActive: Bool
+    @Binding var isItalicActive: Bool
+    @Binding var isUnderlineActive: Bool
+    @Binding var isStrikethroughActive: Bool
+    @Binding var isListModeActive: Bool
+    @Binding var isCheckboxModeActive: Bool
+    @Binding var isFocused: Bool
+    let placeholder: String
+    
+    func makeUIView(context: Context) -> UITextView {
+        let textView = UITextView()
+        textView.delegate = context.coordinator
+        textView.font = UIFont(name: "SharpGrotesk-Book", size: 19) ?? UIFont.systemFont(ofSize: 19)
+        textView.backgroundColor = UIColor.clear
+        textView.textColor = UIColor(GentleLightning.Colors.textPrimary(isDark: false))
+        textView.isScrollEnabled = false
+        textView.textContainer.lineFragmentPadding = 0
+        textView.textContainerInset = .zero
+        textView.isEditable = true
+        textView.isUserInteractionEnabled = true
+        
+        // Set initial attributed text
+        textView.attributedText = attributedText
+        
+        // Set up formatting notification observer
+        context.coordinator.setupFormattingObserver(for: textView)
+        
+        // Auto-focus after a short delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            textView.becomeFirstResponder()
+        }
+        
+        return textView
+    }
+    
+    func updateUIView(_ uiView: UITextView, context: Context) {
+        if uiView.attributedText != attributedText {
+            uiView.attributedText = attributedText
+        }
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject, UITextViewDelegate {
+        let parent: RichTextEditor
+        private var textView: UITextView?
+        private var formattingObserver: NSObjectProtocol?
+        private var blockFormattingObserver: NSObjectProtocol?
+        private var undoObserver: NSObjectProtocol?
+        private var redoObserver: NSObjectProtocol?
+        
+        init(_ parent: RichTextEditor) {
+            self.parent = parent
+        }
+        
+        deinit {
+            if let observer = formattingObserver {
+                NotificationCenter.default.removeObserver(observer)
+            }
+            if let observer = blockFormattingObserver {
+                NotificationCenter.default.removeObserver(observer)
+            }
+            if let observer = undoObserver {
+                NotificationCenter.default.removeObserver(observer)
+            }
+            if let observer = redoObserver {
+                NotificationCenter.default.removeObserver(observer)
+            }
+        }
+        
+        func setupFormattingObserver(for textView: UITextView) {
+            self.textView = textView
+            
+            // Remove existing observers
+            if let observer = formattingObserver {
+                NotificationCenter.default.removeObserver(observer)
+            }
+            if let observer = blockFormattingObserver {
+                NotificationCenter.default.removeObserver(observer)
+            }
+            if let observer = undoObserver {
+                NotificationCenter.default.removeObserver(observer)
+            }
+            if let observer = redoObserver {
+                NotificationCenter.default.removeObserver(observer)
+            }
+            
+            // Add formatting observer
+            formattingObserver = NotificationCenter.default.addObserver(
+                forName: .applyFormatting,
+                object: nil,
+                queue: .main
+            ) { [weak self] notification in
+                self?.handleFormattingNotification(notification)
+            }
+            
+            // Add block formatting observer
+            blockFormattingObserver = NotificationCenter.default.addObserver(
+                forName: .applyBlockFormatting,
+                object: nil,
+                queue: .main
+            ) { [weak self] notification in
+                self?.handleBlockFormattingNotification(notification)
+            }
+            
+            // Add undo observer
+            undoObserver = NotificationCenter.default.addObserver(
+                forName: .performUndo,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                self?.handleUndo()
+            }
+            
+            // Add redo observer
+            redoObserver = NotificationCenter.default.addObserver(
+                forName: .performRedo,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                self?.handleRedo()
+            }
+        }
+        
+        private func handleFormattingNotification(_ notification: Notification) {
+            guard let textView = textView,
+                  let userInfo = notification.userInfo,
+                  let format = userInfo["format"] as? TextFormat,
+                  let isActive = userInfo["isActive"] as? Bool else {
+                return
+            }
+            
+            applyFormattingToSelection(textView: textView, format: format, isActive: isActive)
+        }
+        
+        private func handleBlockFormattingNotification(_ notification: Notification) {
+            guard let textView = textView,
+                  let userInfo = notification.userInfo,
+                  let format = userInfo["format"] as? BlockFormat,
+                  let isActive = userInfo["isActive"] as? Bool else {
+                return
+            }
+            
+            applyBlockFormattingToCurrentLine(textView: textView, format: format, isActive: isActive)
+        }
+        
+        private func applyBlockFormattingToCurrentLine(textView: UITextView, format: BlockFormat, isActive: Bool) {
+            let text = textView.text ?? ""
+            let selectedRange = textView.selectedRange
+            
+            // Find the current line(s) that contain the cursor or selection
+            let lineRange = (text as NSString).lineRange(for: selectedRange)
+            let currentLine = (text as NSString).substring(with: lineRange)
+            
+            let prefix = format == .bulletList ? "• " : "☐ "
+            var newLine: String
+            
+            if isActive {
+                // Add prefix if it's not already there
+                if !currentLine.hasPrefix(prefix) {
+                    newLine = prefix + currentLine.trimmingCharacters(in: .whitespaces)
+                    if !newLine.hasSuffix("\n") && lineRange.location + lineRange.length < text.count {
+                        newLine += "\n"
+                    }
+                } else {
+                    return // Already has the prefix
+                }
+            } else {
+                // Remove prefix if it's there
+                if currentLine.hasPrefix(prefix) {
+                    newLine = String(currentLine.dropFirst(prefix.count))
+                    if !newLine.hasSuffix("\n") && lineRange.location + lineRange.length < text.count {
+                        newLine += "\n"
+                    }
+                } else if currentLine.hasPrefix("• ") || currentLine.hasPrefix("☐ ") {
+                    // Remove other list prefixes when switching modes
+                    newLine = currentLine.replacingOccurrences(of: "^[•☐] ", with: "", options: .regularExpression)
+                    if !newLine.hasSuffix("\n") && lineRange.location + lineRange.length < text.count {
+                        newLine += "\n"
+                    }
+                } else {
+                    return // No prefix to remove
+                }
+            }
+            
+            // Apply the change with proper attributes
+            let mutableAttributedText = NSMutableAttributedString(attributedString: textView.attributedText)
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont(name: "SharpGrotesk-Book", size: 19) ?? UIFont.systemFont(ofSize: 19),
+                .foregroundColor: UIColor(GentleLightning.Colors.textPrimary(isDark: false))
+            ]
+            let newAttributedLine = NSAttributedString(string: newLine, attributes: attributes)
+            
+            // Replace the current line
+            mutableAttributedText.replaceCharacters(in: lineRange, with: newAttributedLine)
+            
+            // Update the text view
+            textView.attributedText = mutableAttributedText
+            
+            // Adjust cursor position to account for the prefix change
+            let prefixLengthChange = isActive ? prefix.count : -min(prefix.count, currentLine.count)
+            let newCursorPosition = max(lineRange.location + prefixLengthChange, lineRange.location)
+            textView.selectedRange = NSRange(location: newCursorPosition, length: 0)
+            
+            // Update parent binding
+            parent.attributedText = mutableAttributedText
+        }
+        
+        private func handleUndo() {
+            guard let textView = textView else { return }
+            
+            if textView.undoManager?.canUndo == true {
+                textView.undoManager?.undo()
+                parent.attributedText = textView.attributedText
+                updateUndoRedoState()
+            }
+        }
+        
+        private func handleRedo() {
+            guard let textView = textView else { return }
+            
+            if textView.undoManager?.canRedo == true {
+                textView.undoManager?.redo()
+                parent.attributedText = textView.attributedText
+                updateUndoRedoState()
+            }
+        }
+        
+        private func updateUndoRedoState() {
+            guard let textView = textView else { return }
+            
+            DispatchQueue.main.async { [weak self] in
+                // Update the parent's undo/redo state
+                if self?.parent != nil {
+                    NotificationCenter.default.post(
+                        name: .updateUndoRedoState,
+                        object: nil,
+                        userInfo: [
+                            "canUndo": textView.undoManager?.canUndo ?? false,
+                            "canRedo": textView.undoManager?.canRedo ?? false
+                        ]
+                    )
+                }
+            }
+        }
+        
+        private func applyFormattingToSelection(textView: UITextView, format: TextFormat, isActive: Bool) {
+            let nsRange = textView.selectedRange
+            
+            // If no selection (just cursor), we'll set up formatting for future typing
+            if nsRange.length == 0 {
+                // The formatting will be applied through the shouldChangeTextIn method
+                // when new text is typed, based on the active formatting states
+                print("📝 Setting typing attributes for future text - \(format): \(isActive)")
+                
+                // Update the text view's typing attributes for future text
+                var typingAttributes = textView.typingAttributes
+                let updatedAttributes = applyFormatAttributes(to: typingAttributes, format: format, isActive: isActive)
+                for (key, value) in updatedAttributes {
+                    if value is NSNull {
+                        typingAttributes.removeValue(forKey: key)
+                    } else {
+                        typingAttributes[key] = value
+                    }
+                }
+                textView.typingAttributes = typingAttributes
+                return
+            }
+            
+            // Apply formatting to selected text
+            let mutableAttributedText = NSMutableAttributedString(attributedString: textView.attributedText)
+            
+            // Get current attributes in the selection range
+            if nsRange.location < mutableAttributedText.length {
+                let currentAttributes = mutableAttributedText.attributes(at: nsRange.location, effectiveRange: nil)
+                let newAttributes = applyFormatAttributes(to: currentAttributes, format: format, isActive: isActive)
+                
+                // Apply the new attributes to the selected range
+                for (key, value) in newAttributes {
+                    if value is NSNull {
+                        mutableAttributedText.removeAttribute(key, range: nsRange)
+                    } else {
+                        mutableAttributedText.addAttribute(key, value: value, range: nsRange)
+                    }
+                }
+            }
+            
+            // Update the text view
+            textView.attributedText = mutableAttributedText
+            
+            // Restore selection
+            textView.selectedRange = nsRange
+            
+            // Update parent binding
+            parent.attributedText = mutableAttributedText
+            
+            // Update toolbar state to reflect changes
+            updateToolbarState(for: textView)
+        }
+        
+        private func applyFormatAttributes(to currentAttributes: [NSAttributedString.Key: Any], format: TextFormat, isActive: Bool) -> [NSAttributedString.Key: Any] {
+            var attributes: [NSAttributedString.Key: Any] = [:]
+            
+            switch format {
+            case .bold:
+                if isActive {
+                    let currentFont = currentAttributes[.font] as? UIFont ?? UIFont.systemFont(ofSize: 19)
+                    let boldFont = UIFont(name: "SharpGrotesk-SemiBold", size: currentFont.pointSize) ?? UIFont.boldSystemFont(ofSize: currentFont.pointSize)
+                    attributes[.font] = boldFont
+                } else {
+                    let currentFont = currentAttributes[.font] as? UIFont ?? UIFont.systemFont(ofSize: 19)
+                    let regularFont = UIFont(name: "SharpGrotesk-Book", size: currentFont.pointSize) ?? UIFont.systemFont(ofSize: currentFont.pointSize)
+                    attributes[.font] = regularFont
+                }
+                
+            case .italic:
+                if let currentFont = currentAttributes[.font] as? UIFont {
+                    var traits = currentFont.fontDescriptor.symbolicTraits
+                    if isActive {
+                        traits.insert(.traitItalic)
+                    } else {
+                        traits.remove(.traitItalic)
+                    }
+                    if let newDescriptor = currentFont.fontDescriptor.withSymbolicTraits(traits) {
+                        attributes[.font] = UIFont(descriptor: newDescriptor, size: currentFont.pointSize)
+                    }
+                }
+                
+            case .underline:
+                attributes[.underlineStyle] = isActive ? NSUnderlineStyle.single.rawValue : NSNull()
+                
+            case .strikethrough:
+                attributes[.strikethroughStyle] = isActive ? NSUnderlineStyle.single.rawValue : NSNull()
+            }
+            
+            return attributes
+        }
+        
+        private func updateToolbarState(for textView: UITextView) {
+            // Get the current cursor position or selection
+            let selectedRange = textView.selectedRange
+            
+            // If there's no text, reset all states
+            guard !textView.attributedText.string.isEmpty && selectedRange.location < textView.attributedText.length else {
+                DispatchQueue.main.async { [weak self] in
+                    self?.parent.isBoldActive = false
+                    self?.parent.isItalicActive = false
+                    self?.parent.isUnderlineActive = false
+                    self?.parent.isStrikethroughActive = false
+                }
+                return
+            }
+            
+            // Get attributes at cursor position
+            let location = selectedRange.location == textView.attributedText.length ? selectedRange.location - 1 : selectedRange.location
+            let attributes = textView.attributedText.attributes(at: max(0, location), effectiveRange: nil)
+            
+            // Check for bold (either through font name or traits)
+            var isBold = false
+            if let font = attributes[.font] as? UIFont {
+                isBold = font.fontName.contains("Bold") || font.fontName.contains("SemiBold") || font.fontDescriptor.symbolicTraits.contains(.traitBold)
+            }
+            
+            // Check for italic
+            var isItalic = false
+            if let font = attributes[.font] as? UIFont {
+                isItalic = font.fontDescriptor.symbolicTraits.contains(.traitItalic)
+            }
+            
+            // Check for underline
+            let isUnderline = (attributes[.underlineStyle] as? Int) != nil
+            
+            // Check for strikethrough
+            let isStrikethrough = (attributes[.strikethroughStyle] as? Int) != nil
+            
+            // Update parent state on main queue
+            DispatchQueue.main.async { [weak self] in
+                self?.parent.isBoldActive = isBold
+                self?.parent.isItalicActive = isItalic
+                self?.parent.isUnderlineActive = isUnderline
+                self?.parent.isStrikethroughActive = isStrikethrough
+            }
+        }
+        
+        func textViewDidChange(_ textView: UITextView) {
+            parent.attributedText = textView.attributedText
+            updateUndoRedoState()
+        }
+        
+        func textViewDidChangeSelection(_ textView: UITextView) {
+            updateToolbarState(for: textView)
+        }
+        
+        func textViewDidBeginEditing(_ textView: UITextView) {
+            print("🎯 RichTextEditor: textViewDidBeginEditing - setting isFocused = true")
+            parent.isFocused = true
+            updateToolbarState(for: textView)
+            updateUndoRedoState()
+        }
+        
+        func textViewDidEndEditing(_ textView: UITextView) {
+            print("🎯 RichTextEditor: textViewDidEndEditing - setting isFocused = false")
+            parent.isFocused = false
+        }
+        
+        func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
+            // Handle new line insertion for list/checkbox modes
+            if text == "\n" {
+                if parent.isListModeActive {
+                    let newText = "• "
+                    let attributes: [NSAttributedString.Key: Any] = [
+                        .font: UIFont(name: "SharpGrotesk-Book", size: 19) ?? UIFont.systemFont(ofSize: 19),
+                        .foregroundColor: UIColor(GentleLightning.Colors.textPrimary(isDark: false))
+                    ]
+                    let attributedNewText = NSAttributedString(string: "\n" + newText, attributes: attributes)
+                    
+                    let mutableText = NSMutableAttributedString(attributedString: textView.attributedText)
+                    mutableText.insert(attributedNewText, at: range.location)
+                    textView.attributedText = mutableText
+                    
+                    // Move cursor after the bullet
+                    if let newPosition = textView.position(from: textView.beginningOfDocument, offset: range.location + newText.count + 1) {
+                        textView.selectedTextRange = textView.textRange(from: newPosition, to: newPosition)
+                    }
+                    
+                    return false
+                } else if parent.isCheckboxModeActive {
+                    let newText = "☐ "
+                    let attributes: [NSAttributedString.Key: Any] = [
+                        .font: UIFont(name: "SharpGrotesk-Book", size: 19) ?? UIFont.systemFont(ofSize: 19),
+                        .foregroundColor: UIColor(GentleLightning.Colors.textPrimary(isDark: false))
+                    ]
+                    let attributedNewText = NSAttributedString(string: "\n" + newText, attributes: attributes)
+                    
+                    let mutableText = NSMutableAttributedString(attributedString: textView.attributedText)
+                    mutableText.insert(attributedNewText, at: range.location)
+                    textView.attributedText = mutableText
+                    
+                    // Move cursor after the checkbox
+                    if let newPosition = textView.position(from: textView.beginningOfDocument, offset: range.location + newText.count + 1) {
+                        textView.selectedTextRange = textView.textRange(from: newPosition, to: newPosition)
+                    }
+                    
+                    return false
+                }
+            }
+            
+            // Handle formatting for new text based on active states
+            if !text.isEmpty && (parent.isBoldActive || parent.isItalicActive || parent.isUnderlineActive || parent.isStrikethroughActive) {
+                var attributes: [NSAttributedString.Key: Any] = [
+                    .foregroundColor: UIColor(GentleLightning.Colors.textPrimary(isDark: false))
+                ]
+                
+                // Build font with active formatting
+                var fontTraits: UIFontDescriptor.SymbolicTraits = []
+                var baseFont: UIFont = UIFont(name: "SharpGrotesk-Book", size: 19) ?? UIFont.systemFont(ofSize: 19)
+                
+                if parent.isBoldActive {
+                    fontTraits.insert(.traitBold)
+                    baseFont = UIFont(name: "SharpGrotesk-SemiBold", size: 19) ?? UIFont.boldSystemFont(ofSize: 19)
+                }
+                if parent.isItalicActive {
+                    fontTraits.insert(.traitItalic)
+                }
+                
+                // Apply font with traits
+                if !fontTraits.isEmpty {
+                    if let descriptor = baseFont.fontDescriptor.withSymbolicTraits(fontTraits) {
+                        attributes[.font] = UIFont(descriptor: descriptor, size: 19)
+                    } else {
+                        attributes[.font] = baseFont
+                    }
+                } else {
+                    attributes[.font] = baseFont
+                }
+                
+                // Apply other formatting
+                if parent.isUnderlineActive {
+                    attributes[.underlineStyle] = NSUnderlineStyle.single.rawValue
+                }
+                if parent.isStrikethroughActive {
+                    attributes[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
+                }
+                
+                let attributedText = NSAttributedString(string: text, attributes: attributes)
+                
+                let mutableText = NSMutableAttributedString(attributedString: textView.attributedText)
+                mutableText.replaceCharacters(in: range, with: attributedText)
+                textView.attributedText = mutableText
+                
+                // Move cursor after the inserted text
+                if let newPosition = textView.position(from: textView.beginningOfDocument, offset: range.location + text.count) {
+                    textView.selectedTextRange = textView.textRange(from: newPosition, to: newPosition)
+                }
+                
+                return false
+            }
+            
+            return true
+        }
+    }
+}
+
+// MARK: - Formatting Toggle Button
+struct FormattingToggleButton: View {
+    let icon: String
+    let isActive: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(isActive ? Color.white : GentleLightning.Colors.textPrimary(isDark: false))
+                .frame(width: 44, height: 44)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(isActive ? GentleLightning.Colors.accentNeutral : Color.clear)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(
+                            isActive ? GentleLightning.Colors.accentNeutral : GentleLightning.Colors.border(isDark: false),
+                            lineWidth: 1
+                        )
+                )
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 
