@@ -2435,7 +2435,7 @@ struct RichTextEditor: UIViewRepresentable {
         private var blockFormattingObserver: NSObjectProtocol?
         private var undoObserver: NSObjectProtocol?
         private var redoObserver: NSObjectProtocol?
-        private var isUpdatingFromParent = false
+        var isUpdatingFromParent = false
         
         init(_ parent: RichTextEditor) {
             self.parent = parent
