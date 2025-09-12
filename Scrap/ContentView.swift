@@ -1940,8 +1940,7 @@ struct NavigationNoteEditView: View {
                 }
                 .background(Color.white)
                 
-                // Formatting toolbar - positioned absolutely at bottom, above keyboard
-                if isRichTextFocused {
+                    /* REMOVED DUPLICATE TOOLBAR - Using safeAreaInset toolbar instead
                     let _ = print("🎯 DEBUG: Showing formatting toolbar - isRichTextFocused = \(isRichTextFocused)")
                     VStack(spacing: 0) {
                         ScrollView(.horizontal, showsIndicators: false) {
@@ -2049,7 +2048,7 @@ struct NavigationNoteEditView: View {
                     }())
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .animation(.easeInOut(duration: 0.25), value: keyboardHeight)
-                }
+                    */ // END REMOVED DUPLICATE TOOLBAR
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.white)
