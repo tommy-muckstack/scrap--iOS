@@ -1639,10 +1639,10 @@ struct FormattingToolbarView: View {
     let hideKeyboard: () -> Void
     
     var body: some View {
-        VStack(spacing: 8) {
-            // Bold/Italic/Underline/Strikethrough buttons
-            HStack(spacing: 16) {
-                Spacer()
+        // All buttons on a single horizontal line
+        HStack(spacing: 12) {
+            // Formatting buttons (left side)
+            HStack(spacing: 12) {
                 Button(action: { 
                     formattingState.toggleTextFormat(.bold)
                     // Send formatting notification
@@ -1745,35 +1745,31 @@ struct FormattingToolbarView: View {
                         .background(formattingState.isCheckListActive ? GentleLightning.Colors.accentNeutral : Color.clear)
                         .clipShape(Circle())
                 }
-                
-                Spacer()
             }
             
-            HStack {
-                Spacer()
-                
-                // Undo/Redo buttons
-                HStack(spacing: 8) {
-                    Button(action: { performUndo() }) {
-                        Image(systemName: "arrow.uturn.backward")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(canUndo ? .black : .gray)
-                            .frame(width: 32, height: 32)
-                            .background(canUndo ? GentleLightning.Colors.accentNeutral.opacity(0.1) : Color.clear)
-                            .clipShape(Circle())
-                    }
-                    .disabled(!canUndo)
-                    
-                    Button(action: { performRedo() }) {
-                        Image(systemName: "arrow.uturn.forward")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(canRedo ? .black : .gray)
-                            .frame(width: 32, height: 32)
-                            .background(canRedo ? GentleLightning.Colors.accentNeutral.opacity(0.1) : Color.clear)
-                            .clipShape(Circle())
-                    }
-                    .disabled(!canRedo)
+            Spacer()
+            
+            // Utility buttons (right side)
+            HStack(spacing: 8) {
+                Button(action: { performUndo() }) {
+                    Image(systemName: "arrow.uturn.backward")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(canUndo ? .black : .gray)
+                        .frame(width: 32, height: 32)
+                        .background(canUndo ? GentleLightning.Colors.accentNeutral.opacity(0.1) : Color.clear)
+                        .clipShape(Circle())
                 }
+                .disabled(!canUndo)
+                
+                Button(action: { performRedo() }) {
+                    Image(systemName: "arrow.uturn.forward")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(canRedo ? .black : .gray)
+                        .frame(width: 32, height: 32)
+                        .background(canRedo ? GentleLightning.Colors.accentNeutral.opacity(0.1) : Color.clear)
+                        .clipShape(Circle())
+                }
+                .disabled(!canRedo)
                 
                 // Collapse keyboard button
                 Button(action: { hideKeyboard() }) {
@@ -1785,12 +1781,9 @@ struct FormattingToolbarView: View {
                         .clipShape(Circle())
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .frame(maxWidth: .infinity)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 }
 
