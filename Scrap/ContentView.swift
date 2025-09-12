@@ -2051,7 +2051,25 @@ struct NavigationNoteEditView: View {
                     */ // END REMOVED DUPLICATE TOOLBAR
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .simultaneousGesture(
+                DragGesture()
+                    .onChanged { gesture in
+                        // Dismiss keyboard when swiping down (like in main app)
+                        if gesture.translation.y > 10 && isRichTextFocused {
+                            print("🎯 Dismissing keyboard via swipe down gesture")
+                            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                        }
+                    }
+            )
         .background(Color.white)
+        .contentShape(Rectangle()) // Make the entire area tappable for keyboard dismissal
+        .onTapGesture {
+            // Dismiss keyboard when tapping outside text area (like in main app)
+            if isRichTextFocused {
+                print("🎯 Dismissing keyboard via tap gesture")
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
+        }
         .safeAreaInset(edge: .bottom) {
             // Formatting toolbar that appears above keyboard
             let _ = print("🎯 DEBUG safeAreaInset: isRichTextFocused=\(isRichTextFocused), isTextFieldFocused=\(isTextFieldFocused), keyboardHeight=\(keyboardHeight)")
@@ -2143,7 +2161,9 @@ struct NavigationNoteEditView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            print("⌨️ Keyboard will hide - setting keyboardHeight = 0")
             keyboardHeight = 0
+            print("🎯 DEBUG: After keyboard hide - isRichTextFocused=\(isRichTextFocused), keyboardHeight=\(keyboardHeight)")
         }
         .onReceive(NotificationCenter.default.publisher(for: .updateUndoRedoState)) { notification in
             if let userInfo = notification.userInfo {
@@ -2771,7 +2791,9 @@ struct RichTextEditor: UIViewRepresentable {
         
         func textViewDidEndEditing(_ textView: UITextView) {
             print("🎯 RichTextEditor: textViewDidEndEditing - setting isFocused = false")
-            parent.isFocused = false
+            DispatchQueue.main.async {
+                self.parent.isFocused = false
+            }
         }
         
         func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
