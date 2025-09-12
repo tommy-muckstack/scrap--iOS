@@ -2359,6 +2359,7 @@ struct RichTextEditor: UIViewRepresentable {
     let placeholder: String
     
     func makeUIView(context: Context) -> UITextView {
+        print("🎯 RichTextEditor: makeUIView called")
         let textView = UITextView()
         textView.delegate = context.coordinator
         textView.backgroundColor = UIColor.clear
@@ -2367,16 +2368,20 @@ struct RichTextEditor: UIViewRepresentable {
         textView.textContainerInset = .zero
         textView.isEditable = true
         textView.isUserInteractionEnabled = true
+        print("🎯 RichTextEditor: textView created with isEditable=\(textView.isEditable), isUserInteractionEnabled=\(textView.isUserInteractionEnabled)")
         
         // Set initial attributed text (font and color will come from attributed text)
         textView.attributedText = attributedText
+        print("🎯 RichTextEditor: Set attributedText: '\(attributedText.string.prefix(50))'")
         
         // Set up formatting notification observer
         context.coordinator.setupFormattingObserver(for: textView)
         
         // Auto-focus after a short delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            textView.becomeFirstResponder()
+            print("🎯 RichTextEditor: Attempting to becomeFirstResponder")
+            let success = textView.becomeFirstResponder()
+            print("🎯 RichTextEditor: becomeFirstResponder success: \(success)")
         }
         
         return textView
