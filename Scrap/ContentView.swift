@@ -1120,16 +1120,23 @@ struct NoteEditView: View {
                         // Auto-save changes
                         let trimmedContent = safeValue.trimmingCharacters(in: .whitespacesAndNewlines)
                         if !trimmedContent.isEmpty {
+                            isSavingContent = true
                             dataManager.updateItem(item, newContent: trimmedContent)
                             AnalyticsManager.shared.trackNoteEditSaved(noteId: item.id, contentLength: safeValue.count)
+                            isSavingContent = false
                         }
                     }
                     .onChange(of: item.content) { newContent in
-                        // Update edited text if the underlying item content changes (with sanitization)
-                        let safeNewContent = sanitizeTextContent(newContent)
-                        if editedText != safeNewContent {
-                            print("📝 NoteEditView: Item content changed, updating to safe content: '\(safeNewContent)'")
-                            editedText = safeNewContent
+                        // Only update if we're not currently saving (prevents circular updates)
+                        if !isSavingContent {
+                            // Update edited text if the underlying item content changes (with sanitization)
+                            let safeNewContent = sanitizeTextContent(newContent)
+                            if editedText != safeNewContent {
+                                print("📝 NoteEditView: Item content changed, updating to safe content: '\(safeNewContent)'")
+                                editedText = safeNewContent
+                            }
+                        } else {
+                            print("📝 NoteEditView: Ignoring item content change during save operation")
                         }
                     }
             .background(Color.white)
@@ -1811,6 +1818,7 @@ struct NavigationNoteEditView: View {
     @State private var canUndo = false
     @State private var canRedo = false
     @State private var isUpdatingText = false
+    @State private var isSavingContent = false
     
     init(item: SparkItem, dataManager: FirebaseDataManager) {
         print("🏗️ NavigationNoteEditView init: STARTING - item.id = '\(item.id)'")
@@ -2134,15 +2142,22 @@ struct NavigationNoteEditView: View {
             
             let trimmedContent = safeValue.trimmingCharacters(in: .whitespacesAndNewlines)
             if !trimmedContent.isEmpty {
+                isSavingContent = true
                 dataManager.updateItem(item, newContent: trimmedContent)
                 AnalyticsManager.shared.trackNoteEditSaved(noteId: item.id, contentLength: safeValue.count)
+                isSavingContent = false
             }
         }
         .onChange(of: item.content) { newContent in
-            let safeNewContent = sanitizeTextContent(newContent)
-            if editedText != safeNewContent {
-                print("📝 NavigationNoteEditView: Item content changed, updating to safe content")
-                editedText = safeNewContent
+            // Only update if we're not currently saving (prevents circular updates)
+            if !isSavingContent {
+                let safeNewContent = sanitizeTextContent(newContent)
+                if editedText != safeNewContent {
+                    print("📝 NavigationNoteEditView: Item content changed, updating to safe content")
+                    editedText = safeNewContent
+                }
+            } else {
+                print("📝 NavigationNoteEditView: Ignoring item content change during save operation")
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
