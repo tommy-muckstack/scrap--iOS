@@ -1639,9 +1639,10 @@ struct FormattingToolbarView: View {
     let hideKeyboard: () -> Void
     
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: 8) {
             // Bold/Italic/Underline/Strikethrough buttons
             HStack(spacing: 16) {
+                Spacer()
                 Button(action: { 
                     formattingState.toggleTextFormat(.bold)
                     // Send formatting notification
@@ -1744,6 +1745,8 @@ struct FormattingToolbarView: View {
                         .background(formattingState.isCheckListActive ? GentleLightning.Colors.accentNeutral : Color.clear)
                         .clipShape(Circle())
                 }
+                
+                Spacer()
             }
             
             HStack {
@@ -1783,10 +1786,10 @@ struct FormattingToolbarView: View {
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.vertical, 8)
             .frame(maxWidth: .infinity)
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 12)
         .padding(.vertical, 8)
     }
 }
@@ -2054,8 +2057,8 @@ struct NavigationNoteEditView: View {
             .simultaneousGesture(
                 DragGesture()
                     .onChanged { gesture in
-                        // Dismiss keyboard when swiping down (like in main app)
-                        if gesture.translation.y > 10 && isRichTextFocused {
+                        // Dismiss keyboard when swiping down (like in main app)  
+                        if gesture.translation.height > 10 && isRichTextFocused {
                             print("🎯 Dismissing keyboard via swipe down gesture")
                             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                         }
