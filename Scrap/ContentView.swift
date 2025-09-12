@@ -441,6 +441,33 @@ class FirebaseDataManager: ObservableObject {
         }
     }
     
+    func updateItemWithRTF(_ item: SparkItem, rtfData: Data) {
+        // Extract plain text from RTF for local display/search
+        do {
+            let attributedString = try NSAttributedString(
+                data: rtfData,
+                options: [.documentType: NSAttributedString.DocumentType.rtf],
+                documentAttributes: nil
+            )
+            item.content = attributedString.string
+        } catch {
+            print("❌ Failed to extract plain text from RTF: \(error)")
+        }
+        
+        // Update Firebase with RTF data
+        if let firebaseId = item.firebaseId {
+            Task {
+                do {
+                    try await firebaseManager.updateNoteWithRTF(noteId: firebaseId, rtfData: rtfData)
+                } catch {
+                    await MainActor.run {
+                        self.error = "Failed to update note: \(error.localizedDescription)"
+                    }
+                }
+            }
+        }
+    }
+    
     func deleteItem(_ item: SparkItem) {
         // Track item deletion before removing
         AnalyticsManager.shared.trackItemDeleted(isTask: item.isTask)
@@ -499,6 +526,10 @@ struct InputField: View {
     let onCommit: () -> Void
     @FocusState var isFieldFocused: Bool
     
+    // Rich text state management
+    @State private var attributedText = NSAttributedString()
+    @StateObject private var richTextContext = RichTextContext()
+    
     // Voice recording state
     @State private var isRecording = false
     @State private var speechRecognizer: SFSpeechRecognizer? = SFSpeechRecognizer()
@@ -509,10 +540,9 @@ struct InputField: View {
     @State private var showPermissionAlert = false
     @State private var recordingStartTime: Date?
     
-    
     // Computed property to check if there's text content
     private var hasText: Bool {
-        !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !attributedText.string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
     
     // Dynamic height for text input
@@ -521,64 +551,72 @@ struct InputField: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 12) {
-                ZStack(alignment: .topLeading) {
-                    // Placeholder text
-                    if text.isEmpty {
-                        Text(placeholder)
-                            .font(GentleLightning.Typography.bodyInput)
-                            .foregroundColor(GentleLightning.Colors.textSecondary.opacity(0.6))
-                            .padding(.top, 8)
-                            .padding(.leading, 4)
-                    }
-                    
-                    TextEditor(text: $text)
-                        .font(GentleLightning.Typography.bodyInput)
-                        .foregroundColor(GentleLightning.Colors.textPrimary)
-                        .focused($isFieldFocused)
+                VStack(alignment: .leading, spacing: 8) {
+                    // Rich Text Editor
+                    ZStack(alignment: .topLeading) {
+                        // Placeholder text
+                        if attributedText.string.isEmpty {
+                            Text(placeholder)
+                                .font(GentleLightning.Typography.bodyInput)
+                                .foregroundColor(GentleLightning.Colors.textSecondary.opacity(0.6))
+                                .padding(.top, 8)
+                                .padding(.leading, 4)
+                        }
+                        
+                        RichTextEditor.forNotes(
+                            text: $attributedText,
+                            context: richTextContext
+                        ) { textView in
+                            textView.isScrollEnabled = false
+                            textView.backgroundColor = .clear
+                            textView.textContainerInset = UIEdgeInsets(top: 8, left: 4, bottom: 8, right: 4)
+                        }
                         .disabled(isRecording)
-                        .scrollContentBackground(.hidden)
-                        .background(Color.clear)
-                        .frame(minHeight: 40, maxHeight: max(40, min(textHeight, 120)), alignment: .topLeading) // Max 3 lines (~120pt), anchored to top
-                        .onChange(of: text) { newValue in
+                        .frame(minHeight: 40, maxHeight: max(40, min(textHeight, 120)), alignment: .topLeading)
+                        .onChange(of: attributedText) { newValue in
+                            // Update plain text binding for compatibility
+                            let newPlainText = newValue.string
+                            if text != newPlainText {
+                                text = newPlainText
+                            }
+                            
                             // Track when user starts typing
-                            if newValue.count == 1 && text.count <= 1 {
+                            if newPlainText.count == 1 && attributedText.string.count <= 1 {
                                 AnalyticsManager.shared.trackNewNoteStarted(method: "text")
                             }
                             
-                            // Apply rich text transformations using centralized RichTextTransformer
-                            let processedText = RichTextTransformer.transform(newValue, oldText: text)
-                            if processedText != newValue {
-                                text = processedText
-                                if processedText.contains("→") && !newValue.contains("→") {
-                                    AnalyticsManager.shared.trackArrowConversion()
-                                }
-                                if processedText.contains("• ") && !newValue.contains("• ") {
-                                    AnalyticsManager.shared.trackBulletPointCreated()
-                                }
-                                return
-                            }
-                            
                             // Calculate dynamic height based on content
-                            updateTextHeight(for: newValue)
+                            updateTextHeight(for: newPlainText)
                         }
-                        .onAppear {
-                            // Check current authorization status
-                            authorizationStatus = SFSpeechRecognizer.authorizationStatus()
-                            
-                            // Only auto-focus on appear, don't request permissions yet
-                            Task {
-                                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
-                                await MainActor.run {
-                                    if !isRecording {
-                                        isFieldFocused = true
-                                    }
-                                }
+                    }
+                    
+                    // Rich Text Formatting Toolbar
+                    if richTextContext.isEditingText {
+                        FormattingToolbarView(context: richTextContext)
+                    }
+                }
+                .onAppear {
+                    // Initialize attributed text from plain text
+                    if !text.isEmpty && attributedText.string.isEmpty {
+                        attributedText = NSAttributedString(string: text)
+                    }
+                    
+                    // Check current authorization status
+                    authorizationStatus = SFSpeechRecognizer.authorizationStatus()
+                    
+                    // Only auto-focus on appear, don't request permissions yet
+                    Task {
+                        try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                        await MainActor.run {
+                            if !isRecording {
+                                richTextContext.isEditingText = true
                             }
                         }
-                        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
-                            // Refresh authorization status when app becomes active (user returning from Settings)
-                            authorizationStatus = SFSpeechRecognizer.authorizationStatus()
-                        }
+                    }
+                }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+                    // Refresh authorization status when app becomes active (user returning from Settings)
+                    authorizationStatus = SFSpeechRecognizer.authorizationStatus()
                 }
                 
                 // Microphone/Save button - transforms based on recording state and text content
@@ -588,10 +626,19 @@ struct InputField: View {
                         handleVoiceRecording()
                     } else if hasText {
                         // Save the note (only when not recording)
-                        if !text.isEmpty {
-                            AnalyticsManager.shared.trackNoteSaved(method: "button", contentLength: text.count)
-                            dataManager.createItem(from: text, creationType: "text")
+                        if !attributedText.string.isEmpty {
+                            AnalyticsManager.shared.trackNoteSaved(method: "button", contentLength: attributedText.string.count)
+                            
+                            // Convert attributed text to RTF for storage
+                            let rtfData = try? attributedText.data(from: NSRange(location: 0, length: attributedText.length), 
+                                                                  documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf])
+                            let rtfString = rtfData.flatMap { String(data: $0, encoding: .utf8) } ?? attributedText.string
+                            
+                            dataManager.createItem(from: rtfString, creationType: "rich_text")
+                            
+                            // Clear both text fields
                             text = ""
+                            attributedText = NSAttributedString()
                         }
                     } else {
                         // Start voice recording
@@ -1233,52 +1280,6 @@ struct NoteEditView: View {
         }
     }
     
-    // Convert NSAttributedString to HTML for persistent storage
-    static func attributedStringToHTML(_ attributedString: NSAttributedString) -> String {
-        do {
-            let htmlData = try attributedString.data(
-                from: NSRange(location: 0, length: attributedString.length),
-                documentAttributes: [.documentType: NSAttributedString.DocumentType.html]
-            )
-            if let htmlString = String(data: htmlData, encoding: .utf8) {
-                return htmlString
-            }
-        } catch {
-            print("❌ Failed to convert attributed string to HTML: \(error)")
-        }
-        // Fallback to plain text if HTML conversion fails
-        return attributedString.string
-    }
-    
-    // Convert HTML string back to NSAttributedString for display
-    static func htmlToAttributedString(_ html: String) -> NSAttributedString {
-        guard !html.isEmpty else {
-            return NSAttributedString(string: " ")
-        }
-        
-        // Check if it's already plain text (no HTML tags)
-        if !html.contains("<") && !html.contains(">") {
-            return NSAttributedString(string: html)
-        }
-        
-        do {
-            let data = html.data(using: .utf8) ?? Data()
-            let attributedString = try NSAttributedString(
-                data: data,
-                options: [
-                    .documentType: NSAttributedString.DocumentType.html,
-                    .characterEncoding: String.Encoding.utf8.rawValue
-                ],
-                documentAttributes: nil
-            )
-            return attributedString
-        } catch {
-            print("❌ Failed to convert HTML to attributed string: \(error)")
-            // Fallback to plain text
-            return NSAttributedString(string: html)
-        }
-    }
-    
     // Sanitize text content to prevent CoreGraphics NaN errors
     func sanitizeTextContent(_ text: String) -> String {
         guard !text.isEmpty else { return " " }
@@ -1682,151 +1683,125 @@ struct ContentView: View {
 
 // MARK: - Formatting Toolbar View (Extracted Component)
 struct FormattingToolbarView: View {
-    @Binding var formattingState: FormattingState
-    let canUndo: Bool
-    let canRedo: Bool
-    let performUndo: () -> Void
-    let performRedo: () -> Void
-    let hideKeyboard: () -> Void
+    @ObservedObject var context: RichTextContext
     
     var body: some View {
-        // All buttons on a single horizontal line
-        HStack(spacing: 12) {
-            // Formatting buttons (left side)
+        VStack(spacing: 0) {
+            // Full-width top divider
+            Rectangle()
+                .fill(Color.black.opacity(0.1))
+                .frame(height: 1)
+                .frame(maxWidth: .infinity)
+            
+            // All buttons on a single horizontal line
             HStack(spacing: 12) {
-                Button(action: { 
-                    formattingState.toggleTextFormat(.bold)
-                    // Send formatting notification
-                    NotificationCenter.default.post(
-                        name: .applyTextFormatting,
-                        object: nil,
-                        userInfo: ["format": TextFormat.bold, "isActive": formattingState.isBoldActive]
-                    )
-                }) {
-                    Image(systemName: "bold")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(formattingState.isBoldActive ? .white : .black)
-                        .frame(width: 32, height: 32)
-                        .background(formattingState.isBoldActive ? .black : Color.clear)
+                // Formatting buttons (left side)
+                HStack(spacing: 12) {
+                    Button(action: { 
+                        context.toggleBold()
+                    }) {
+                        Image(systemName: "bold")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(context.isBoldActive ? .white : .black)
+                            .frame(width: 32, height: 32)
+                            .background(context.isBoldActive ? .black : Color.clear)
+                            .clipShape(Circle())
+                    }
+                    
+                    Button(action: { 
+                        context.toggleItalic()
+                    }) {
+                        Image(systemName: "italic")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(context.isItalicActive ? .white : .black)
+                            .frame(width: 32, height: 32)
+                            .background(context.isItalicActive ? .black : Color.clear)
                         .clipShape(Circle())
                 }
                 
-                Button(action: { 
-                    formattingState.toggleTextFormat(.italic)
-                    NotificationCenter.default.post(
-                        name: .applyTextFormatting,
-                        object: nil,
-                        userInfo: ["format": TextFormat.italic, "isActive": formattingState.isItalicActive]
-                    )
-                }) {
-                    Image(systemName: "italic")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(formattingState.isItalicActive ? .white : .black)
-                        .frame(width: 32, height: 32)
-                        .background(formattingState.isItalicActive ? .black : Color.clear)
-                        .clipShape(Circle())
-                }
-                
-                Button(action: { 
-                    formattingState.toggleTextFormat(.underline)
-                    NotificationCenter.default.post(
-                        name: .applyTextFormatting,
-                        object: nil,
-                        userInfo: ["format": TextFormat.underline, "isActive": formattingState.isUnderlineActive]
-                    )
-                }) {
-                    Image(systemName: "underline")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(formattingState.isUnderlineActive ? .white : .black)
-                        .frame(width: 32, height: 32)
-                        .background(formattingState.isUnderlineActive ? .black : Color.clear)
-                        .clipShape(Circle())
-                }
-                
-                Button(action: { 
-                    formattingState.toggleTextFormat(.strikethrough)
-                    NotificationCenter.default.post(
-                        name: .applyTextFormatting,
-                        object: nil,
-                        userInfo: ["format": TextFormat.strikethrough, "isActive": formattingState.isStrikethroughActive]
-                    )
-                }) {
-                    Image(systemName: "strikethrough")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(formattingState.isStrikethroughActive ? .white : .black)
-                        .frame(width: 32, height: 32)
-                        .background(formattingState.isStrikethroughActive ? .black : Color.clear)
-                        .clipShape(Circle())
-                }
-                
-                // Divider
-                Rectangle()
-                    .fill(Color.gray.opacity(0.3))
-                    .frame(width: 1, height: 24)
-                
-                // List buttons
-                Button(action: { 
-                    formattingState.toggleBlockFormat(.bulletList)
-                    NotificationCenter.default.post(
-                        name: .applyBlockFormatting,
-                        object: nil,
-                        userInfo: ["format": BlockFormat.bulletList, "isActive": formattingState.isBulletListActive]
-                    )
-                }) {
-                    Image(systemName: "list.bullet")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(formattingState.isBulletListActive ? .white : .black)
-                        .frame(width: 32, height: 32)
-                        .background(formattingState.isBulletListActive ? .black : Color.clear)
-                        .clipShape(Circle())
-                }
-                
-                Button(action: { 
-                    formattingState.toggleBlockFormat(.checkbox)
-                    NotificationCenter.default.post(
-                        name: .applyBlockFormatting,
-                        object: nil,
-                        userInfo: ["format": BlockFormat.checkbox, "isActive": formattingState.isCheckListActive]
-                    )
-                }) {
-                    Image(systemName: "checklist")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(formattingState.isCheckListActive ? .white : .black)
-                        .frame(width: 32, height: 32)
-                        .background(formattingState.isCheckListActive ? .black : Color.clear)
-                        .clipShape(Circle())
-                }
+                    Button(action: { 
+                        context.toggleUnderline()
+                    }) {
+                        Image(systemName: "underline")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(context.isUnderlineActive ? .white : .black)
+                            .frame(width: 32, height: 32)
+                            .background(context.isUnderlineActive ? .black : Color.clear)
+                            .clipShape(Circle())
+                    }
+                    
+                    Button(action: { 
+                        context.toggleStrikethrough()
+                    }) {
+                        Image(systemName: "strikethrough")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(context.isStrikethroughActive ? .white : .black)
+                            .frame(width: 32, height: 32)
+                            .background(context.isStrikethroughActive ? .black : Color.clear)
+                            .clipShape(Circle())
+                    }
+                    
+                    // Divider
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.3))
+                        .frame(width: 1, height: 24)
+                    
+                    // List buttons
+                    Button(action: { 
+                        context.toggleBulletList()
+                    }) {
+                        Image(systemName: "list.bullet")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(context.isBulletListActive ? .white : .black)
+                            .frame(width: 32, height: 32)
+                            .background(context.isBulletListActive ? .black : Color.clear)
+                            .clipShape(Circle())
+                    }
+                    
+                    Button(action: { 
+                        context.toggleCheckbox()
+                    }) {
+                        Image(systemName: "checklist")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(context.isCheckboxActive ? .white : .black)
+                            .frame(width: 32, height: 32)
+                            .background(context.isCheckboxActive ? .black : Color.clear)
+                            .clipShape(Circle())
+                    }
             }
             
             Spacer()
             
-            // Utility buttons (right side)
-            HStack(spacing: 8) {
-                Button(action: { performUndo() }) {
-                    Image(systemName: "arrow.uturn.backward")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(canUndo ? .black : .gray)
-                        .frame(width: 32, height: 32)
-                        .background(canUndo ? GentleLightning.Colors.accentNeutral.opacity(0.1) : Color.clear)
-                        .clipShape(Circle())
-                }
-                .disabled(!canUndo)
-                
-                Button(action: { performRedo() }) {
-                    Image(systemName: "arrow.uturn.forward")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(canRedo ? .black : .gray)
-                        .frame(width: 32, height: 32)
-                        .background(canRedo ? GentleLightning.Colors.accentNeutral.opacity(0.1) : Color.clear)
-                        .clipShape(Circle())
-                }
-                .disabled(!canRedo)
-                
-                // Collapse keyboard button
-                Button(action: { hideKeyboard() }) {
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.black)
+                // Utility buttons (right side)
+                HStack(spacing: 8) {
+                    Button(action: { context.undo() }) {
+                        Image(systemName: "arrow.uturn.backward")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(context.canUndo ? .black : .gray)
+                            .frame(width: 32, height: 32)
+                            .background(context.canUndo ? GentleLightning.Colors.accentNeutral.opacity(0.1) : Color.clear)
+                            .clipShape(Circle())
+                    }
+                    .disabled(!context.canUndo)
+                    
+                    Button(action: { context.redo() }) {
+                        Image(systemName: "arrow.uturn.forward")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(context.canRedo ? .black : .gray)
+                            .frame(width: 32, height: 32)
+                            .background(context.canRedo ? GentleLightning.Colors.accentNeutral.opacity(0.1) : Color.clear)
+                            .clipShape(Circle())
+                    }
+                    .disabled(!context.canRedo)
+                    
+                    // Collapse keyboard button
+                    Button(action: { 
+                        context.isEditingText = false
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }) {
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.black)
                         .frame(width: 32, height: 32)
                         .background(GentleLightning.Colors.accentNeutral.opacity(0.1))
                         .clipShape(Circle())
@@ -1835,6 +1810,7 @@ struct FormattingToolbarView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
+        }
     }
 }
 
@@ -1863,40 +1839,85 @@ struct NavigationNoteEditView: View {
     @State private var canRedo = false
     @State private var isUpdatingText = false
     @State private var isSavingContent = false
+    @State private var saveTimer: Timer?
     
     init(item: SparkItem, dataManager: FirebaseDataManager) {
         print("🏗️ NavigationNoteEditView init: STARTING - item.id = '\(item.id)'")
-        print("🏗️ NavigationNoteEditView init: item.content = '\(item.content)' (length: \(item.content.count))")
         
         self.item = item
         self.dataManager = dataManager
         
-        let initialContent = item.content.isEmpty ? " " : item.content
-        print("🏗️ NavigationNoteEditView init: initialContent = '\(initialContent)' (length: \(initialContent.count))")
-        
-        // Convert HTML content to attributed string if it contains HTML tags
+        // RTF is our primary format - always work with NSAttributedString
         let initialAttributedText: NSAttributedString
-        if initialContent.contains("<") && initialContent.contains(">") {
-            // Convert from HTML
-            initialAttributedText = Self.htmlToAttributedString(initialContent)
-            self._editedText = State(initialValue: initialAttributedText.string)
-            print("🏗️ NavigationNoteEditView init: Converted HTML to attributed text")
+        if let rtfData = item.rtfData {
+            print("📖 Loading RTF formatting data (\(rtfData.count) bytes)")
+            initialAttributedText = NavigationNoteEditView.dataToAttributedString(rtfData)
+            print("📖 Loaded formatted text: '\(initialAttributedText.string.prefix(50))...'")
         } else {
-            // Plain text - create attributed string with default formatting
+            // Create new RTF document with default formatting
+            print("📝 Creating new RTF document")
+            let initialContent = item.content.isEmpty ? " " : item.content
             let attributes: [NSAttributedString.Key: Any] = [
                 .font: UIFont(name: "SharpGrotesk-Book", size: 17) ?? UIFont.systemFont(ofSize: 17),
                 .foregroundColor: UIColor.black
             ]
             initialAttributedText = NSAttributedString(string: initialContent, attributes: attributes)
-            self._editedText = State(initialValue: initialContent)
         }
         
+        // Only store the attributed text - no plain text needed
         self._attributedText = State(initialValue: initialAttributedText)
+        self._editedText = State(initialValue: initialAttributedText.string) // Keep for compatibility but don't use
+        
         self._selectedCategoryIds = State(initialValue: item.categoryIds)
         self._editedTitle = State(initialValue: item.title)
         
-        print("🏗️ NavigationNoteEditView init: COMPLETED - all properties initialized")
+        print("🏗️ NavigationNoteEditView init: COMPLETED - RTF document ready")
     }
+    
+    // MARK: - NSAttributedString Persistence Methods
+    
+    // Convert NSAttributedString to NSData for storage
+    static func attributedStringToData(_ attributedString: NSAttributedString) -> Data? {
+        do {
+            let data = try attributedString.data(
+                from: NSRange(location: 0, length: attributedString.length),
+                documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
+            )
+            print("💾 Converted NSAttributedString to RTF data: \(data.count) bytes")
+            return data
+        } catch {
+            print("❌ Failed to convert NSAttributedString to data: \(error)")
+            return nil
+        }
+    }
+    
+    // Convert NSData back to NSAttributedString
+    static func dataToAttributedString(_ data: Data) -> NSAttributedString {
+        do {
+            let attributedString = try NSAttributedString(
+                data: data,
+                options: [.documentType: NSAttributedString.DocumentType.rtf],
+                documentAttributes: nil
+            )
+            print("📖 Loaded NSAttributedString from RTF data: '\(attributedString.string.prefix(50))...'")
+            return attributedString
+        } catch {
+            print("❌ Failed to convert data to NSAttributedString: \(error)")
+            
+            // Fallback to plain text with default formatting
+            if let plainText = String(data: data, encoding: .utf8) {
+                let attributes: [NSAttributedString.Key: Any] = [
+                    .font: UIFont(name: "SharpGrotesk-Book", size: 17) ?? UIFont.systemFont(ofSize: 17),
+                    .foregroundColor: UIColor.black
+                ]
+                return NSAttributedString(string: plainText, attributes: attributes)
+            }
+            
+            return NSAttributedString(string: " ")
+        }
+    }
+    
+    // MARK: - Helper Methods
     
     // MARK: - View Components
     private var titleSection: some View {
@@ -1945,59 +1966,64 @@ struct NavigationNoteEditView: View {
         }
     }
     
+    // Main content view to break up complex expression
+    private var mainContentView: some View {
+        VStack(spacing: 0) {
+            if isContentReady {
+                // Combined title and text editor for seamless flow
+                VStack(alignment: .leading, spacing: 0) {
+                    titleSection
+                    textEditorSection
+                }
+                .background(Color.white)
+            }
+            
+            // Category picker at bottom
+            VStack(spacing: 0) {
+                Divider()
+                    .background(GentleLightning.Colors.textSecondary.opacity(0.3))
+                
+                // TODO: Uncomment when CategoryPicker is added to project
+                /*
+                CategoryPicker(selectedCategoryIds: $selectedCategoryIds, maxSelections: 3)
+                    .padding(GentleLightning.Layout.Padding.lg)
+                    .onChange(of: selectedCategoryIds) { newCategoryIds in
+                        // Update the item's categories
+                        Task {
+                            if let firebaseId = item.firebaseId {
+                                do {
+                                    try await FirebaseManager.shared.updateNoteCategories(noteId: firebaseId, categoryIds: newCategoryIds)
+                                    await MainActor.run {
+                                        item.categoryIds = newCategoryIds
+                                    }
+                                    
+                                    // Update usage count for selected categories
+                                    for categoryId in newCategoryIds {
+                                        await categoryService.updateCategoryUsage(categoryId)
+                                    }
+                                } catch {
+                                    print("Failed to update categories: \(error)")
+                                }
+                            }
+                        }
+                    }
+                */
+            }
+            
+            // Spacer to push content up when keyboard appears
+            if isTextFieldFocused {
+                Spacer()
+                    .frame(height: max(0, keyboardHeight + 50)) // 50pt for toolbar height
+            }
+        }
+        .background(Color.white)
+    }
+    
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .bottom) {
                 // Main content area
-                VStack(spacing: 0) {
-                    if isContentReady {
-                        // Combined title and text editor for seamless flow
-                        VStack(alignment: .leading, spacing: 0) {
-                            titleSection
-                            textEditorSection
-                        }
-                        .background(Color.white)
-                    }
-                        
-                    // Category picker at bottom
-                    VStack(spacing: 0) {
-                        Divider()
-                            .background(GentleLightning.Colors.textSecondary.opacity(0.3))
-                        
-                        // TODO: Uncomment when CategoryPicker is added to project
-                        /*
-                        CategoryPicker(selectedCategoryIds: $selectedCategoryIds, maxSelections: 3)
-                            .padding(GentleLightning.Layout.Padding.lg)
-                            .onChange(of: selectedCategoryIds) { newCategoryIds in
-                                // Update the item's categories
-                                Task {
-                                    if let firebaseId = item.firebaseId {
-                                        do {
-                                            try await FirebaseManager.shared.updateNoteCategories(noteId: firebaseId, categoryIds: newCategoryIds)
-                                            await MainActor.run {
-                                                item.categoryIds = newCategoryIds
-                                            }
-                                            
-                                            // Update usage count for selected categories
-                                            for categoryId in newCategoryIds {
-                                                await categoryService.updateCategoryUsage(categoryId)
-                                            }
-                                        } catch {
-                                            print("Failed to update categories: \(error)")
-                                        }
-                                    }
-                                }
-                            }
-                        */
-                    }
-                    
-                    // Spacer to push content up when keyboard appears
-                    if isTextFieldFocused {
-                        Spacer()
-                            .frame(height: max(0, keyboardHeight + 50)) // 50pt for toolbar height
-                    }
-                }
-                .background(Color.white)
+                mainContentView
                 
                     /* REMOVED DUPLICATE TOOLBAR - Using safeAreaInset toolbar instead
                     let _ = print("🎯 DEBUG: Showing formatting toolbar - isRichTextFocused = \(isRichTextFocused)")
@@ -2144,22 +2170,24 @@ struct NavigationNoteEditView: View {
                 .transition(.move(edge: .bottom))
             }
         }
-        .animation(.easeInOut(duration: 0.25), value: isRichTextFocused && keyboardHeight > 0)
         .onAppear {
-            print("🚀 NavigationNoteEditView VStack onAppear: TRIGGERED")
+            print("🚀 NavigationNoteEditView onAppear: TRIGGERED")
+            print("🚀 NavigationNoteEditView onAppear: Current attributedText = '\(attributedText.string.prefix(100))...'")
+            print("🚀 NavigationNoteEditView onAppear: Current editedText = '\(editedText.prefix(100))...'")
             
-            let safeContent = sanitizeTextContent(item.content)
-            print("🚀 NavigationNoteEditView VStack onAppear: safeContent = '\(safeContent)' (length: \(safeContent.count))")
-            
-            if editedText != safeContent {
-                print("⚠️ NavigationNoteEditView VStack onAppear: Content mismatch - updating editedText")
-                editedText = safeContent
-            } else {
-                print("✅ NavigationNoteEditView VStack onAppear: Content matches - no update needed")
-            }
-            
+            // All content is ready - attributedText should already be properly initialized
+            // No need to re-convert since init() handles both HTML and plain text properly
             isContentReady = true
-            print("✅ NavigationNoteEditView VStack onAppear: Content ready - TextEditor should show")
+            
+            // Update toolbar state to reflect formatting at the beginning of the loaded RTF content
+            updateInitialToolbarState()
+            
+            print("✅ NavigationNoteEditView onAppear: Content ready - Rich text editor should show with proper formatting")
+        }
+        .onDisappear {
+            print("🚀 NavigationNoteEditView onDisappear: TRIGGERED - ensuring content is saved")
+            // Cancel any pending timer and save immediately to prevent data loss
+            saveImmediately()
         }
         .onChange(of: isRichTextFocused) { newValue in
             // Sync rich text focus with the original focus state for toolbar visibility
@@ -2170,64 +2198,24 @@ struct NavigationNoteEditView: View {
             }
         }
         .onChange(of: attributedText) { newValue in
-            // Sync attributed text changes back to plain text for Firebase
-            let plainText = newValue.string
-            if plainText != editedText && !plainText.isEmpty && !isUpdatingText {
-                print("📝 Syncing attributed text to editedText: '\(plainText.prefix(50))...'")
-                isUpdatingText = true
-                editedText = plainText
-                isUpdatingText = false
-            }
-        }
-        .onChange(of: editedText) { newValue in
-            let safeValue = sanitizeTextContent(newValue)
-            if safeValue != newValue {
-                print("🛡️ NavigationNoteEditView: Sanitized input")
-                editedText = safeValue
-                return
-            }
-            
-            guard !safeValue.isEmpty else { return }
-            
-            let processedText = RichTextTransformer.transform(safeValue, oldText: editedText)
-            if processedText != safeValue && processedText != editedText {
-                editedText = processedText
-            }
-            
-            let trimmedContent = safeValue.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !trimmedContent.isEmpty {
-                isSavingContent = true
-                // Convert attributed text to HTML for persistence
-                let htmlContent = Self.attributedStringToHTML(attributedText)
-                dataManager.updateItem(item, newContent: htmlContent)
-                AnalyticsManager.shared.trackNoteEditSaved(noteId: item.id, contentLength: safeValue.count)
-                isSavingContent = false
-            }
-        }
-        .onChange(of: item.content) { newContent in
-            // Only update if we're not currently saving (prevents circular updates)
-            if !isSavingContent {
-                // Convert HTML content back to attributed string and plain text
-                let newAttributedText = Self.htmlToAttributedString(newContent)
-                let safeNewContent = sanitizeTextContent(newAttributedText.string)
-                
-                if editedText != safeNewContent {
-                    print("📝 NavigationNoteEditView: Item content changed, updating from HTML content")
-                    editedText = safeNewContent
-                    attributedText = newAttributedText
+            // Simple RTF-only save - no plain text sync needed
+            saveTimer?.invalidate()
+            saveTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { _ in
+                Task { @MainActor in
+                    await saveContentToFirebase()
                 }
-            } else {
-                print("📝 NavigationNoteEditView: Ignoring item content change during save operation")
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
             if let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
                 let height = keyboardFrame.height
-                // Prevent NaN and invalid values
-                if height.isFinite && height > 0 {
+                // Prevent NaN and invalid values with stricter validation
+                if height.isFinite && height > 0 && height <= 1000 {
                     keyboardHeight = height
                     print("⌨️ Keyboard will show with height: \(height)")
                     print("🎯 DEBUG: After keyboard show - isTextFieldFocused=\(isTextFieldFocused), keyboardHeight=\(keyboardHeight)")
+                } else {
+                    print("⚠️ Invalid keyboard height detected: \(height), keeping current value: \(keyboardHeight)")
                 }
             }
         }
@@ -2242,7 +2230,7 @@ struct NavigationNoteEditView: View {
                 canRedo = userInfo["canRedo"] as? Bool ?? false
             }
         }
-        .animation(.easeInOut(duration: 0.25), value: keyboardHeight)
+        // Remove global animation that causes sliding effect
         .navigationBarBackButtonHidden(true)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -2341,6 +2329,53 @@ struct NavigationNoteEditView: View {
         }
     }
     
+    // MARK: - Save Functions
+    
+    @MainActor
+    private func saveContentToFirebase() async {
+        guard !isSavingContent else {
+            print("💾 Save already in progress, skipping")
+            return
+        }
+        
+        let trimmedContent = attributedText.string.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedContent.isEmpty else {
+            print("💾 Empty content, skipping save")
+            return
+        }
+        
+        isSavingContent = true
+        print("💾 Starting RTF-only save to Firebase...")
+        
+        // Always save as RTF - this is now our primary format
+        if let rtfData = NavigationNoteEditView.attributedStringToData(attributedText) {
+            print("💾 Saving RTF data: '\(attributedText.string.prefix(100))...' (RTF bytes: \(rtfData.count))")
+            
+            // Save RTF data directly without updating plain text
+            item.rtfData = rtfData
+            
+            if item.firebaseId != nil {
+                // Use the data manager's public method instead of accessing private firebaseManager
+                dataManager.updateItemWithRTF(item, rtfData: rtfData)
+                print("💾 RTF saved via data manager")
+            }
+            
+            AnalyticsManager.shared.trackNoteEditSaved(noteId: item.id, contentLength: attributedText.length)
+        } else {
+            print("❌ Failed to convert to RTF - this should not happen")
+        }
+        
+        print("💾 Save completed successfully")
+        isSavingContent = false
+    }
+    
+    private func saveImmediately() {
+        saveTimer?.invalidate()
+        Task { @MainActor in
+            await saveContentToFirebase()
+        }
+    }
+    
     private func sanitizeTextContent(_ text: String) -> String {
         guard !text.isEmpty else { return " " }
         
@@ -2363,6 +2398,50 @@ struct NavigationNoteEditView: View {
     }
     
     // MARK: - Formatting Actions
+    
+    // Update toolbar state based on formatting at the beginning of loaded RTF content
+    private func updateInitialToolbarState() {
+        guard !attributedText.string.isEmpty else { return }
+        
+        // Get attributes at the beginning of the text (where cursor typically starts)
+        let location = min(0, attributedText.length - 1)
+        let attributes = attributedText.attributes(at: max(0, location), effectiveRange: nil)
+        
+        print("🎨 updateInitialToolbarState: Checking formatting at location \(location)")
+        
+        // Check for bold (either through font name or traits)
+        var isBold = false
+        if let font = attributes[.font] as? UIFont {
+            isBold = font.fontName.contains("Bold") || font.fontName.contains("SemiBold") || font.fontDescriptor.symbolicTraits.contains(.traitBold)
+            print("🎨 updateInitialToolbarState: Font = \(font.fontName), isBold = \(isBold)")
+        }
+        
+        // Check for italic
+        var isItalic = false
+        if let font = attributes[.font] as? UIFont {
+            isItalic = font.fontDescriptor.symbolicTraits.contains(.traitItalic)
+            print("🎨 updateInitialToolbarState: isItalic = \(isItalic)")
+        }
+        
+        // Check for underline
+        let isUnderline = (attributes[.underlineStyle] as? Int) != nil
+        print("🎨 updateInitialToolbarState: isUnderline = \(isUnderline)")
+        
+        // Check for strikethrough
+        let isStrikethrough = (attributes[.strikethroughStyle] as? Int) != nil
+        print("🎨 updateInitialToolbarState: isStrikethrough = \(isStrikethrough)")
+        
+        // Update formatting state
+        DispatchQueue.main.async {
+            self.formattingState.isBoldActive = isBold
+            self.formattingState.isItalicActive = isItalic
+            self.formattingState.isUnderlineActive = isUnderline
+            self.formattingState.isStrikethroughActive = isStrikethrough
+            
+            print("🎨 updateInitialToolbarState: Updated toolbar state - Bold: \(isBold), Italic: \(isItalic), Underline: \(isUnderline), Strikethrough: \(isStrikethrough)")
+        }
+    }
+    
     private func toggleBold() {
         formattingState.toggleTextFormat(.bold)
         applyFormattingToSelection(format: .bold, isActive: formattingState.isBoldActive)
@@ -2469,6 +2548,9 @@ struct RichTextEditor: UIViewRepresentable {
         
         // Set up formatting notification observer
         context.coordinator.setupFormattingObserver(for: textView)
+        
+        // Set up checkbox tap gesture
+        context.coordinator.setupCheckboxTapGesture(for: textView)
         
         // Auto-focus after a short delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -2894,6 +2976,44 @@ struct RichTextEditor: UIViewRepresentable {
             }
             updateToolbarState(for: textView)
             updateUndoRedoState()
+            
+            // Add checkbox tap detection
+            setupCheckboxTapGesture(for: textView)
+        }
+        
+        func setupCheckboxTapGesture(for textView: UITextView) {
+            // Remove any existing checkbox tap gesture
+            if let existingGesture = textView.gestureRecognizers?.first(where: { 
+                $0 is UITapGestureRecognizer && ($0 as? UITapGestureRecognizer)?.numberOfTouchesRequired == 1 
+            }) {
+                textView.removeGestureRecognizer(existingGesture)
+            }
+            
+            let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTextViewTap(_:)))
+            tapGesture.numberOfTouchesRequired = 1
+            tapGesture.cancelsTouchesInView = false
+            textView.addGestureRecognizer(tapGesture)
+        }
+        
+        @objc private func handleTextViewTap(_ gesture: UITapGestureRecognizer) {
+            guard let textView = gesture.view as? UITextView else { return }
+            
+            let location = gesture.location(in: textView)
+            let textPosition = textView.closestPosition(to: location)
+            
+            if let textPosition = textPosition {
+                let offset = textView.offset(from: textView.beginningOfDocument, to: textPosition)
+                
+                // Check if tap is on a checkbox character
+                if offset < textView.attributedText.length {
+                    let character = textView.attributedText.attributedSubstring(from: NSRange(location: offset, length: min(1, textView.attributedText.length - offset))).string
+                    
+                    if character == "☐" || character == "☑" {
+                        print("📋 Checkbox tapped at position \(offset)")
+                        toggleCheckboxAt(offset: offset, textView: textView)
+                    }
+                }
+            }
         }
         
         func textViewDidEndEditing(_ textView: UITextView) {
@@ -2903,7 +3023,105 @@ struct RichTextEditor: UIViewRepresentable {
             }
         }
         
+        
+        private func toggleCheckboxAt(offset: Int, textView: UITextView) {
+            let mutableText = NSMutableAttributedString(attributedString: textView.attributedText)
+            
+            // Find the line containing the checkbox
+            let string = mutableText.string
+            let lineRange = (string as NSString).lineRange(for: NSRange(location: offset, length: 0))
+            let lineText = (string as NSString).substring(with: lineRange)
+            
+            var newLineText = lineText
+            var shouldAddStrikethrough = false
+            
+            if lineText.hasPrefix("☐ ") {
+                // Unchecked → Checked
+                newLineText = lineText.replacingOccurrences(of: "☐ ", with: "☑ ", options: [], range: lineText.startIndex..<lineText.endIndex)
+                shouldAddStrikethrough = true
+                print("📋 Toggling checkbox ON - adding strikethrough")
+            } else if lineText.hasPrefix("☑ ") {
+                // Checked → Unchecked
+                newLineText = lineText.replacingOccurrences(of: "☑ ", with: "☐ ", options: [], range: lineText.startIndex..<lineText.endIndex)
+                shouldAddStrikethrough = false
+                print("📋 Toggling checkbox OFF - removing strikethrough")
+            } else {
+                return // Not a checkbox line
+            }
+            
+            // Replace the line text
+            mutableText.replaceCharacters(in: lineRange, with: newLineText)
+            
+            // Apply or remove strikethrough formatting to the entire line
+            let newLineRange = NSRange(location: lineRange.location, length: newLineText.count)
+            
+            if shouldAddStrikethrough {
+                // Add strikethrough to entire line
+                mutableText.addAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, range: newLineRange)
+                mutableText.addAttribute(.foregroundColor, value: UIColor.gray, range: newLineRange)
+            } else {
+                // Remove strikethrough from entire line
+                mutableText.removeAttribute(.strikethroughStyle, range: newLineRange)
+                mutableText.addAttribute(.foregroundColor, value: UIColor.black, range: newLineRange)
+            }
+            
+            // Update the text view and parent
+            textView.attributedText = mutableText
+            parent.attributedText = mutableText
+            
+            print("📋 Checkbox toggle completed")
+        }
+        
         func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
+            // Prevent editing in restricted areas (before list markers)
+            if range.length == 0 && !text.isEmpty && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                let currentText = textView.attributedText.string
+                let lineRange = (currentText as NSString).lineRange(for: NSRange(location: range.location, length: 0))
+                let lineText = (currentText as NSString).substring(with: lineRange)
+                
+                // Check if we're trying to insert before a list marker
+                let relativePosition = range.location - lineRange.location
+                if (lineText.hasPrefix("• ") && relativePosition < 2) || 
+                   ((lineText.hasPrefix("☐ ") || lineText.hasPrefix("☑ ")) && relativePosition < 2) {
+                    print("🚫 Preventing text insertion before list marker at position \(relativePosition)")
+                    return false
+                }
+                
+                // Prevent multiple list markers on the same line
+                if text == "•" || text == "☐" || text == "☑" {
+                    if lineText.contains("•") || lineText.contains("☐") || lineText.contains("☑") {
+                        print("🚫 Preventing multiple list markers on same line")
+                        return false
+                    }
+                }
+            }
+            
+            // Handle backspace in list items
+            if text.isEmpty && range.length > 0 {
+                let currentText = textView.attributedText.string
+                let lineRange = (currentText as NSString).lineRange(for: NSRange(location: range.location, length: 0))
+                let lineText = (currentText as NSString).substring(with: lineRange)
+                
+                // If backspacing at the beginning of a list item, remove the entire marker
+                let relativePosition = range.location - lineRange.location
+                if relativePosition == 2 && (lineText.hasPrefix("• ") || lineText.hasPrefix("☐ ") || lineText.hasPrefix("☑ ")) {
+                    let mutableText = NSMutableAttributedString(attributedString: textView.attributedText)
+                    let markerRange = NSRange(location: lineRange.location, length: 2)
+                    mutableText.deleteCharacters(in: markerRange)
+                    
+                    textView.attributedText = mutableText
+                    parent.attributedText = mutableText
+                    
+                    // Position cursor where the marker was
+                    DispatchQueue.main.async {
+                        textView.selectedRange = NSRange(location: lineRange.location, length: 0)
+                    }
+                    
+                    print("📝 Removed list marker with backspace")
+                    return false
+                }
+            }
+            
             // Handle new line insertion for list/checkbox modes
             if text == "\n" {
                 if parent.isListModeActive {
@@ -2914,13 +3132,28 @@ struct RichTextEditor: UIViewRepresentable {
                     ]
                     let attributedNewText = NSAttributedString(string: "\n" + newText, attributes: attributes)
                     
+                    // Prevent text sync during bullet insertion to avoid race conditions
+                    isUpdatingFromParent = true
+                    
+                    // Insert the bullet immediately (not async) to prevent race conditions
                     let mutableText = NSMutableAttributedString(attributedString: textView.attributedText)
                     mutableText.insert(attributedNewText, at: range.location)
                     textView.attributedText = mutableText
                     
-                    // Move cursor after the bullet
-                    if let newPosition = textView.position(from: textView.beginningOfDocument, offset: range.location + newText.count + 1) {
-                        textView.selectedTextRange = textView.textRange(from: newPosition, to: newPosition)
+                    // Update parent state immediately to keep sync
+                    parent.attributedText = mutableText
+                    
+                    // Move cursor after the inserted text (newline + bullet + space)
+                    let insertedLength = attributedNewText.length
+                    let newCursorPosition = range.location + insertedLength
+                    
+                    DispatchQueue.main.async {
+                        if let newPosition = textView.position(from: textView.beginningOfDocument, offset: newCursorPosition) {
+                            textView.selectedTextRange = textView.textRange(from: newPosition, to: newPosition)
+                            print("🎯 Bullet: Moved cursor to position \(newCursorPosition) after inserting '\(attributedNewText.string)'")
+                        }
+                        // Re-enable text sync after cursor positioning
+                        self.isUpdatingFromParent = false
                     }
                     
                     return false
@@ -2932,13 +3165,28 @@ struct RichTextEditor: UIViewRepresentable {
                     ]
                     let attributedNewText = NSAttributedString(string: "\n" + newText, attributes: attributes)
                     
+                    // Prevent text sync during checkbox insertion to avoid race conditions
+                    isUpdatingFromParent = true
+                    
+                    // Insert the checkbox immediately (not async) to prevent race conditions
                     let mutableText = NSMutableAttributedString(attributedString: textView.attributedText)
                     mutableText.insert(attributedNewText, at: range.location)
                     textView.attributedText = mutableText
                     
-                    // Move cursor after the checkbox
-                    if let newPosition = textView.position(from: textView.beginningOfDocument, offset: range.location + newText.count + 1) {
-                        textView.selectedTextRange = textView.textRange(from: newPosition, to: newPosition)
+                    // Update parent state immediately to keep sync
+                    parent.attributedText = mutableText
+                    
+                    // Move cursor after the inserted text (newline + checkbox + space)
+                    let insertedLength = attributedNewText.length
+                    let newCursorPosition = range.location + insertedLength
+                    
+                    DispatchQueue.main.async {
+                        if let newPosition = textView.position(from: textView.beginningOfDocument, offset: newCursorPosition) {
+                            textView.selectedTextRange = textView.textRange(from: newPosition, to: newPosition)
+                            print("🎯 Checkbox: Moved cursor to position \(newCursorPosition) after inserting '\(attributedNewText.string)'")
+                        }
+                        // Re-enable text sync after cursor positioning
+                        self.isUpdatingFromParent = false
                     }
                     
                     return false
@@ -2984,13 +3232,16 @@ struct RichTextEditor: UIViewRepresentable {
                 
                 let attributedText = NSAttributedString(string: text, attributes: attributes)
                 
-                let mutableText = NSMutableAttributedString(attributedString: textView.attributedText)
-                mutableText.replaceCharacters(in: range, with: attributedText)
-                textView.attributedText = mutableText
-                
-                // Move cursor after the inserted text
-                if let newPosition = textView.position(from: textView.beginningOfDocument, offset: range.location + text.count) {
-                    textView.selectedTextRange = textView.textRange(from: newPosition, to: newPosition)
+                // Defer the text modification to avoid state update during view update
+                DispatchQueue.main.async {
+                    let mutableText = NSMutableAttributedString(attributedString: textView.attributedText)
+                    mutableText.replaceCharacters(in: range, with: attributedText)
+                    textView.attributedText = mutableText
+                    
+                    // Move cursor after the inserted text
+                    if let newPosition = textView.position(from: textView.beginningOfDocument, offset: range.location + text.count) {
+                        textView.selectedTextRange = textView.textRange(from: newPosition, to: newPosition)
+                    }
                 }
                 
                 return false

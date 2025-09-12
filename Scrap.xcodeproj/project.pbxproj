@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		RCB7600E0A0B026201786F2131 /* RichTextContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = RCCABB85C9FF0BBEE223B3A7B5 /* RichTextContext.swift */; };
+		RC7A674C6B95C322B02410EC74 /* RichTextCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = RCE4FD307E47D569B669CE633A /* RichTextCoordinator.swift */; };
+		RC7762BA2291946641555033DE /* RichTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = RC6691F824B3D8177B68116C03 /* RichTextEditor.swift */; };
 		1D1A2B2A2B1234567890ABCD /* ScrapApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1A2B292B1234567890ABCD /* ScrapApp.swift */; };
 		1D1A2B2C2B1234567890ABCE /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1A2B2B2B1234567890ABCE /* ContentView.swift */; };
 		1D1A2B2E2B1234567890ABCF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1D1A2B2D2B1234567890ABCF /* Assets.xcassets */; };
@@ -73,6 +76,9 @@
 		1D1A2B262B1234567890ABCC /* Scrap.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Scrap.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1D1A2B292B1234567890ABCD /* ScrapApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrapApp.swift; sourceTree = "<group>"; };
 		1D1A2B2B2B1234567890ABCE /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		RCCABB85C9FF0BBEE223B3A7B5 /* RichTextContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/RichTextContext.swift; sourceTree = "<group>"; };
+		RCE4FD307E47D569B669CE633A /* RichTextCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/RichTextCoordinator.swift; sourceTree = "<group>"; };
+		RC6691F824B3D8177B68116C03 /* RichTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/RichTextEditor.swift; sourceTree = "<group>"; };
 		1D1A2B2D2B1234567890ABCF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1D1A2B302B1234567890ABD0 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		AA304E7A2F6F72980054DD41 /* AnalyticsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsManager.swift; sourceTree = "<group>"; };
@@ -175,6 +181,9 @@
 				BB304E792E6F9E750054DD40 /* GoogleService-Info.plist */,
 				1D1A2B292B1234567890ABCD /* ScrapApp.swift */,
 				1D1A2B2B2B1234567890ABCE /* ContentView.swift */,
+				RCCABB85C9FF0BBEE223B3A7B5 /* RichTextContext.swift */,
+				RCE4FD307E47D569B669CE633A /* RichTextCoordinator.swift */,
+				RC6691F824B3D8177B68116C03 /* RichTextEditor.swift */,
 				TMC622226271474267E1D8B017 /* ThemeManager.swift */,
 				SVB8AD07F579355BFEA517EECE /* SettingsView.swift */,
 				AA304E7A2F6F72980054DD41 /* AnalyticsManager.swift */,
@@ -362,6 +371,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				1D1A2B2C2B1234567890ABCE /* ContentView.swift in Sources */,
+				RCB7600E0A0B026201786F2131 /* RichTextContext.swift in Sources */,
+				RC7A674C6B95C322B02410EC74 /* RichTextCoordinator.swift in Sources */,
+				RC7762BA2291946641555033DE /* RichTextEditor.swift in Sources */,
 				TMF4A47D87D17E986129EC9426 /* ThemeManager.swift in Sources */,
 				SVF04E28F0BE8081BFE5CDA262 /* SettingsView.swift in Sources */,
 				AA304E792F6F72980054DD41 /* AnalyticsManager.swift in Sources */,
