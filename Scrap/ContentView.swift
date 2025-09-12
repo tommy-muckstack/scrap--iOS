@@ -2093,7 +2093,8 @@ struct NavigationNoteEditView: View {
         .onChange(of: attributedText) { newValue in
             // Sync attributed text changes back to plain text for Firebase
             let plainText = newValue.string
-            if plainText != editedText {
+            if plainText != editedText && !plainText.isEmpty {
+                print("📝 Syncing attributed text to editedText: '\(plainText.prefix(50))...'")
                 editedText = plainText
             }
         }
@@ -2356,16 +2357,14 @@ struct RichTextEditor: UIViewRepresentable {
     func makeUIView(context: Context) -> UITextView {
         let textView = UITextView()
         textView.delegate = context.coordinator
-        textView.font = UIFont(name: "SharpGrotesk-Book", size: 19) ?? UIFont.systemFont(ofSize: 19)
         textView.backgroundColor = UIColor.clear
-        textView.textColor = UIColor(GentleLightning.Colors.textPrimary(isDark: false))
         textView.isScrollEnabled = false
         textView.textContainer.lineFragmentPadding = 0
         textView.textContainerInset = .zero
         textView.isEditable = true
         textView.isUserInteractionEnabled = true
         
-        // Set initial attributed text
+        // Set initial attributed text (font and color will come from attributed text)
         textView.attributedText = attributedText
         
         // Set up formatting notification observer
@@ -2380,8 +2379,16 @@ struct RichTextEditor: UIViewRepresentable {
     }
     
     func updateUIView(_ uiView: UITextView, context: Context) {
-        if uiView.attributedText != attributedText {
+        // Only update if the string content is actually different to prevent font flashing
+        if uiView.attributedText.string != attributedText.string {
+            // Preserve cursor position
+            let selectedRange = uiView.selectedRange
             uiView.attributedText = attributedText
+            
+            // Restore cursor position if valid
+            if selectedRange.location <= uiView.attributedText.length {
+                uiView.selectedRange = selectedRange
+            }
         }
     }
     
@@ -2731,7 +2738,10 @@ struct RichTextEditor: UIViewRepresentable {
         }
         
         func textViewDidChange(_ textView: UITextView) {
-            parent.attributedText = textView.attributedText
+            // Only update if the content actually changed to prevent unnecessary updates
+            if parent.attributedText.string != textView.attributedText.string {
+                parent.attributedText = textView.attributedText
+            }
             updateUndoRedoState()
         }
         
