@@ -115,6 +115,15 @@ struct FormattingState {
         }
     }
     
+    // Computed properties for bullet and check list
+    var isBulletListActive: Bool {
+        activeBlockFormat == .bulletList
+    }
+    
+    var isCheckListActive: Bool {
+        activeBlockFormat == .checkbox
+    }
+    
     // Utility methods
     mutating func toggleTextFormat(_ format: TextFormat) {
         if activeTextFormats.contains(format) {
@@ -130,6 +139,16 @@ struct FormattingState {
         let oldFormat = activeBlockFormat
         activeBlockFormat = format
         print("🎨 FormattingState: Block format changed from \(oldFormat?.description ?? "none") to \(format?.description ?? "none")")
+    }
+    
+    mutating func toggleBlockFormat(_ format: BlockFormat) {
+        if activeBlockFormat == format {
+            activeBlockFormat = nil
+            print("🎨 FormattingState: Toggled off \(format.description)")
+        } else {
+            activeBlockFormat = format
+            print("🎨 FormattingState: Toggled on \(format.description)")
+        }
     }
     
     mutating func clearAllFormatting() {
@@ -1711,11 +1730,11 @@ struct FormattingToolbarView: View {
                 }
                 
                 Button(action: { 
-                    formattingState.toggleBlockFormat(.checkList)
+                    formattingState.toggleBlockFormat(.checkbox)
                     NotificationCenter.default.post(
                         name: .applyBlockFormatting,
                         object: nil,
-                        userInfo: ["format": BlockFormat.checkList, "isActive": formattingState.isCheckListActive]
+                        userInfo: ["format": BlockFormat.checkbox, "isActive": formattingState.isCheckListActive]
                     )
                 }) {
                     Image(systemName: "checklist")
