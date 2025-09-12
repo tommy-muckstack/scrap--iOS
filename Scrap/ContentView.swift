@@ -2424,6 +2424,7 @@ struct RichTextEditor: UIViewRepresentable {
         let parent: RichTextEditor
         private var textView: UITextView?
         private var formattingObserver: NSObjectProtocol?
+        private var textFormattingObserver: NSObjectProtocol?
         private var blockFormattingObserver: NSObjectProtocol?
         private var undoObserver: NSObjectProtocol?
         private var redoObserver: NSObjectProtocol?
@@ -2434,6 +2435,9 @@ struct RichTextEditor: UIViewRepresentable {
         
         deinit {
             if let observer = formattingObserver {
+                NotificationCenter.default.removeObserver(observer)
+            }
+            if let observer = textFormattingObserver {
                 NotificationCenter.default.removeObserver(observer)
             }
             if let observer = blockFormattingObserver {
@@ -2454,6 +2458,9 @@ struct RichTextEditor: UIViewRepresentable {
             if let observer = formattingObserver {
                 NotificationCenter.default.removeObserver(observer)
             }
+            if let observer = textFormattingObserver {
+                NotificationCenter.default.removeObserver(observer)
+            }
             if let observer = blockFormattingObserver {
                 NotificationCenter.default.removeObserver(observer)
             }
@@ -2471,6 +2478,15 @@ struct RichTextEditor: UIViewRepresentable {
                 queue: .main
             ) { [weak self] notification in
                 self?.handleFormattingNotification(notification)
+            }
+            
+            // Add text formatting observer (for toolbar buttons)
+            textFormattingObserver = NotificationCenter.default.addObserver(
+                forName: .applyTextFormatting,
+                object: nil,
+                queue: .main
+            ) { [weak self] notification in
+                self?.handleTextFormattingNotification(notification)
             }
             
             // Add block formatting observer
@@ -2509,6 +2525,19 @@ struct RichTextEditor: UIViewRepresentable {
                 return
             }
             
+            applyFormattingToSelection(textView: textView, format: format, isActive: isActive)
+        }
+        
+        private func handleTextFormattingNotification(_ notification: Notification) {
+            guard let textView = textView,
+                  let userInfo = notification.userInfo,
+                  let format = userInfo["format"] as? TextFormat,
+                  let isActive = userInfo["isActive"] as? Bool else {
+                print("⚠️ handleTextFormattingNotification: Missing required parameters")
+                return
+            }
+            
+            print("🎨 handleTextFormattingNotification: format=\(format), isActive=\(isActive)")
             applyFormattingToSelection(textView: textView, format: format, isActive: isActive)
         }
         
