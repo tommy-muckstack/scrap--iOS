@@ -1117,11 +1117,13 @@ struct NoteEditView: View {
                             editedText = processedText
                         }
                         
-                        // Auto-save changes
+                        // Auto-save changes with formatting
                         let trimmedContent = safeValue.trimmingCharacters(in: .whitespacesAndNewlines)
                         if !trimmedContent.isEmpty {
                             isSavingContent = true
-                            dataManager.updateItem(item, newContent: trimmedContent)
+                            // Convert attributed text to HTML for persistence
+                            let htmlContent = NavigationNoteEditView.attributedStringToHTML(attributedText)
+                            dataManager.updateItem(item, newContent: htmlContent)
                             AnalyticsManager.shared.trackNoteEditSaved(noteId: item.id, contentLength: safeValue.count)
                             isSavingContent = false
                         }
@@ -1129,11 +1131,14 @@ struct NoteEditView: View {
                     .onChange(of: item.content) { newContent in
                         // Only update if we're not currently saving (prevents circular updates)
                         if !isSavingContent {
-                            // Update edited text if the underlying item content changes (with sanitization)
-                            let safeNewContent = sanitizeTextContent(newContent)
+                            // Convert HTML content back to attributed string and plain text
+                            let newAttributedText = NavigationNoteEditView.htmlToAttributedString(newContent)
+                            let safeNewContent = sanitizeTextContent(newAttributedText.string)
+                            
                             if editedText != safeNewContent {
-                                print("📝 NoteEditView: Item content changed, updating to safe content: '\(safeNewContent)'")
+                                print("📝 NoteEditView: Item content changed, updating from HTML content")
                                 editedText = safeNewContent
+                                attributedText = newAttributedText
                             }
                         } else {
                             print("📝 NoteEditView: Ignoring item content change during save operation")
@@ -1232,6 +1237,52 @@ struct NoteEditView: View {
             presentingViewController.present(activityViewController, animated: true) { [weak presentingViewController] in
                 print("ShareNote: Activity view controller presented successfully from \(String(describing: presentingViewController))")
             }
+        }
+    }
+    
+    // Convert NSAttributedString to HTML for persistent storage
+    static func attributedStringToHTML(_ attributedString: NSAttributedString) -> String {
+        do {
+            let htmlData = try attributedString.data(
+                from: NSRange(location: 0, length: attributedString.length),
+                documentAttributes: [.documentType: NSAttributedString.DocumentType.html]
+            )
+            if let htmlString = String(data: htmlData, encoding: .utf8) {
+                return htmlString
+            }
+        } catch {
+            print("❌ Failed to convert attributed string to HTML: \(error)")
+        }
+        // Fallback to plain text if HTML conversion fails
+        return attributedString.string
+    }
+    
+    // Convert HTML string back to NSAttributedString for display
+    static func htmlToAttributedString(_ html: String) -> NSAttributedString {
+        guard !html.isEmpty else {
+            return NSAttributedString(string: " ")
+        }
+        
+        // Check if it's already plain text (no HTML tags)
+        if !html.contains("<") && !html.contains(">") {
+            return NSAttributedString(string: html)
+        }
+        
+        do {
+            let data = html.data(using: .utf8) ?? Data()
+            let attributedString = try NSAttributedString(
+                data: data,
+                options: [
+                    .documentType: NSAttributedString.DocumentType.html,
+                    .characterEncoding: String.Encoding.utf8.rawValue
+                ],
+                documentAttributes: nil
+            )
+            return attributedString
+        } catch {
+            print("❌ Failed to convert HTML to attributed string: \(error)")
+            // Fallback to plain text
+            return NSAttributedString(string: html)
         }
     }
     
@@ -1830,16 +1881,26 @@ struct NavigationNoteEditView: View {
         let initialContent = item.content.isEmpty ? " " : item.content
         print("🏗️ NavigationNoteEditView init: initialContent = '\(initialContent)' (length: \(initialContent.count))")
         
-        self._editedText = State(initialValue: initialContent)
+        // Convert HTML content to attributed string if it contains HTML tags
+        let initialAttributedText: NSAttributedString
+        if initialContent.contains("<") && initialContent.contains(">") {
+            // Convert from HTML
+            initialAttributedText = NavigationNoteEditView.htmlToAttributedString(initialContent)
+            self._editedText = State(initialValue: initialAttributedText.string)
+            print("🏗️ NavigationNoteEditView init: Converted HTML to attributed text")
+        } else {
+            // Plain text - create attributed string with default formatting
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont(name: "SharpGrotesk-Book", size: 17) ?? UIFont.systemFont(ofSize: 17),
+                .foregroundColor: UIColor.black
+            ]
+            initialAttributedText = NSAttributedString(string: initialContent, attributes: attributes)
+            self._editedText = State(initialValue: initialContent)
+        }
+        
+        self._attributedText = State(initialValue: initialAttributedText)
         self._selectedCategoryIds = State(initialValue: item.categoryIds)
         self._editedTitle = State(initialValue: item.title)
-        
-        // Initialize attributed text with default font
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: UIFont(name: "SharpGrotesk-Book", size: 19) ?? UIFont.systemFont(ofSize: 19),
-            .foregroundColor: UIColor(GentleLightning.Colors.textPrimary(isDark: false))
-        ]
-        self._attributedText = State(initialValue: NSAttributedString(string: initialContent, attributes: attributes))
         
         print("🏗️ NavigationNoteEditView init: COMPLETED - all properties initialized")
     }
@@ -2143,7 +2204,9 @@ struct NavigationNoteEditView: View {
             let trimmedContent = safeValue.trimmingCharacters(in: .whitespacesAndNewlines)
             if !trimmedContent.isEmpty {
                 isSavingContent = true
-                dataManager.updateItem(item, newContent: trimmedContent)
+                // Convert attributed text to HTML for persistence
+                let htmlContent = NavigationNoteEditView.attributedStringToHTML(attributedText)
+                dataManager.updateItem(item, newContent: htmlContent)
                 AnalyticsManager.shared.trackNoteEditSaved(noteId: item.id, contentLength: safeValue.count)
                 isSavingContent = false
             }
@@ -2151,10 +2214,14 @@ struct NavigationNoteEditView: View {
         .onChange(of: item.content) { newContent in
             // Only update if we're not currently saving (prevents circular updates)
             if !isSavingContent {
-                let safeNewContent = sanitizeTextContent(newContent)
+                // Convert HTML content back to attributed string and plain text
+                let newAttributedText = NavigationNoteEditView.htmlToAttributedString(newContent)
+                let safeNewContent = sanitizeTextContent(newAttributedText.string)
+                
                 if editedText != safeNewContent {
-                    print("📝 NavigationNoteEditView: Item content changed, updating to safe content")
+                    print("📝 NavigationNoteEditView: Item content changed, updating from HTML content")
                     editedText = safeNewContent
+                    attributedText = newAttributedText
                 }
             } else {
                 print("📝 NavigationNoteEditView: Ignoring item content change during save operation")
