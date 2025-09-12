@@ -1810,6 +1810,7 @@ struct NavigationNoteEditView: View {
     @State private var isRichTextFocused = false
     @State private var canUndo = false
     @State private var canRedo = false
+    @State private var isUpdatingText = false
     
     init(item: SparkItem, dataManager: FirebaseDataManager) {
         print("🏗️ NavigationNoteEditView init: STARTING - item.id = '\(item.id)'")
@@ -2109,9 +2110,11 @@ struct NavigationNoteEditView: View {
         .onChange(of: attributedText) { newValue in
             // Sync attributed text changes back to plain text for Firebase
             let plainText = newValue.string
-            if plainText != editedText && !plainText.isEmpty {
+            if plainText != editedText && !plainText.isEmpty && !isUpdatingText {
                 print("📝 Syncing attributed text to editedText: '\(plainText.prefix(50))...'")
+                isUpdatingText = true
                 editedText = plainText
+                isUpdatingText = false
             }
         }
         .onChange(of: editedText) { newValue in
@@ -2405,6 +2408,8 @@ struct RichTextEditor: UIViewRepresentable {
     func updateUIView(_ uiView: UITextView, context: Context) {
         // Only update if the string content is actually different to prevent font flashing
         if uiView.attributedText.string != attributedText.string {
+            context.coordinator.isUpdatingFromParent = true
+            
             // Preserve cursor position
             let selectedRange = uiView.selectedRange
             uiView.attributedText = attributedText
@@ -2413,6 +2418,8 @@ struct RichTextEditor: UIViewRepresentable {
             if selectedRange.location <= uiView.attributedText.length {
                 uiView.selectedRange = selectedRange
             }
+            
+            context.coordinator.isUpdatingFromParent = false
         }
     }
     
@@ -2428,6 +2435,7 @@ struct RichTextEditor: UIViewRepresentable {
         private var blockFormattingObserver: NSObjectProtocol?
         private var undoObserver: NSObjectProtocol?
         private var redoObserver: NSObjectProtocol?
+        private var isUpdatingFromParent = false
         
         init(_ parent: RichTextEditor) {
             self.parent = parent
@@ -2791,9 +2799,11 @@ struct RichTextEditor: UIViewRepresentable {
         }
         
         func textViewDidChange(_ textView: UITextView) {
-            // Only update if the content actually changed to prevent unnecessary updates
-            if parent.attributedText.string != textView.attributedText.string {
+            // Only update if the content actually changed to prevent unnecessary updates and circular loops
+            if parent.attributedText.string != textView.attributedText.string && !isUpdatingFromParent {
+                isUpdatingFromParent = true
                 parent.attributedText = textView.attributedText
+                isUpdatingFromParent = false
             }
             updateUndoRedoState()
         }
