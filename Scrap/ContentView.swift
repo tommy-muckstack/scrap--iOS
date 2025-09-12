@@ -2073,11 +2073,9 @@ struct NavigationNoteEditView: View {
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
             }
         }
-        .safeAreaInset(edge: .bottom) {
-            // Formatting toolbar that appears above keyboard
-            let _ = print("🎯 DEBUG safeAreaInset: isRichTextFocused=\(isRichTextFocused), isTextFieldFocused=\(isTextFieldFocused), keyboardHeight=\(keyboardHeight)")
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            // Formatting toolbar that appears above keyboard - standard iOS pattern
             if isRichTextFocused && keyboardHeight > 0 {
-                let _ = print("🎯 DEBUG safeAreaInset: SHOWING TOOLBAR")
                 FormattingToolbarView(
                     formattingState: $formattingState,
                     canUndo: canUndo,
@@ -2087,11 +2085,16 @@ struct NavigationNoteEditView: View {
                     hideKeyboard: hideKeyboard
                 )
                 .background(Color(UIColor.systemBackground))
-                .shadow(color: .gray.opacity(0.3), radius: 2, x: 0, y: -1)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-                .animation(.easeInOut(duration: 0.25), value: keyboardHeight)
+                .overlay(
+                    Rectangle()
+                        .frame(height: 0.5)
+                        .foregroundColor(Color(UIColor.separator))
+                    , alignment: .top
+                )
+                .transition(.move(edge: .bottom))
             }
         }
+        .animation(.easeInOut(duration: 0.25), value: isRichTextFocused && keyboardHeight > 0)
         .onAppear {
             print("🚀 NavigationNoteEditView VStack onAppear: TRIGGERED")
             
