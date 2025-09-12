@@ -2054,7 +2054,9 @@ struct NavigationNoteEditView: View {
         .background(Color.white)
         .safeAreaInset(edge: .bottom) {
             // Formatting toolbar that appears above keyboard
+            let _ = print("🎯 DEBUG safeAreaInset: isTextFieldFocused=\(isTextFieldFocused), keyboardHeight=\(keyboardHeight)")
             if isTextFieldFocused && keyboardHeight > 0 {
+                let _ = print("🎯 DEBUG safeAreaInset: SHOWING TOOLBAR")
                 FormattingToolbarView(
                     formattingState: $formattingState,
                     canUndo: canUndo,
@@ -2089,6 +2091,7 @@ struct NavigationNoteEditView: View {
             // Sync rich text focus with the original focus state for toolbar visibility
             print("🎯 NavigationNoteEditView: isRichTextFocused changed to \(newValue), setting isTextFieldFocused = \(newValue)")
             isTextFieldFocused = newValue
+            print("🎯 DEBUG: Focus state updated - isTextFieldFocused=\(isTextFieldFocused), keyboardHeight=\(keyboardHeight)")
         }
         .onChange(of: attributedText) { newValue in
             // Sync attributed text changes back to plain text for Firebase
@@ -2133,6 +2136,7 @@ struct NavigationNoteEditView: View {
                 if height.isFinite && height > 0 {
                     keyboardHeight = height
                     print("⌨️ Keyboard will show with height: \(height)")
+                    print("🎯 DEBUG: After keyboard show - isTextFieldFocused=\(isTextFieldFocused), keyboardHeight=\(keyboardHeight)")
                 }
             }
         }
