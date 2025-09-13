@@ -161,23 +161,27 @@ public class RichTextContext: ObservableObject {
     
     /// Update formatting state based on current selection
     internal func updateFormattingState() {
-        guard selectedRange.length >= 0 && attributedString.length > 0 else { return }
-        
-        // Get attributes at current selection with safe bounds checking
-        let safeIndex = max(0, min(selectedRange.location, attributedString.length - 1))
-        guard safeIndex < attributedString.length else { return }
-        
-        let attributes = attributedString.attributes(
-            at: safeIndex,
-            effectiveRange: nil
-        )
-        
-        // Update formatting state
-        updateBoldState(from: attributes)
-        updateItalicState(from: attributes)
-        updateUnderlineState(from: attributes)
-        updateStrikethroughState(from: attributes)
-        updateBlockFormatState()
+        // Defer all formatting updates to prevent publishing changes during view updates
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            guard self.selectedRange.length >= 0 && self.attributedString.length > 0 else { return }
+            
+            // Get attributes at current selection with safe bounds checking
+            let safeIndex = max(0, min(self.selectedRange.location, self.attributedString.length - 1))
+            guard safeIndex < self.attributedString.length else { return }
+            
+            let attributes = self.attributedString.attributes(
+                at: safeIndex,
+                effectiveRange: nil
+            )
+            
+            // Update formatting state
+            self.updateBoldState(from: attributes)
+            self.updateItalicState(from: attributes)
+            self.updateUnderlineState(from: attributes)
+            self.updateStrikethroughState(from: attributes)
+            self.updateBlockFormatState()
+        }
     }
     
     private func updateBoldState(from attributes: [NSAttributedString.Key: Any]) {
@@ -226,20 +230,27 @@ public class RichTextContext: ObservableObject {
         let lineText = (currentText as NSString).substring(with: lineRange)
         
         // Check for list markers
-        isBulletListActive = lineText.trimmingCharacters(in: .whitespaces).hasPrefix("•")
-        isCheckboxActive = lineText.trimmingCharacters(in: .whitespaces).hasPrefix("☐") || 
-                          lineText.trimmingCharacters(in: .whitespaces).hasPrefix("☑")
+        let bulletActive = lineText.trimmingCharacters(in: .whitespaces).hasPrefix("•")
+        let checkboxActive = lineText.trimmingCharacters(in: .whitespaces).hasPrefix("☐") || 
+                            lineText.trimmingCharacters(in: .whitespaces).hasPrefix("☑")
+        
+        isBulletListActive = bulletActive
+        isCheckboxActive = checkboxActive
     }
     
     /// Update undo/redo capabilities
     internal func updateUndoRedoState(canUndo: Bool, canRedo: Bool) {
-        self.canUndo = canUndo
-        self.canRedo = canRedo
+        DispatchQueue.main.async {
+            self.canUndo = canUndo
+            self.canRedo = canRedo
+        }
     }
     
     /// Update copy capability
     internal func updateCopyState(_ canCopy: Bool) {
-        self.canCopy = canCopy
+        DispatchQueue.main.async {
+            self.canCopy = canCopy
+        }
     }
 }
 

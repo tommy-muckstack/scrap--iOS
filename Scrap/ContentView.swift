@@ -586,10 +586,8 @@ struct InputField: View {
                         }
                     }
                     
-                    // Rich Text Formatting Toolbar
-                    if richTextContext.isEditingText {
-                        FormattingToolbarView(context: richTextContext)
-                    }
+                    // Note: Formatting toolbar removed from main input field
+                    // It should only appear in the dedicated note editor
                 }
                 .onAppear {
                     // Initialize attributed text from plain text
@@ -600,15 +598,9 @@ struct InputField: View {
                     // Check current authorization status
                     authorizationStatus = SFSpeechRecognizer.authorizationStatus()
                     
-                    // Only auto-focus on appear, don't request permissions yet
-                    Task {
-                        try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
-                        await MainActor.run {
-                            if !isRecording {
-                                richTextContext.isEditingText = true
-                            }
-                        }
-                    }
+                    // Note: Removed automatic isEditingText = true
+                    // This was causing formatting toolbar to appear on main page
+                    // Focus should be managed naturally by user interaction
                 }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
                     // Refresh authorization status when app becomes active (user returning from Settings)
@@ -1694,7 +1686,6 @@ struct FormattingToolbarView: View {
             // All buttons on a single horizontal line
             HStack(spacing: 12) {
                 // Formatting buttons (left side)
-                HStack(spacing: 12) {
                     Button(action: { 
                         context.toggleBold()
                     }) {
@@ -1766,12 +1757,10 @@ struct FormattingToolbarView: View {
                             .background(context.isCheckboxActive ? .black : Color.clear)
                             .clipShape(Circle())
                     }
-            }
-            
-            Spacer()
-            
+                
+                Spacer()
+                
                 // Utility buttons (right side)
-                HStack(spacing: 8) {
                     Button(action: { context.undo() }) {
                         Image(systemName: "arrow.uturn.backward")
                             .font(.system(size: 14, weight: .medium))
@@ -1805,9 +1794,8 @@ struct FormattingToolbarView: View {
                         .clipShape(Circle())
                 }
             }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
         }
     }
 }
@@ -2148,7 +2136,10 @@ struct NavigationNoteEditView: View {
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            // Formatting toolbar removed - using InputField's integrated toolbar instead
+            // Formatting toolbar for note editing
+            if isRichTextFocused {
+                FormattingToolbarView(context: richTextContext)
+            }
         }
         .onAppear {
             print("🚀 NavigationNoteEditView onAppear: TRIGGERED")
@@ -2158,9 +2149,17 @@ struct NavigationNoteEditView: View {
             // All content is ready - attributedText should already be properly initialized
             // No need to re-convert since init() handles both HTML and plain text properly
             isContentReady = true
+            richTextContext.setAttributedString(attributedText)
             
             // Update toolbar state to reflect formatting at the beginning of the loaded RTF content
             updateInitialToolbarState()
+            
+            // Auto-focus when entering note editor
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                isRichTextFocused = true
+                richTextContext.isEditingText = true
+                print("🎯 NavigationNoteEditView: Auto-focusing note editor")
+            }
             
             print("✅ NavigationNoteEditView onAppear: Content ready - Rich text editor should show with proper formatting")
         }
@@ -2174,7 +2173,15 @@ struct NavigationNoteEditView: View {
             print("🎯 NavigationNoteEditView: isRichTextFocused changed to \(newValue), setting isTextFieldFocused = \(newValue)")
             DispatchQueue.main.async {
                 isTextFieldFocused = newValue
+                richTextContext.isEditingText = newValue
                 print("🎯 DEBUG: Focus state updated - isTextFieldFocused=\(isTextFieldFocused), keyboardHeight=\(keyboardHeight)")
+            }
+        }
+        .onChange(of: richTextContext.isEditingText) { newValue in
+            // Sync RichTextContext editing state with our focus state
+            if isRichTextFocused != newValue {
+                isRichTextFocused = newValue
+                print("🎯 NavigationNoteEditView: richTextContext.isEditingText changed to \(newValue), updating isRichTextFocused")
             }
         }
         .onChange(of: attributedText) { newValue in

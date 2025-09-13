@@ -283,49 +283,77 @@ public class RichTextCoordinator: NSObject {
     private func applyBulletFormat(_ mutableText: NSMutableAttributedString, _ lineRange: NSRange, _ lineText: String) {
         let trimmedLine = lineText.trimmingCharacters(in: .whitespaces)
         let mutableLineText: String
+        let newCursorPosition: Int
         
+        // Check if line already has a bullet (prevent duplicates)
         if trimmedLine.hasPrefix("• ") {
-            // Remove bullet
+            // Remove bullet - cursor goes to start of text content
             mutableLineText = String(trimmedLine.dropFirst(2))
+            newCursorPosition = lineRange.location + mutableLineText.count
+            print("🔸 RichTextCoordinator: Removing bullet from line")
         } else if trimmedLine.hasPrefix("☐ ") || trimmedLine.hasPrefix("☑ ") {
-            // Replace checkbox with bullet
-            mutableLineText = "• " + String(trimmedLine.dropFirst(2))
-        } else {
-            // Add bullet
+            // Replace checkbox with bullet - cursor goes after "• "
+            let contentAfterCheckbox = String(trimmedLine.dropFirst(2))
+            mutableLineText = "• " + contentAfterCheckbox
+            newCursorPosition = lineRange.location + 2 // Position after "• "
+            print("🔸 RichTextCoordinator: Replacing checkbox with bullet")
+        } else if !trimmedLine.contains("• ") {
+            // Add bullet only if line doesn't already contain bullets - cursor goes after "• "
             mutableLineText = "• " + trimmedLine
+            newCursorPosition = lineRange.location + 2 // Position after "• "
+            print("🔸 RichTextCoordinator: Adding bullet to line")
+        } else {
+            // Line already contains bullets somewhere - don't add another
+            print("🚫 RichTextCoordinator: Line already contains bullets - not adding another")
+            return
         }
         
         let newLine = mutableLineText + (lineText.hasSuffix("\n") ? "\n" : "")
         mutableText.replaceCharacters(in: lineRange, with: newLine)
         
-        // Update text view and maintain sensible cursor position
-        let newCursorLocation = lineRange.location + min(mutableLineText.count, lineRange.length)
+        // Update text view with correct cursor position
         textView.attributedText = mutableText
-        textView.selectedRange = NSRange(location: newCursorLocation, length: 0)
+        textView.selectedRange = NSRange(location: newCursorPosition, length: 0)
+        
+        print("🎯 RichTextCoordinator: Bullet format applied - cursor at position \(newCursorPosition)")
     }
     
     private func applyCheckboxFormat(_ mutableText: NSMutableAttributedString, _ lineRange: NSRange, _ lineText: String) {
         let trimmedLine = lineText.trimmingCharacters(in: .whitespaces)
         let mutableLineText: String
+        let newCursorPosition: Int
         
+        // Check if line already has a checkbox (prevent duplicates)
         if trimmedLine.hasPrefix("☐ ") || trimmedLine.hasPrefix("☑ ") {
-            // Remove checkbox
+            // Remove checkbox - cursor goes to start of text content
             mutableLineText = String(trimmedLine.dropFirst(2))
+            newCursorPosition = lineRange.location + mutableLineText.count
+            print("🔸 RichTextCoordinator: Removing checkbox from line")
         } else if trimmedLine.hasPrefix("• ") {
-            // Replace bullet with checkbox
-            mutableLineText = "☐ " + String(trimmedLine.dropFirst(2))
-        } else {
-            // Add checkbox
+            // Replace bullet with checkbox - cursor goes after "☐ "
+            let contentAfterBullet = String(trimmedLine.dropFirst(2))
+            mutableLineText = "☐ " + contentAfterBullet
+            newCursorPosition = lineRange.location + 2 // Position after "☐ "
+            print("🔸 RichTextCoordinator: Replacing bullet with checkbox")
+        } else if !trimmedLine.contains("☐") && !trimmedLine.contains("☑") {
+            // Add checkbox only if line doesn't already contain checkboxes - cursor goes after "☐ "
             mutableLineText = "☐ " + trimmedLine
+            newCursorPosition = lineRange.location + 2 // Position after "☐ "
+            print("🔸 RichTextCoordinator: Adding checkbox to line")
+        } else {
+            // Line already contains checkboxes somewhere - don't add another
+            print("🚫 RichTextCoordinator: Line already contains checkboxes - not adding another")
+            return
         }
         
         let newLine = mutableLineText + (lineText.hasSuffix("\n") ? "\n" : "")
         mutableText.replaceCharacters(in: lineRange, with: newLine)
         
-        // Update text view and maintain sensible cursor position
-        let newCursorLocation = lineRange.location + min(mutableLineText.count, lineRange.length)
+        // Update text view with correct cursor position
         textView.attributedText = mutableText
-        textView.selectedRange = NSRange(location: newCursorLocation, length: 0)
+        textView.selectedRange = NSRange(location: newCursorPosition, length: 0)
+        
+        print("🎯 RichTextCoordinator: Checkbox format applied - cursor at position \(newCursorPosition)")
     }
     
     // MARK: - Binding Updates
@@ -384,6 +412,18 @@ extension RichTextCoordinator: UITextViewDelegate {
     }
     
     public func textViewDidChangeSelection(_ textView: UITextView) {
+        updateContextFromTextView()
+    }
+    
+    public func textViewDidBeginEditing(_ textView: UITextView) {
+        // Update editing state when user starts editing
+        context.isEditingText = true
+        updateContextFromTextView()
+    }
+    
+    public func textViewDidEndEditing(_ textView: UITextView) {
+        // Update editing state when user stops editing
+        context.isEditingText = false
         updateContextFromTextView()
     }
     
