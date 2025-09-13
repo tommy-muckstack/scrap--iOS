@@ -301,7 +301,7 @@ public class RichTextCoordinator: NSObject {
             mutableLineText = String(trimmedLine.dropFirst(1)).trimmingCharacters(in: .whitespaces)
             newCursorPosition = lineRange.location + mutableLineText.count
             print("🔸 RichTextCoordinator: Removing bullet (no space) from line")
-        } else if trimmedLine.hasPrefix("☐ ") || trimmedLine.hasPrefix("☑ ") {
+        } else if trimmedLine.hasPrefix("○ ") || trimmedLine.hasPrefix("● ") {
             // Replace checkbox with bullet - cursor goes after "• "
             let contentAfterCheckbox = String(trimmedLine.dropFirst(2))
             mutableLineText = "• " + contentAfterCheckbox
@@ -348,8 +348,8 @@ public class RichTextCoordinator: NSObject {
             
             // Count bullets and checkboxes
             let bulletCount = trimmedLine.components(separatedBy: "• ").count - 1
-            let checkboxCount = (trimmedLine.components(separatedBy: "☐ ").count - 1) + 
-                               (trimmedLine.components(separatedBy: "☑ ").count - 1)
+            let checkboxCount = (trimmedLine.components(separatedBy: "○ ").count - 1) + 
+                               (trimmedLine.components(separatedBy: "● ").count - 1)
             
             if bulletCount > 1 {
                 // Multiple bullets - clean up
@@ -379,12 +379,12 @@ public class RichTextCoordinator: NSObject {
     /// Clean up duplicate checkboxes on a line, keeping only one at the start
     private func cleanupDuplicateCheckboxes(_ line: String) -> String {
         // Remove all checkboxes and clean up extra spaces
-        let withoutCheckboxes = line.replacingOccurrences(of: "☐ ", with: "")
-                                   .replacingOccurrences(of: "☑ ", with: "")
+        let withoutCheckboxes = line.replacingOccurrences(of: "○ ", with: "")
+                                   .replacingOccurrences(of: "● ", with: "")
                                    .trimmingCharacters(in: .whitespaces)
         // Add single checkbox at start (preserve checked state if any were checked)
-        let hadCheckedBox = line.contains("☑ ")
-        return (hadCheckedBox ? "☑ " : "☐ ") + withoutCheckboxes
+        let hadCheckedBox = line.contains("● ")
+        return (hadCheckedBox ? "● " : "○ ") + withoutCheckboxes
     }
     
     private func applyCheckboxFormat(_ mutableText: NSMutableAttributedString, _ lineRange: NSRange, _ lineText: String) {
@@ -393,26 +393,26 @@ public class RichTextCoordinator: NSObject {
         let newCursorPosition: Int
         
         // Check if line already has a checkbox (prevent duplicates)
-        if trimmedLine.hasPrefix("☐ ") || trimmedLine.hasPrefix("☑ ") {
+        if trimmedLine.hasPrefix("○ ") || trimmedLine.hasPrefix("● ") {
             // Remove checkbox - cursor goes to start of text content
             mutableLineText = String(trimmedLine.dropFirst(2))
             newCursorPosition = lineRange.location + mutableLineText.count
             print("🔸 RichTextCoordinator: Removing checkbox from line")
-        } else if trimmedLine.hasPrefix("☐") || trimmedLine.hasPrefix("☑") {
+        } else if trimmedLine.hasPrefix("○") || trimmedLine.hasPrefix("●") {
             // Line starts with checkbox (but no space) - remove it completely
             mutableLineText = String(trimmedLine.dropFirst(1)).trimmingCharacters(in: .whitespaces)
             newCursorPosition = lineRange.location + mutableLineText.count
             print("🔸 RichTextCoordinator: Removing checkbox (no space) from line")
         } else if trimmedLine.hasPrefix("• ") {
-            // Replace bullet with checkbox - cursor goes after "☐ "
+            // Replace bullet with checkbox - cursor goes after "○ "
             let contentAfterBullet = String(trimmedLine.dropFirst(2))
-            mutableLineText = "☐ " + contentAfterBullet
-            newCursorPosition = lineRange.location + 2 // Position after "☐ "
+            mutableLineText = "○ " + contentAfterBullet
+            newCursorPosition = lineRange.location + 2 // Position after "○ "
             print("🔸 RichTextCoordinator: Replacing bullet with checkbox")
-        } else if !trimmedLine.contains("☐") && !trimmedLine.contains("☑") {
-            // Add checkbox only if line doesn't already contain checkboxes - cursor goes after "☐ "
-            mutableLineText = "☐ " + trimmedLine
-            newCursorPosition = lineRange.location + 2 // Position after "☐ "
+        } else if !trimmedLine.contains("○") && !trimmedLine.contains("●") {
+            // Add checkbox only if line doesn't already contain checkboxes - cursor goes after "○ "
+            mutableLineText = "○ " + trimmedLine
+            newCursorPosition = lineRange.location + 2 // Position after "○ "
             print("🔸 RichTextCoordinator: Adding checkbox to line")
         } else {
             // Line already contains checkboxes somewhere - don't add another
@@ -543,7 +543,7 @@ extension RichTextCoordinator: UITextViewDelegate {
         }
         
         // Continue checkbox lists  
-        if trimmedLine.hasPrefix("☐ ") || trimmedLine.hasPrefix("☑ ") {
+        if trimmedLine.hasPrefix("○ ") || trimmedLine.hasPrefix("● ") {
             let remainingText = String(trimmedLine.dropFirst(2)).trimmingCharacters(in: .whitespaces)
             if remainingText.isEmpty {
                 // Empty checkbox - remove it
@@ -556,7 +556,7 @@ extension RichTextCoordinator: UITextViewDelegate {
             } else {
                 // Add new checkbox
                 let mutableText = NSMutableAttributedString(attributedString: textView.attributedText)
-                mutableText.replaceCharacters(in: range, with: "\n☐ ")
+                mutableText.replaceCharacters(in: range, with: "\n○ ")
                 textView.attributedText = mutableText
                 textView.selectedRange = NSRange(location: range.location + 3, length: 0)
                 return false
@@ -574,7 +574,7 @@ extension RichTextCoordinator: UITextViewDelegate {
         
         // Check if we're at the beginning of a list item
         if range.location == lineRange.location + (lineText.count - lineText.ltrimmed().count) {
-            if trimmedLine.hasPrefix("• ") || trimmedLine.hasPrefix("☐ ") || trimmedLine.hasPrefix("☑ ") {
+            if trimmedLine.hasPrefix("• ") || trimmedLine.hasPrefix("○ ") || trimmedLine.hasPrefix("● ") {
                 // Remove the list marker
                 let mutableText = NSMutableAttributedString(attributedString: textView.attributedText)
                 let markerRange = NSRange(location: lineRange.location + (lineText.count - lineText.ltrimmed().count), length: 2)
@@ -586,6 +586,45 @@ extension RichTextCoordinator: UITextViewDelegate {
         }
         
         return true
+    }
+    
+    /// Handle tap gesture for checkbox toggling
+    @objc public func handleTap(_ gesture: UITapGestureRecognizer) {
+        let point = gesture.location(in: textView)
+        toggleCheckboxAtPoint(point)
+    }
+    
+    /// Toggle checkbox state when tapped
+    public func toggleCheckboxAtPoint(_ point: CGPoint) {
+        let textPosition = textView.closestPosition(to: point)
+        guard let position = textPosition else { return }
+        
+        let tapIndex = textView.offset(from: textView.beginningOfDocument, to: position)
+        let currentText = textView.text ?? ""
+        
+        // Find the line containing the tap
+        let lineRange = (currentText as NSString).lineRange(for: NSRange(location: tapIndex, length: 0))
+        let lineText = (currentText as NSString).substring(with: lineRange)
+        let trimmedLine = lineText.trimmingCharacters(in: .whitespaces)
+        
+        // Check if this line has a checkbox
+        if trimmedLine.hasPrefix("○ ") {
+            // Toggle to checked
+            let newLineText = lineText.replacingOccurrences(of: "○ ", with: "● ")
+            let mutableText = NSMutableAttributedString(attributedString: textView.attributedText)
+            mutableText.replaceCharacters(in: lineRange, with: newLineText)
+            textView.attributedText = mutableText
+            updateBindingFromTextView()
+            print("✅ RichTextCoordinator: Toggled checkbox to checked")
+        } else if trimmedLine.hasPrefix("● ") {
+            // Toggle to unchecked
+            let newLineText = lineText.replacingOccurrences(of: "● ", with: "○ ")
+            let mutableText = NSMutableAttributedString(attributedString: textView.attributedText)
+            mutableText.replaceCharacters(in: lineRange, with: newLineText)
+            textView.attributedText = mutableText
+            updateBindingFromTextView()
+            print("✅ RichTextCoordinator: Toggled checkbox to unchecked")
+        }
     }
 }
 

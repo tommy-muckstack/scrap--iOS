@@ -75,6 +75,11 @@ public struct RichTextEditor: UIViewRepresentable {
         let coordinator = context.coordinator
         coordinator.connectTextView(textView)
         
+        // Add tap gesture for checkbox toggling
+        let tapGesture = UITapGestureRecognizer(target: coordinator, action: #selector(RichTextCoordinator.handleTap(_:)))
+        tapGesture.numberOfTapsRequired = 1
+        textView.addGestureRecognizer(tapGesture)
+        
         // Apply custom configuration
         configuration(textView)
         
