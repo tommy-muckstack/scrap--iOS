@@ -1802,6 +1802,23 @@ struct FormattingToolbarView: View {
     }
 }
 
+// MARK: - Conditional SafeAreaInset Modifier
+struct ConditionalSafeAreaInset<ToolbarContent: View>: ViewModifier {
+    let isActive: Bool
+    let toolbarContent: () -> ToolbarContent
+    
+    func body(content: Content) -> some View {
+        if isActive {
+            content
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    self.toolbarContent()
+                }
+        } else {
+            content
+        }
+    }
+}
+
 // MARK: - Navigation Note Edit View
 struct NavigationNoteEditView: View {
     let item: SparkItem // Change from @ObservedObject to let to prevent unnecessary redraws
@@ -2153,12 +2170,10 @@ struct NavigationNoteEditView: View {
                 }
             }
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            // Formatting toolbar for body text editing only (not title)
-            if isRichTextFocused && isBodyTextFocused && !isTitleFocused {
-                FormattingToolbarView(context: richTextContext)
-            }
-        }
+        .modifier(ConditionalSafeAreaInset(
+            isActive: isRichTextFocused && isBodyTextFocused && !isTitleFocused,
+            toolbarContent: { FormattingToolbarView(context: richTextContext) }
+        ))
         .onAppear {
             print("🚀 NavigationNoteEditView onAppear: TRIGGERED")
             print("🚀 NavigationNoteEditView onAppear: Current attributedText = '\(attributedText.string.prefix(100))...'")
