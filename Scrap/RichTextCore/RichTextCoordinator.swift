@@ -287,19 +287,33 @@ public class RichTextCoordinator: NSObject {
         let trimmedLine = lineText.trimmingCharacters(in: .whitespaces)
         print("🔍 RichTextCoordinator: Processing line: '\(trimmedLine)'")
         
+        // Don't process lines that are only whitespace/newlines
+        if trimmedLine.isEmpty {
+            // Add bullet to empty line and position cursor after it
+            let mutableLineText = "• "
+            let newLine = mutableLineText + (lineText.hasSuffix("\n") ? "\n" : "")
+            mutableText.replaceCharacters(in: lineRange, with: newLine)
+            textView.attributedText = mutableText
+            let newCursorPosition = lineRange.location + 2 // Position after "• "
+            let safePosition = min(newCursorPosition, mutableText.length)
+            textView.selectedRange = NSRange(location: safePosition, length: 0)
+            print("🔸 RichTextCoordinator: Added bullet to empty line, cursor at position \(safePosition)")
+            return
+        }
+        
         let mutableLineText: String
         let newCursorPosition: Int
         
         // Check if line already has a bullet (prevent duplicates)
         if trimmedLine.hasPrefix("• ") {
-            // Remove bullet - cursor goes to start of text content
+            // Remove bullet - keep cursor at the beginning of the content
             mutableLineText = String(trimmedLine.dropFirst(2))
-            newCursorPosition = lineRange.location + mutableLineText.count
+            newCursorPosition = lineRange.location + (lineText.count - lineText.ltrimmed().count) + mutableLineText.count
             print("🔸 RichTextCoordinator: Removing bullet from line")
         } else if trimmedLine.hasPrefix("•") {
             // Line starts with bullet (but no space) - remove it completely
             mutableLineText = String(trimmedLine.dropFirst(1)).trimmingCharacters(in: .whitespaces)
-            newCursorPosition = lineRange.location + mutableLineText.count
+            newCursorPosition = lineRange.location + (lineText.count - lineText.ltrimmed().count) + mutableLineText.count
             print("🔸 RichTextCoordinator: Removing bullet (no space) from line")
         } else if trimmedLine.hasPrefix("○ ") || trimmedLine.hasPrefix("● ") {
             // Replace checkbox with bullet - cursor goes after "• "
@@ -324,9 +338,12 @@ public class RichTextCoordinator: NSObject {
         
         // Update text view with correct cursor position
         textView.attributedText = mutableText
-        textView.selectedRange = NSRange(location: newCursorPosition, length: 0)
         
-        print("🎯 RichTextCoordinator: Bullet format applied - result: '\(mutableLineText)', cursor at position \(newCursorPosition)")
+        // Ensure cursor position is valid for the new text length
+        let safePosition = min(newCursorPosition, mutableText.length)
+        textView.selectedRange = NSRange(location: safePosition, length: 0)
+        
+        print("🎯 RichTextCoordinator: Bullet format applied - result: '\(mutableLineText)', cursor at position \(safePosition)")
     }
     
     /// Clean up duplicate bullets on a line, keeping only one at the start
@@ -389,6 +406,21 @@ public class RichTextCoordinator: NSObject {
     
     private func applyCheckboxFormat(_ mutableText: NSMutableAttributedString, _ lineRange: NSRange, _ lineText: String) {
         let trimmedLine = lineText.trimmingCharacters(in: .whitespaces)
+        
+        // Don't process lines that are only whitespace/newlines
+        if trimmedLine.isEmpty {
+            // Add checkbox to empty line and position cursor after it
+            let mutableLineText = "○ "
+            let newLine = mutableLineText + (lineText.hasSuffix("\n") ? "\n" : "")
+            mutableText.replaceCharacters(in: lineRange, with: newLine)
+            textView.attributedText = mutableText
+            let newCursorPosition = lineRange.location + 2 // Position after "○ "
+            let safePosition = min(newCursorPosition, mutableText.length)
+            textView.selectedRange = NSRange(location: safePosition, length: 0)
+            print("🔸 RichTextCoordinator: Added checkbox to empty line, cursor at position \(safePosition)")
+            return
+        }
+        
         let mutableLineText: String
         let newCursorPosition: Int
         
@@ -425,9 +457,12 @@ public class RichTextCoordinator: NSObject {
         
         // Update text view with correct cursor position
         textView.attributedText = mutableText
-        textView.selectedRange = NSRange(location: newCursorPosition, length: 0)
         
-        print("🎯 RichTextCoordinator: Checkbox format applied - cursor at position \(newCursorPosition)")
+        // Ensure cursor position is valid for the new text length
+        let safePosition = min(newCursorPosition, mutableText.length)
+        textView.selectedRange = NSRange(location: safePosition, length: 0)
+        
+        print("🎯 RichTextCoordinator: Checkbox format applied - cursor at position \(safePosition)")
     }
     
     // MARK: - Binding Updates
