@@ -234,8 +234,8 @@ public class RichTextContext: ObservableObject {
         
         // Check for list markers
         let bulletActive = lineText.trimmingCharacters(in: .whitespaces).hasPrefix("◉")
-        let checkboxActive = lineText.trimmingCharacters(in: .whitespaces).hasPrefix("○") || 
-                            lineText.trimmingCharacters(in: .whitespaces).hasPrefix("●")
+        let checkboxActive = lineText.trimmingCharacters(in: .whitespaces).hasPrefix("☐") || 
+                            lineText.trimmingCharacters(in: .whitespaces).hasPrefix("☑")
         
         isBulletListActive = bulletActive
         isCheckboxActive = checkboxActive

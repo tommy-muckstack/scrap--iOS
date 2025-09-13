@@ -114,9 +114,7 @@ public struct RichTextEditor: UIViewRepresentable {
             // Additional validation to prevent CoreGraphics issues
             if safeRange.location >= 0 && 
                safeRange.length >= 0 && 
-               safeRange.location + safeRange.length <= textLength &&
-               !safeRange.location.isNaN &&
-               !safeRange.length.isNaN {
+               safeRange.location + safeRange.length <= textLength {
                 uiView.selectedRange = safeRange
             } else {
                 // Fallback to cursor at end of text
