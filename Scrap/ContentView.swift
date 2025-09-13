@@ -2122,6 +2122,7 @@ struct NavigationNoteEditView: View {
                         if gesture.translation.height > 10 && isRichTextFocused {
                             print("🎯 Dismissing keyboard via swipe down gesture")
                             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                            richTextContext.isEditingText = false
                         }
                     }
             )
@@ -2137,8 +2138,7 @@ struct NavigationNoteEditView: View {
                     if !isTitleFocused && !isBodyTextFocused {
                         print("🎯 Dismissing keyboard via tap gesture on empty area")
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                        isRichTextFocused = false
-                        isBodyTextFocused = false
+                        richTextContext.isEditingText = false  // This will update isRichTextFocused and isBodyTextFocused via onChange
                     }
                 }
             }
@@ -2186,9 +2186,11 @@ struct NavigationNoteEditView: View {
         .onChange(of: richTextContext.isEditingText) { newValue in
             if newValue {
                 isBodyTextFocused = true
+                isRichTextFocused = true  // This was missing!
                 isTitleFocused = false
             } else {
                 isBodyTextFocused = false
+                isRichTextFocused = false
             }
         }
         .onChange(of: attributedText) { newValue in
