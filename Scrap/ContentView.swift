@@ -1330,7 +1330,7 @@ struct AccountDrawerView: View {
                     // Settings Section (from SettingsView)
                     VStack(alignment: .leading, spacing: 16) {
                         HStack {
-                            Text("Settings")
+                            Text("My Account")
                                 .font(GentleLightning.Typography.heading)
                                 .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
                             Spacer()

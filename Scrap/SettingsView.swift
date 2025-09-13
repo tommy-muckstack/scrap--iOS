@@ -115,7 +115,7 @@ struct SettingsView: View {
                 }
             }
             .background(GentleLightning.Colors.background(isDark: themeManager.isDarkMode))
-            .navigationTitle("Settings")
+            .navigationTitle("My Account")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
