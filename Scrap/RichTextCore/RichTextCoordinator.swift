@@ -198,9 +198,11 @@ public class RichTextCoordinator: NSObject {
         textView.attributedText = mutableText
         textView.selectedRange = selectedRange
         
-        // Update typing attributes for future text
-        updateTypingAttributes()
+        // Update binding first to sync the attributed text
         updateBindingFromTextView()
+        
+        // Update typing attributes based on new formatting state
+        updateTypingAttributes()
     }
     
     private func toggleBoldInRange(_ mutableText: NSMutableAttributedString, _ range: NSRange) {
@@ -515,19 +517,59 @@ public class RichTextCoordinator: NSObject {
     
     private func updateTypingAttributes() {
         let selectedRange = textView.selectedRange
-        guard selectedRange.length == 0, 
-              selectedRange.location > 0,
-              selectedRange.location <= textView.attributedText.length,
-              textView.attributedText.length > 0 else { return }
+        let textLength = textView.attributedText.length
         
-        let safeIndex = selectedRange.location - 1
-        guard safeIndex >= 0 && safeIndex < textView.attributedText.length else { return }
+        // Build typing attributes based on current context state and selection
+        var typingAttributes = textView.typingAttributes
         
-        let attributes = textView.attributedText.attributes(
-            at: safeIndex,
-            effectiveRange: nil
-        )
-        textView.typingAttributes = attributes
+        // Get base font
+        let baseFont = UIFont(name: context.fontName, size: context.fontSize) ?? UIFont.systemFont(ofSize: context.fontSize)
+        
+        // Apply formatting based on current context state
+        var font = baseFont
+        if context.isBoldActive {
+            font = applyBoldToFont(font)
+        }
+        if context.isItalicActive {
+            font = applyItalicToFont(font)
+        }
+        
+        typingAttributes[.font] = font
+        typingAttributes[.foregroundColor] = UIColor.label
+        
+        // Apply other formatting
+        if context.isUnderlineActive {
+            typingAttributes[.underlineStyle] = NSUnderlineStyle.single.rawValue
+        } else {
+            typingAttributes.removeValue(forKey: .underlineStyle)
+        }
+        
+        if context.isStrikethroughActive {
+            typingAttributes[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
+        } else {
+            typingAttributes.removeValue(forKey: .strikethroughStyle)
+        }
+        
+        textView.typingAttributes = typingAttributes
+        print("🎨 Updated typing attributes - Bold: \(context.isBoldActive), Italic: \(context.isItalicActive)")
+    }
+    
+    private func applyBoldToFont(_ font: UIFont) -> UIFont {
+        let traits = font.fontDescriptor.symbolicTraits.union(.traitBold)
+        if let descriptor = font.fontDescriptor.withSymbolicTraits(traits) {
+            return UIFont(descriptor: descriptor, size: font.pointSize)
+        } else {
+            return UIFont.boldSystemFont(ofSize: font.pointSize)
+        }
+    }
+    
+    private func applyItalicToFont(_ font: UIFont) -> UIFont {
+        let traits = font.fontDescriptor.symbolicTraits.union(.traitItalic)
+        if let descriptor = font.fontDescriptor.withSymbolicTraits(traits) {
+            return UIFont(descriptor: descriptor, size: font.pointSize)
+        } else {
+            return UIFont.italicSystemFont(ofSize: font.pointSize)
+        }
     }
 }
 
