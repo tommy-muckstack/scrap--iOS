@@ -114,6 +114,15 @@ class OpenAIService {
             .replacingOccurrences(of: "\"", with: "")
             .replacingOccurrences(of: "'", with: "")
         
+        // Remove common prefixes that OpenAI sometimes adds despite instructions
+        let prefixesToRemove = ["Title:", "Title :", "Title-", "Title –", "Title-", "Note:", "Note :", "Subject:", "Subject :", "Topic:", "Topic :"]
+        for prefix in prefixesToRemove {
+            if cleaned.hasPrefix(prefix) {
+                cleaned = String(cleaned.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
+                break // Only remove the first match
+            }
+        }
+        
         // Ensure reasonable length
         if cleaned.count > 50 {
             cleaned = String(cleaned.prefix(50)) + "..."

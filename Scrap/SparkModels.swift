@@ -26,7 +26,6 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
     
     init(from firebaseNote: FirebaseNote) {
         self.id = firebaseNote.id ?? UUID().uuidString
-        self.content = firebaseNote.content
         self.title = firebaseNote.title ?? ""
         self.categoryIds = firebaseNote.categoryIds ?? []
         self.isTask = firebaseNote.isTask
@@ -34,9 +33,28 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
         self.createdAt = firebaseNote.createdAt
         self.firebaseId = firebaseNote.id
         
-        // Load RTF data if available
-        if let base64RTF = firebaseNote.rtfContent {
-            self.rtfData = Data(base64Encoded: base64RTF)
+        // Load RTF data if available and extract clean plain text
+        if let base64RTF = firebaseNote.rtfContent,
+           let rtfData = Data(base64Encoded: base64RTF) {
+            self.rtfData = rtfData
+            
+            // Extract clean plain text from RTF data to prevent showing raw RTF
+            do {
+                let attributedString = try NSAttributedString(
+                    data: rtfData,
+                    options: [.documentType: NSAttributedString.DocumentType.rtf],
+                    documentAttributes: nil
+                )
+                self.content = attributedString.string
+                print("📖 SparkItem init: Extracted plain text from RTF (\(attributedString.string.count) chars): '\(attributedString.string.prefix(50))...'")
+            } catch {
+                print("❌ SparkItem init: Failed to extract plain text from RTF, using Firebase content: \(error)")
+                // Fallback to Firebase content if RTF extraction fails
+                self.content = firebaseNote.content
+            }
+        } else {
+            // No RTF data available, use content from Firebase
+            self.content = firebaseNote.content
         }
     }
     

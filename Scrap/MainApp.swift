@@ -248,7 +248,7 @@ class FirebaseDataManager: ObservableObject {
                 // Generate title
                 var title: String? = nil
                 do {
-                    title = try await OpenAITitleService.shared.generateTitle(for: text)
+                    title = try await OpenAIService.shared.generateTitle(for: text)
                 } catch {
                     print("Title generation failed: \(error)")
                 }
@@ -274,6 +274,66 @@ class FirebaseDataManager: ObservableObject {
         }
     }
     
+    func createItemFromAttributedText(_ attributedText: NSAttributedString, creationType: String = "rich_text") {
+        print("📝 Creating item from NSAttributedString with \(attributedText.length) characters")
+        
+        // Convert attributed text to RTF data for storage
+        var rtfData: Data? = nil
+        do {
+            rtfData = try attributedText.data(
+                from: NSRange(location: 0, length: attributedText.length),
+                documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
+            )
+            print("✅ Successfully created RTF data (\(rtfData?.count ?? 0) bytes)")
+        } catch {
+            print("❌ Failed to create RTF data: \(error)")
+        }
+        
+        // Extract plain text for display and search
+        let plainText = attributedText.string
+        
+        // Create new item with plain text content and RTF data
+        let newItem = SparkItem(content: plainText, isTask: false)
+        newItem.rtfData = rtfData
+        
+        withAnimation(GentleLightning.Animation.elastic) {
+            items.insert(newItem, at: 0)
+        }
+        
+        Task {
+            do {
+                // Generate title from plain text
+                var title: String? = nil
+                do {
+                    title = try await OpenAIService.shared.generateTitle(for: plainText)
+                    print("📝 Generated title: '\(title ?? "nil")'")
+                } catch {
+                    print("Title generation failed: \(error)")
+                }
+                
+                // Create note with RTF content
+                let firebaseId = try await firebaseManager.createNote(
+                    content: plainText,
+                    title: title,
+                    categoryIds: [],
+                    isTask: false,
+                    categories: [],
+                    creationType: creationType,
+                    rtfData: rtfData
+                )
+                
+                await MainActor.run {
+                    newItem.firebaseId = firebaseId
+                    newItem.title = title ?? ""
+                }
+                
+                print("✅ Successfully saved formatted note to Firebase")
+            } catch {
+                print("❌ Failed to save note: \(error)")
+            }
+        }
+    }
+    
     func updateItem(_ item: SparkItem, newContent: String) {
         item.content = newContent
         
@@ -288,26 +348,19 @@ class FirebaseDataManager: ObservableObject {
         // Store RTF data in the item for persistence
         item.rtfData = rtfData
         
-        // Extract plain text from RTF for local display/search, but only if needed
-        // Don't update item.content during active editing to prevent formatting loss
-        if !item.content.isEmpty {
-            do {
-                let attributedString = try NSAttributedString(
-                    data: rtfData,
-                    options: [.documentType: NSAttributedString.DocumentType.rtf],
-                    documentAttributes: nil
-                )
-                // Only update if the plain text content has actually changed significantly
-                let plainText = attributedString.string
-                if abs(plainText.count - item.content.count) > 5 || !plainText.contains(item.content.prefix(10)) {
-                    print("💾 updateItemWithRTF: Significant content change, updating item.content")
-                    item.content = plainText
-                } else {
-                    print("💾 updateItemWithRTF: Minor changes, preserving existing item.content to prevent sync issues")
-                }
-            } catch {
-                print("❌ Failed to extract plain text from RTF: \(error)")
-            }
+        // Always extract plain text from RTF for local display/search to prevent showing raw RTF
+        do {
+            let attributedString = try NSAttributedString(
+                data: rtfData,
+                options: [.documentType: NSAttributedString.DocumentType.rtf],
+                documentAttributes: nil
+            )
+            let plainText = attributedString.string
+            print("💾 updateItemWithRTF: Extracted plain text (\(plainText.count) chars): '\(plainText.prefix(100))...'")
+            item.content = plainText
+        } catch {
+            print("❌ Failed to extract plain text from RTF: \(error)")
+            // Don't update content if RTF extraction fails to preserve existing content
         }
         
         if let firebaseId = item.firebaseId {

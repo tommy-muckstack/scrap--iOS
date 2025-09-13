@@ -23,8 +23,8 @@ class AnalyticsManager: ObservableObject {
         configuration.plan = nil                    // Disable plan tracking
         configuration.ingestionMetadata = nil       // Disable ingestion metadata
         
-        // Reduce Session Replay I/O impact
-        let sampleRate: Float = 0.1 // Reduce to 10% to minimize I/O
+        // Session Replay sample rate
+        let sampleRate: Float = 1.0 // 100% of sessions for comprehensive coverage
         sessionReplayPlugin = AmplitudeSwiftSessionReplayPlugin(sampleRate: sampleRate)
         
         amplitude = Amplitude(configuration: configuration)
@@ -80,7 +80,8 @@ class AnalyticsManager: ObservableObject {
             "is_task": isTask,
             "content_length": contentLength,
             "item_type": isTask ? "task" : "note",
-            "creation_type": creationType
+            "creation_type": creationType,
+            "note_type": creationType // Add note_type property to distinguish voice vs text
         ])
     }
     

@@ -25,10 +25,6 @@ struct SettingsView: View {
                                     Text("Dark Mode")
                                         .font(GentleLightning.Typography.body)
                                         .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
-                                    
-                                    Text("Switch between light and dark themes")
-                                        .font(GentleLightning.Typography.caption)
-                                        .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
                                 }
                                 
                                 Spacer()

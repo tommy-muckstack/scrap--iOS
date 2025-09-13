@@ -88,7 +88,13 @@ public struct RichTextEditor: UIViewRepresentable {
         let coordinator = context.coordinator
         coordinator.connectTextView(textView)
         
-        // Use native UITextView behavior - no custom gestures needed!
+        // Add tap gesture for checkbox toggling
+        let tapGesture = UITapGestureRecognizer(target: coordinator, action: #selector(RichTextCoordinator.handleTap(_:)))
+        tapGesture.numberOfTapsRequired = 1
+        tapGesture.delegate = coordinator
+        textView.addGestureRecognizer(tapGesture)
+        
+        // Use native UITextView behavior for text selection and editing
         // Double-tap, long-press, copy/paste all work natively
         
         // Apply custom configuration
@@ -165,6 +171,13 @@ public struct RichTextEditor: UIViewRepresentable {
             textView.smartQuotesType = .yes
             textView.smartDashesType = .yes
             textView.spellCheckingType = .yes
+            
+            // Set cursor color to black (matching design system)
+            textView.tintColor = UIColor.label
+            
+            // Improve text alignment and padding to match placeholder
+            textView.textContainerInset = UIEdgeInsets(top: 8, left: 0, bottom: 8, right: 0)
+            textView.textContainer.lineFragmentPadding = 4
             
             // Better line spacing for readability
             let paragraphStyle = NSMutableParagraphStyle()
