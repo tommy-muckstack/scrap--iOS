@@ -1945,12 +1945,6 @@ struct NavigationNoteEditView: View {
                 )
                 .padding(.horizontal, 16)
                 .background(Color.clear)
-                .onTapGesture {
-                    // Focus the body text editor when tapped
-                    isBodyTextFocused = true
-                    isRichTextFocused = true
-                    richTextContext.isEditingText = true
-                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -2000,11 +1994,6 @@ struct NavigationNoteEditView: View {
                 */
             }
             
-            // Spacer to push content up when keyboard appears
-            if isTextFieldFocused {
-                Spacer()
-                    .frame(height: max(0, keyboardHeight + 50)) // 50pt for toolbar height
-            }
         }
         .background(Color.white)
     }
@@ -2174,11 +2163,8 @@ struct NavigationNoteEditView: View {
             updateInitialToolbarState()
             
             // Auto-focus the body text editor when entering note editor
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                isRichTextFocused = true
-                isBodyTextFocused = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                 richTextContext.isEditingText = true
-                print("🎯 NavigationNoteEditView: Auto-focusing body text editor")
             }
             
             print("✅ NavigationNoteEditView onAppear: Content ready - Rich text editor should show with proper formatting")
@@ -2189,25 +2175,16 @@ struct NavigationNoteEditView: View {
             saveImmediately()
         }
         .onChange(of: isRichTextFocused) { newValue in
-            // Sync rich text focus with the original focus state for toolbar visibility
-            print("🎯 NavigationNoteEditView: isRichTextFocused changed to \(newValue), setting isTextFieldFocused = \(newValue)")
-            DispatchQueue.main.async {
-                isTextFieldFocused = newValue
-                richTextContext.isEditingText = newValue
-                print("🎯 DEBUG: Focus state updated - isTextFieldFocused=\(isTextFieldFocused), keyboardHeight=\(keyboardHeight)")
-            }
+            isTextFieldFocused = newValue
         }
         .onChange(of: isTitleFocused) { newValue in
-            print("🎯 NavigationNoteEditView: isTitleFocused changed to \(newValue)")
             if newValue {
-                // When title gets focus, body loses focus
                 isBodyTextFocused = false
+                richTextContext.isEditingText = false
             }
         }
         .onChange(of: richTextContext.isEditingText) { newValue in
-            print("🎯 NavigationNoteEditView: richTextContext.isEditingText changed to \(newValue)")
             if newValue {
-                // When body text gets focus, update our state
                 isBodyTextFocused = true
                 isTitleFocused = false
             } else {
@@ -2226,20 +2203,13 @@ struct NavigationNoteEditView: View {
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
             if let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
                 let height = keyboardFrame.height
-                // Prevent NaN and invalid values with stricter validation
                 if height.isFinite && height > 0 && height <= 1000 {
                     keyboardHeight = height
-                    print("⌨️ Keyboard will show with height: \(height)")
-                    print("🎯 DEBUG: After keyboard show - isTextFieldFocused=\(isTextFieldFocused), keyboardHeight=\(keyboardHeight)")
-                } else {
-                    print("⚠️ Invalid keyboard height detected: \(height), keeping current value: \(keyboardHeight)")
                 }
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
-            print("⌨️ Keyboard will hide - setting keyboardHeight = 0")
             keyboardHeight = 0
-            print("🎯 DEBUG: After keyboard hide - isRichTextFocused=\(isRichTextFocused), keyboardHeight=\(keyboardHeight)")
         }
         .onReceive(NotificationCenter.default.publisher(for: .updateUndoRedoState)) { notification in
             if let userInfo = notification.userInfo {

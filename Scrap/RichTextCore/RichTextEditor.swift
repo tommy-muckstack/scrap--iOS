@@ -8,6 +8,7 @@
 
 import SwiftUI
 import UIKit
+import Combine
 
 /**
  A SwiftUI wrapper for UITextView with rich text editing capabilities.
@@ -58,6 +59,20 @@ public struct RichTextEditor: UIViewRepresentable {
         textView.textContainerInset = .zero
         textView.textContainer.lineFragmentPadding = 0
         
+        // Enable standard iOS text interactions
+        textView.isUserInteractionEnabled = true
+        textView.canBecomeFirstResponder = true
+        textView.isMultipleTouchEnabled = true
+        textView.isExclusiveTouch = false
+        
+        // Configure selection and editing behaviors
+        textView.selectionAffinity = .downstream
+        textView.clearsOnInsertion = false
+        
+        // Enable copy/paste menu
+        textView.canCancelContentTouches = true
+        textView.delaysContentTouches = true
+        
         // Font and appearance
         textView.font = UIFont(name: self.context.fontName, size: self.context.fontSize) ?? 
                         UIFont.systemFont(ofSize: self.context.fontSize)
@@ -75,9 +90,13 @@ public struct RichTextEditor: UIViewRepresentable {
         let coordinator = context.coordinator
         coordinator.connectTextView(textView)
         
-        // Add tap gesture for checkbox toggling
+        // Add tap gesture for checkbox toggling with minimal interference
         let tapGesture = UITapGestureRecognizer(target: coordinator, action: #selector(RichTextCoordinator.handleTap(_:)))
         tapGesture.numberOfTapsRequired = 1
+        tapGesture.cancelsTouchesInView = false      // Don't block other touches
+        tapGesture.delaysTouchesEnded = false        // Don't delay text selection
+        tapGesture.delaysTouchesBegan = false        // Don't delay touch start
+        tapGesture.requiresExclusiveTouchType = false // Allow multiple touch types
         textView.addGestureRecognizer(tapGesture)
         
         // Apply custom configuration
@@ -87,17 +106,29 @@ public struct RichTextEditor: UIViewRepresentable {
     }
     
     public func updateUIView(_ uiView: UITextView, context: Context) {
-        // Update editable state
+        // Only update text if it's actually different to avoid cursor jumps
+        if !uiView.attributedText.isEqual(to: text) {
+            let selectedRange = uiView.selectedRange
+            uiView.attributedText = text
+            
+            // Restore cursor position safely
+            let newLocation = min(selectedRange.location, text.length)
+            let safeRange = NSRange(location: newLocation, length: selectedRange.length)
+            if safeRange.location + safeRange.length <= text.length {
+                uiView.selectedRange = safeRange
+            }
+        }
+        
+        // Update editable state only if needed
         if uiView.isEditable != self.context.isEditable {
             uiView.isEditable = self.context.isEditable
         }
         
-        // Update font if changed
-        let expectedFont = UIFont(name: self.context.fontName, size: self.context.fontSize) ?? 
-                          UIFont.systemFont(ofSize: self.context.fontSize)
-        if uiView.font != expectedFont {
-            uiView.font = expectedFont
-            uiView.typingAttributes[.font] = expectedFont
+        // Handle focus state carefully
+        if self.context.isEditingText && !uiView.isFirstResponder {
+            DispatchQueue.main.async {
+                uiView.becomeFirstResponder()
+            }
         }
     }
     
@@ -173,6 +204,7 @@ public extension RichTextEditor {
             configuration(textView)
         }
     }
+    
 }
 
 // MARK: - Supporting Types

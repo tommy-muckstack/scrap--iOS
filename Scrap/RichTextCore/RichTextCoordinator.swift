@@ -469,7 +469,11 @@ public class RichTextCoordinator: NSObject {
     
     private func updateBindingFromTextView() {
         guard !isUpdatingFromContext else { return }
-        textBinding.wrappedValue = textView.attributedText
+        
+        // Only update binding if the text actually changed to prevent loops
+        if !textBinding.wrappedValue.isEqual(to: textView.attributedText) {
+            textBinding.wrappedValue = textView.attributedText
+        }
     }
     
     private func updateContextFromTextView() {
@@ -478,9 +482,9 @@ public class RichTextCoordinator: NSObject {
         isUpdatingFromTextView = true
         defer { isUpdatingFromTextView = false }
         
-        // Update context state
-        context.setAttributedString(textView.attributedText)
-        context.setSelectedRange(textView.selectedRange)
+        // Update context state without triggering actions
+        context.attributedString = textView.attributedText
+        context.selectedRange = textView.selectedRange
         
         // Update undo/redo state
         let undoManager = textView.undoManager
@@ -491,6 +495,9 @@ public class RichTextCoordinator: NSObject {
         
         // Update copy state
         context.updateCopyState(textView.selectedRange.length > 0)
+        
+        // Update formatting state
+        context.updateFormattingState()
     }
     
     private func updateTypingAttributes() {
@@ -522,16 +529,15 @@ extension RichTextCoordinator: UITextViewDelegate {
     
     public func textViewDidChangeSelection(_ textView: UITextView) {
         updateContextFromTextView()
+        updateTypingAttributes()
     }
     
     public func textViewDidBeginEditing(_ textView: UITextView) {
-        // Update editing state when user starts editing
         context.isEditingText = true
         updateContextFromTextView()
     }
     
     public func textViewDidEndEditing(_ textView: UITextView) {
-        // Update editing state when user stops editing
         context.isEditingText = false
         updateContextFromTextView()
     }
