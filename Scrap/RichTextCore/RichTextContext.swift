@@ -186,7 +186,10 @@ public class RichTextContext: ObservableObject {
     
     private func updateBoldState(from attributes: [NSAttributedString.Key: Any]) {
         if let font = attributes[.font] as? UIFont {
-            isBoldActive = font.fontDescriptor.symbolicTraits.contains(.traitBold)
+            // Check both symbolic traits and font name patterns for bold detection
+            let hasTraitBold = font.fontDescriptor.symbolicTraits.contains(.traitBold)
+            let hasBoldName = font.fontName.contains("Bold") || font.fontName.contains("SemiBold") || font.fontName.contains("Heavy")
+            isBoldActive = hasTraitBold || hasBoldName
         } else {
             isBoldActive = false
         }

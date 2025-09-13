@@ -1695,6 +1695,7 @@ struct FormattingToolbarView: View {
                             .frame(width: 32, height: 32)
                             .background(context.isBoldActive ? .black : Color.clear)
                             .clipShape(Circle())
+                            .clipped() // Prevent overflow that could cause NaN calculations
                     }
                     
                     Button(action: { 
@@ -1884,12 +1885,21 @@ struct NavigationNoteEditView: View {
     // Convert NSData back to NSAttributedString
     static func dataToAttributedString(_ data: Data) -> NSAttributedString {
         do {
-            let attributedString = try NSAttributedString(
-                data: data,
-                options: [.documentType: NSAttributedString.DocumentType.rtf],
-                documentAttributes: nil
-            )
+            let options: [NSAttributedString.DocumentReadingOptionKey: Any] = [
+                .documentType: NSAttributedString.DocumentType.rtf,
+                .characterEncoding: String.Encoding.utf8.rawValue
+            ]
+            let attributedString = try NSAttributedString(data: data, options: options, documentAttributes: nil)
             print("📖 Loaded NSAttributedString from RTF data: '\(attributedString.string.prefix(50))...'")
+            
+            // Debug: Log the attributes of the first character to verify formatting is preserved
+            if attributedString.length > 0 {
+                let firstCharAttributes = attributedString.attributes(at: 0, effectiveRange: nil)
+                if let font = firstCharAttributes[.font] as? UIFont {
+                    print("📖 First character font: \(font.fontName), bold trait: \(font.fontDescriptor.symbolicTraits.contains(.traitBold))")
+                }
+            }
+            
             return attributedString
         } catch {
             print("❌ Failed to convert data to NSAttributedString: \(error)")
@@ -2159,8 +2169,8 @@ struct NavigationNoteEditView: View {
             isContentReady = true
             richTextContext.setAttributedString(attributedText)
             
-            // Update toolbar state to reflect formatting at the beginning of the loaded RTF content
-            updateInitialToolbarState()
+            // Update RichTextContext formatting state based on loaded content
+            richTextContext.updateFormattingState()
             
             // Auto-focus the body text editor when entering note editor
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
@@ -2205,8 +2215,12 @@ struct NavigationNoteEditView: View {
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
             if let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
                 let height = keyboardFrame.height
-                if height.isFinite && height > 0 && height <= 1000 {
+                // Ensure height is finite, positive, and reasonable to prevent CoreGraphics NaN errors
+                if height.isFinite && height > 0 && height <= 1000 && !height.isNaN && !height.isInfinite {
                     keyboardHeight = height
+                } else {
+                    print("⚠️ Invalid keyboard height detected: \(height), using fallback")
+                    keyboardHeight = 0
                 }
             }
         }
@@ -2387,49 +2401,6 @@ struct NavigationNoteEditView: View {
     }
     
     // MARK: - Formatting Actions
-    
-    // Update toolbar state based on formatting at the beginning of loaded RTF content
-    private func updateInitialToolbarState() {
-        guard !attributedText.string.isEmpty else { return }
-        
-        // Get attributes at the beginning of the text (where cursor typically starts)
-        let location = min(0, attributedText.length - 1)
-        let attributes = attributedText.attributes(at: max(0, location), effectiveRange: nil)
-        
-        print("🎨 updateInitialToolbarState: Checking formatting at location \(location)")
-        
-        // Check for bold (either through font name or traits)
-        var isBold = false
-        if let font = attributes[.font] as? UIFont {
-            isBold = font.fontName.contains("Bold") || font.fontName.contains("SemiBold") || font.fontDescriptor.symbolicTraits.contains(.traitBold)
-            print("🎨 updateInitialToolbarState: Font = \(font.fontName), isBold = \(isBold)")
-        }
-        
-        // Check for italic
-        var isItalic = false
-        if let font = attributes[.font] as? UIFont {
-            isItalic = font.fontDescriptor.symbolicTraits.contains(.traitItalic)
-            print("🎨 updateInitialToolbarState: isItalic = \(isItalic)")
-        }
-        
-        // Check for underline
-        let isUnderline = (attributes[.underlineStyle] as? Int) != nil
-        print("🎨 updateInitialToolbarState: isUnderline = \(isUnderline)")
-        
-        // Check for strikethrough
-        let isStrikethrough = (attributes[.strikethroughStyle] as? Int) != nil
-        print("🎨 updateInitialToolbarState: isStrikethrough = \(isStrikethrough)")
-        
-        // Update formatting state
-        DispatchQueue.main.async {
-            self.formattingState.isBoldActive = isBold
-            self.formattingState.isItalicActive = isItalic
-            self.formattingState.isUnderlineActive = isUnderline
-            self.formattingState.isStrikethroughActive = isStrikethrough
-            
-            print("🎨 updateInitialToolbarState: Updated toolbar state - Bold: \(isBold), Italic: \(isItalic), Underline: \(isUnderline), Strikethrough: \(isStrikethrough)")
-        }
-    }
     
     private func toggleBold() {
         formattingState.toggleTextFormat(.bold)
