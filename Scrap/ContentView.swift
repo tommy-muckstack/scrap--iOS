@@ -328,6 +328,26 @@ struct GentleLightning {
             return isActive ? Colors.backgroundWarm : Colors.background
         }
     }
+    
+    // MARK: - Components
+    struct Components {
+        static func customCheckbox(isChecked: Bool, isDark: Bool = false) -> some View {
+            ZStack {
+                // Outer circle (always black outline)
+                Circle()
+                    .strokeBorder(Color.black, lineWidth: 1.5)
+                    .frame(width: 16, height: 16)
+                    .background(Circle().fill(Color.clear))
+                
+                // Checkmark (only when checked)
+                if isChecked {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(Colors.success) // Green checkmark
+                }
+            }
+        }
+    }
 }
 
 // MARK: - Simple Item Model (Compatible with Firebase)
@@ -393,6 +413,10 @@ class FirebaseDataManager: ObservableObject {
                 
                 print("✅ DataManager: Note saved successfully with Firebase ID: \(firebaseId)")
                 
+                // Track note creation with type
+                let noteType = creationType == "voice" ? "voice" : "text"
+                AnalyticsManager.shared.trackItemCreated(isTask: false, contentLength: text.count, creationType: noteType)
+                
                 // Now create the item with the title and add to list
                 await MainActor.run {
                     let newItem = SparkItem(content: text, isTask: false)
@@ -417,6 +441,94 @@ class FirebaseDataManager: ObservableObject {
                 await MainActor.run {
                     self.error = "Failed to save note: \(error.localizedDescription)"
                     print("🗑️ DataManager: Note creation failed")
+                }
+            }
+        }
+    }
+    
+    func createItemFromAttributedText(_ attributedText: NSAttributedString, creationType: String = "rich_text") {
+        print("📝 Creating item from NSAttributedString with \(attributedText.length) characters")
+        
+        // Convert attributed text to RTF data for storage
+        let rtfData: Data? = {
+            do {
+                let data = try attributedText.data(
+                    from: NSRange(location: 0, length: attributedText.length),
+                    documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
+                )
+                print("✅ Successfully created RTF data (\(data.count) bytes)")
+                return data
+            } catch {
+                print("❌ Failed to create RTF data: \(error)")
+                return nil
+            }
+        }()
+        
+        // Extract plain text for display and search
+        let plainText = attributedText.string
+        
+        // Save to Firebase with AI-generated title first, then add to list
+        Task {
+            do {
+                print("📋 DataManager: Starting to save formatted note: '\(plainText)' type: '\(creationType)'")
+                
+                // Generate title using OpenAI
+                var generatedTitle: String? = nil
+                do {
+                    generatedTitle = try await OpenAIService.shared.generateTitle(for: plainText)
+                    print("🤖 DataManager: Generated title: '\(generatedTitle!)'")
+                } catch {
+                    print("⚠️ DataManager: Title generation failed: \(error), proceeding without title")
+                }
+                
+                // Get legacy categories for backward compatibility
+                let legacyCategories = await categorizeText(plainText)
+                print("🏷️ DataManager: Categorized text with legacy categories: \(legacyCategories)")
+                
+                // TODO: Add category suggestion and selection logic here
+                let categoryIds: [String] = [] // Will be populated when categories are implemented
+                
+                let finalTitle = generatedTitle
+                let firebaseId = try await firebaseManager.createNote(
+                    content: plainText,
+                    title: finalTitle,
+                    categoryIds: categoryIds,
+                    isTask: false, 
+                    categories: legacyCategories,
+                    creationType: creationType,
+                    rtfData: rtfData
+                )
+                
+                print("✅ DataManager: Formatted note saved successfully with Firebase ID: \(firebaseId)")
+                
+                // Track note creation with type
+                AnalyticsManager.shared.trackItemCreated(isTask: false, contentLength: plainText.count, creationType: creationType)
+                
+                // Now create the item with the title and add to list
+                await MainActor.run {
+                    let newItem = SparkItem(content: plainText, isTask: false)
+                    newItem.firebaseId = firebaseId
+                    newItem.rtfData = rtfData
+                    if let title = finalTitle {
+                        newItem.title = title
+                    }
+                    
+                    withAnimation(GentleLightning.Animation.elastic) {
+                        self.items.insert(newItem, at: 0)
+                    }
+                    print("📲 DataManager: Added formatted item to list with title: '\(newItem.title)'")
+                    
+                    // Update widget with new count
+                    updateWidgetData(noteCount: self.items.count)
+                }
+                
+                // TODO: Save to Pinecone for vector search
+                
+            } catch {
+                print("💥 DataManager: Failed to save formatted note: \(error)")
+                await MainActor.run {
+                    self.error = "Failed to save note: \(error.localizedDescription)"
+                    print("🗑️ DataManager: Formatted note creation failed")
                 }
             }
         }
@@ -524,7 +636,7 @@ struct InputField: View {
     let placeholder: String
     let dataManager: FirebaseDataManager
     let onCommit: () -> Void
-    @FocusState var isFieldFocused: Bool
+    var isFieldFocused: FocusState<Bool>.Binding
     
     // Rich text state management
     @State private var attributedText = NSAttributedString()
@@ -597,10 +709,16 @@ struct InputField: View {
                     
                     // Check current authorization status
                     authorizationStatus = SFSpeechRecognizer.authorizationStatus()
-                    
-                    // Note: Removed automatic isEditingText = true
-                    // This was causing formatting toolbar to appear on main page
-                    // Focus should be managed naturally by user interaction
+                }
+                .onChange(of: isFieldFocused.wrappedValue) { isFocused in
+                    // Sync external focus state with rich text context
+                    richTextContext.isEditingText = isFocused
+                }
+                .onChange(of: richTextContext.isEditingText) { isEditing in
+                    // Sync rich text context back to external focus state
+                    if isFieldFocused.wrappedValue != isEditing {
+                        isFieldFocused.wrappedValue = isEditing
+                    }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
                     // Refresh authorization status when app becomes active (user returning from Settings)
@@ -617,12 +735,8 @@ struct InputField: View {
                         if !attributedText.string.isEmpty {
                             AnalyticsManager.shared.trackNoteSaved(method: "button", contentLength: attributedText.string.count)
                             
-                            // Convert attributed text to RTF for storage
-                            let rtfData = try? attributedText.data(from: NSRange(location: 0, length: attributedText.length), 
-                                                                  documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf])
-                            let rtfString = rtfData.flatMap { String(data: $0, encoding: .utf8) } ?? attributedText.string
-                            
-                            dataManager.createItem(from: rtfString, creationType: "rich_text")
+                            // Create new item with rich text formatting
+                            dataManager.createItemFromAttributedText(attributedText, creationType: "rich_text")
                             
                             // Clear both text fields
                             text = ""
@@ -1342,10 +1456,6 @@ struct AccountDrawerView: View {
                                 Text("Dark Mode")
                                     .font(GentleLightning.Typography.body)
                                     .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
-                                
-                                Text("Switch between light and dark themes")
-                                    .font(GentleLightning.Typography.caption)
-                                    .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
                             }
                             
                             Spacer()
@@ -1562,19 +1672,20 @@ struct ContentView: View {
                     // No automatic saving - users must use the SAVE button
                     // Just dismiss keyboard when pressing return
                     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                })
+                },
+                          isFieldFocused: $isInputFieldFocused)
                 .padding(.horizontal, GentleLightning.Layout.Padding.xl)
                 
                 // Smaller spacer below
                 Spacer()
-                    .frame(maxHeight: 100)
+                    .frame(maxHeight: 20)
                 
                 // Items List - scrollable content
                 ScrollView {
-                    LazyVStack(spacing: 4) {
+                    LazyVStack(spacing: 2) {
                         if dataManager.items.isEmpty {
                             EmptyStateView()
-                                .padding(.top, 60)
+                                .padding(.top, 20)
                         } else {
                             ForEach(dataManager.items) { item in
                                 ItemRowSimple(item: item, dataManager: dataManager) {
@@ -1667,6 +1778,17 @@ struct ContentView: View {
         .onAppear {
             // Initialize widget with current note count when app starts
             updateWidgetData(noteCount: dataManager.items.count)
+            
+            // Auto-focus the input field when the app loads
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                isInputFieldFocused = true
+                print("🎯 ContentView: Auto-focused input field on app load - setting focus to true")
+                
+                // Add additional debugging
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    print("🎯 ContentView: Checking focus state after delay - isInputFieldFocused: \(isInputFieldFocused)")
+                }
+            }
         }
     }
 }
@@ -1683,141 +1805,132 @@ struct FormattingToolbarView: View {
                 .frame(height: 1)
                 .frame(maxWidth: .infinity)
             
-            // All buttons on a single horizontal line
-            HStack(spacing: 12) {
-                // Formatting buttons (left side)
-                    Button(action: { 
-                        context.toggleBold()
-                    }) {
-                        Image(systemName: "bold")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(context.isBoldActive ? .white : .black)
-                            .frame(width: 32, height: 32)
-                            .background(context.isBoldActive ? .black : Color.clear)
-                            .clipShape(Circle())
-                            .clipped() // Prevent overflow that could cause NaN calculations
-                    }
-                    
-                    Button(action: { 
-                        context.toggleItalic()
-                    }) {
-                        Image(systemName: "italic")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(context.isItalicActive ? .white : .black)
-                            .frame(width: 32, height: 32)
-                            .background(context.isItalicActive ? .black : Color.clear)
+            // Centered horizontal layout with better spacing
+            HStack(spacing: 8) {
+                // Left spacer for centering
+                Spacer(minLength: 0)
+                
+                // Core formatting buttons
+                Button(action: { 
+                    context.toggleBold()
+                }) {
+                    Image(systemName: "bold")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(context.isBoldActive ? .white : .black)
+                        .frame(width: 32, height: 32)
+                        .background(context.isBoldActive ? .black : Color.clear)
+                        .clipShape(Circle())
+                        .clipped()
+                }
+                
+                Button(action: { 
+                    context.toggleItalic()
+                }) {
+                    Image(systemName: "italic")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(context.isItalicActive ? .white : .black)
+                        .frame(width: 32, height: 32)
+                        .background(context.isItalicActive ? .black : Color.clear)
                         .clipShape(Circle())
                 }
                 
-                    Button(action: { 
-                        context.toggleUnderline()
-                    }) {
-                        Image(systemName: "underline")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(context.isUnderlineActive ? .white : .black)
-                            .frame(width: 32, height: 32)
-                            .background(context.isUnderlineActive ? .black : Color.clear)
-                            .clipShape(Circle())
-                    }
-                    
-                    Button(action: { 
-                        context.toggleStrikethrough()
-                    }) {
-                        Image(systemName: "strikethrough")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(context.isStrikethroughActive ? .white : .black)
-                            .frame(width: 32, height: 32)
-                            .background(context.isStrikethroughActive ? .black : Color.clear)
-                            .clipShape(Circle())
-                    }
-                    
-                    // Divider
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.3))
-                        .frame(width: 1, height: 24)
-                    
-                    // List buttons
-                    Button(action: { 
-                        context.toggleBulletList()
-                    }) {
-                        Image(systemName: "list.bullet")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(context.isBulletListActive ? .white : .black)
-                            .frame(width: 32, height: 32)
-                            .background(context.isBulletListActive ? .black : Color.clear)
-                            .clipShape(Circle())
-                    }
-                    
-                    Button(action: { 
-                        context.toggleCheckbox()
-                    }) {
-                        Image(systemName: "checklist")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(context.isCheckboxActive ? .white : .black)
-                            .frame(width: 32, height: 32)
-                            .background(context.isCheckboxActive ? .black : Color.clear)
-                            .clipShape(Circle())
-                    }
+                Button(action: { 
+                    context.toggleStrikethrough()
+                }) {
+                    Image(systemName: "strikethrough")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(context.isStrikethroughActive ? .white : .black)
+                        .frame(width: 32, height: 32)
+                        .background(context.isStrikethroughActive ? .black : Color.clear)
+                        .clipShape(Circle())
+                }
                 
-                Spacer()
+                // Compact divider
+                Rectangle()
+                    .fill(Color.gray.opacity(0.3))
+                    .frame(width: 1, height: 20)
                 
-                // Utility buttons (right side)
-                    Button(action: { context.undo() }) {
-                        Image(systemName: "arrow.uturn.backward")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(context.canUndo ? .black : .gray)
-                            .frame(width: 32, height: 32)
-                            .background(context.canUndo ? GentleLightning.Colors.accentNeutral.opacity(0.1) : Color.clear)
-                            .clipShape(Circle())
-                    }
-                    .disabled(!context.canUndo)
-                    
-                    Button(action: { context.redo() }) {
-                        Image(systemName: "arrow.uturn.forward")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(context.canRedo ? .black : .gray)
-                            .frame(width: 32, height: 32)
-                            .background(context.canRedo ? GentleLightning.Colors.accentNeutral.opacity(0.1) : Color.clear)
-                            .clipShape(Circle())
-                    }
-                    .disabled(!context.canRedo)
-                    
-                    // Collapse keyboard button
-                    Button(action: { 
-                        context.isEditingText = false
-                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                    }) {
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.black)
+                // List buttons
+                Button(action: { 
+                    context.toggleBulletList()
+                }) {
+                    Image(systemName: "list.bullet")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(context.isBulletListActive ? .white : .black)
+                        .frame(width: 32, height: 32)
+                        .background(context.isBulletListActive ? .black : Color.clear)
+                        .clipShape(Circle())
+                }
+                
+                Button(action: { 
+                    context.toggleCheckbox()
+                }) {
+                    Image(systemName: "checklist")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(context.isCheckboxActive ? .white : .black)
+                        .frame(width: 32, height: 32)
+                        .background(context.isCheckboxActive ? .black : Color.clear)
+                        .clipShape(Circle())
+                }
+                
+                // Compact divider
+                Rectangle()
+                    .fill(Color.gray.opacity(0.3))
+                    .frame(width: 1, height: 20)
+                
+                // Indent/Outdent buttons
+                Button(action: { 
+                    context.indentOut()
+                }) {
+                    Image(systemName: "decrease.indent")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.black)
+                        .frame(width: 32, height: 32)
+                        .background(Color.clear)
+                        .clipShape(Circle())
+                }
+                
+                Button(action: { 
+                    context.indentIn()
+                }) {
+                    Image(systemName: "increase.indent")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.black)
+                        .frame(width: 32, height: 32)
+                        .background(Color.clear)
+                        .clipShape(Circle())
+                }
+                
+                // Compact divider
+                Rectangle()
+                    .fill(Color.gray.opacity(0.3))
+                    .frame(width: 1, height: 20)
+                
+                // Keyboard dismiss button
+                Button(action: { 
+                    context.isEditingText = false
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                }) {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.black)
                         .frame(width: 32, height: 32)
                         .background(GentleLightning.Colors.accentNeutral.opacity(0.1))
                         .clipShape(Circle())
                 }
+                
+                // Right spacer for centering
+                Spacer(minLength: 0)
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 16) // Match content padding for consistency
             .padding(.vertical, 12)
         }
+        .frame(maxWidth: .infinity)
         .background(Color.white)
     }
 }
 
 // MARK: - Conditional SafeAreaInset Modifier
-struct ConditionalSafeAreaInset<ToolbarContent: View>: ViewModifier {
-    let isActive: Bool
-    let toolbarContent: () -> ToolbarContent
-    
-    func body(content: Content) -> some View {
-        if isActive {
-            content
-                .safeAreaInset(edge: .bottom, spacing: 0) {
-                    self.toolbarContent()
-                }
-        } else {
-            content
-        }
-    }
-}
 
 // MARK: - Navigation Note Edit View
 struct NavigationNoteEditView: View {
@@ -1987,6 +2100,7 @@ struct NavigationNoteEditView: View {
                     textEditorSection
                 }
                 .background(Color.white)
+                .frame(maxWidth: .infinity) // Ensure consistent width
             }
             
             // Category picker at bottom
@@ -2026,123 +2140,21 @@ struct NavigationNoteEditView: View {
     }
     
     var body: some View {
-        GeometryReader { geometry in
-            ZStack(alignment: .bottom) {
-                // Main content area
-                mainContentView
-                
-                    /* REMOVED DUPLICATE TOOLBAR - Using safeAreaInset toolbar instead
-                    let _ = print("🎯 DEBUG: Showing formatting toolbar - isRichTextFocused = \(isRichTextFocused)")
-                    VStack(spacing: 0) {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 12) {
-                                // Text formatting buttons
-                                FormattingToggleButton(
-                                    icon: "bold",
-                                    isActive: formattingState.isBoldActive,
-                                    action: { toggleBold() }
-                                )
-                                
-                                FormattingToggleButton(
-                                    icon: "italic",
-                                    isActive: formattingState.isItalicActive,
-                                    action: { toggleItalic() }
-                                )
-                                
-                                FormattingToggleButton(
-                                    icon: "underline",
-                                    isActive: formattingState.isUnderlineActive,
-                                    action: { toggleUnderline() }
-                                )
-                                
-                                FormattingToggleButton(
-                                    icon: "strikethrough",
-                                    isActive: formattingState.isStrikethroughActive,
-                                    action: { toggleStrikethrough() }
-                                )
-                                
-                                // Separator
-                                Rectangle()
-                                    .fill(GentleLightning.Colors.border(isDark: false))
-                                    .frame(width: 1, height: 24)
-                                
-                                // List formatting buttons
-                                FormattingToggleButton(
-                                    icon: "list.bullet",
-                                    isActive: formattingState.isListModeActive,
-                                    action: { toggleListMode() }
-                                )
-                                
-                                FormattingToggleButton(
-                                    icon: "checkmark.square",
-                                    isActive: formattingState.isCheckboxModeActive,
-                                    action: { toggleCheckboxMode() }
-                                )
-                            }
-                            .padding(.horizontal, 4)
-                        }
-                        
-                        HStack {
-                            Spacer()
-                            
-                            // Undo/Redo buttons
-                            HStack(spacing: 8) {
-                                Button(action: { performUndo() }) {
-                                    Image(systemName: "arrow.uturn.backward")
-                                        .font(.system(size: 14, weight: .medium))
-                                        .foregroundColor(canUndo ? GentleLightning.Colors.accentNeutral : GentleLightning.Colors.textSecondary)
-                                        .frame(width: 32, height: 32)
-                                        .background(canUndo ? GentleLightning.Colors.accentNeutral.opacity(0.1) : Color.clear)
-                                        .clipShape(Circle())
-                                }
-                                .disabled(!canUndo)
-                                
-                                Button(action: { performRedo() }) {
-                                    Image(systemName: "arrow.uturn.forward")
-                                        .font(.system(size: 14, weight: .medium))
-                                        .foregroundColor(canRedo ? GentleLightning.Colors.accentNeutral : GentleLightning.Colors.textSecondary)
-                                        .frame(width: 32, height: 32)
-                                        .background(canRedo ? GentleLightning.Colors.accentNeutral.opacity(0.1) : Color.clear)
-                                        .clipShape(Circle())
-                                }
-                                .disabled(!canRedo)
-                            }
-                            
-                            // Collapse keyboard button
-                            Button(action: { hideKeyboard() }) {
-                                Image(systemName: "chevron.down")
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(GentleLightning.Colors.accentNeutral)
-                                    .frame(width: 32, height: 32)
-                                    .background(GentleLightning.Colors.accentNeutral.opacity(0.1))
-                                    .clipShape(Circle())
-                            }
-                        }
-                        .padding(.horizontal, max(16, geometry.safeAreaInsets.leading + 16))
-                        .padding(.vertical, 12)
-                        .frame(maxWidth: .infinity)
-                        .background(
-                            Color(UIColor.systemBackground)
-                                .shadow(color: .white, radius: 1, x: 0, y: -1)
-                        )
-                    }
-                    .frame(maxWidth: .infinity)
-                    .frame(maxHeight: .infinity, alignment: .bottom)
-                    .offset(y: {
-                        // Pin toolbar directly above keyboard
-                        // Use the keyboard height directly as the offset to position toolbar above keyboard
-                        let validKeyboardHeight = keyboardHeight.isFinite && keyboardHeight > 0 ? keyboardHeight : 0
-                        let toolbarHeight: CGFloat = 80 // Approximate height of our toolbar
-                        let finalOffset = validKeyboardHeight > 0 ? -(validKeyboardHeight + toolbarHeight) : 0
-                        print("🎯 Toolbar offset: keyboardHeight=\(validKeyboardHeight), toolbarHeight=\(toolbarHeight), finalOffset=\(finalOffset)")
-                        return finalOffset
-                    }())
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .animation(.easeInOut(duration: 0.25), value: keyboardHeight)
-                    */ // END REMOVED DUPLICATE TOOLBAR
+        VStack(spacing: 0) {
+            // Main content area
+            mainContentView
+            
+            // Fixed formatting toolbar area to prevent layout shifts
+            // Only show one toolbar when text editing is active
+            if isRichTextFocused && isBodyTextFocused && !isTitleFocused && 
+               !showingActionSheet && !showingDeleteAlert && !showingFormattingSheet {
+                FormattingToolbarView(context: richTextContext)
+                    .background(Color.white)
+                    .id("main-formatting-toolbar") // Unique identifier to prevent duplication
+                    .transition(.opacity) // Smooth transition
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .simultaneousGesture(
+        }
+        .simultaneousGesture(
                 DragGesture()
                     .onChanged { gesture in
                         // Dismiss keyboard when swiping down (like in main app)  
@@ -2170,10 +2182,10 @@ struct NavigationNoteEditView: View {
                 }
             }
         }
-        .modifier(ConditionalSafeAreaInset(
-            isActive: isRichTextFocused && isBodyTextFocused && !isTitleFocused,
-            toolbarContent: { FormattingToolbarView(context: richTextContext) }
-        ))
+        .background(
+            // Ensure white background extends to all edges, especially bottom safe area
+            Color.white.ignoresSafeArea(.container, edges: .bottom)
+        )
         .onAppear {
             print("🚀 NavigationNoteEditView onAppear: TRIGGERED")
             print("🚀 NavigationNoteEditView onAppear: Current attributedText = '\(attributedText.string.prefix(100))...'")
@@ -2196,8 +2208,13 @@ struct NavigationNoteEditView: View {
         }
         .onDisappear {
             print("🚀 NavigationNoteEditView onDisappear: TRIGGERED - ensuring content is saved")
-            // Cancel any pending timer and save immediately to prevent data loss
-            saveImmediately()
+            // Only save if we're not showing modals to prevent interference with modal presentation
+            if !showingActionSheet && !showingDeleteAlert && !showingFormattingSheet {
+                // Cancel any pending timer and save immediately to prevent data loss
+                saveImmediately()
+            } else {
+                print("🚀 NavigationNoteEditView onDisappear: Skipping save - modal is showing")
+            }
         }
         .onChange(of: isRichTextFocused) { newValue in
             isTextFieldFocused = newValue
@@ -2295,7 +2312,6 @@ struct NavigationNoteEditView: View {
         }
         .sheet(isPresented: $showingFormattingSheet) {
             FormattingSheet(text: $editedText)
-        }
         }
     }
     

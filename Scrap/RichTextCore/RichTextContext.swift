@@ -31,6 +31,9 @@ public class RichTextContext: ObservableObject {
     /// The currently selected range
     public internal(set) var selectedRange = NSRange()
     
+    /// Tracks if formatting was just applied to prevent it from being reset
+    private var formattingJustApplied = false
+    
     // MARK: - Editor State
     
     /// Whether the rich text editor is editable
@@ -109,24 +112,35 @@ public class RichTextContext: ObservableObject {
     
     /// Toggle bold formatting
     public func toggleBold() {
-        isBoldActive.toggle()
+        // Don't base toggle on current context state - let the coordinator determine
+        // what to do based on the actual text selection/formatting
+        print("🔥 RichTextContext: toggleBold() called - sending toggle action")
+        formattingJustApplied = true
         actionPublisher.send(.toggleStyle(.bold))
+        
+        // Update UI state after action is sent to prevent race conditions
+        DispatchQueue.main.async {
+            self.isBoldActive.toggle()
+        }
     }
     
     /// Toggle italic formatting
     public func toggleItalic() {
+        formattingJustApplied = true
         isItalicActive.toggle()
         actionPublisher.send(.toggleStyle(.italic))
     }
     
     /// Toggle underline formatting
     public func toggleUnderline() {
+        formattingJustApplied = true
         isUnderlineActive.toggle()
         actionPublisher.send(.toggleStyle(.underline))
     }
     
     /// Toggle strikethrough formatting
     public func toggleStrikethrough() {
+        formattingJustApplied = true
         isStrikethroughActive.toggle()
         actionPublisher.send(.toggleStyle(.strikethrough))
     }
@@ -143,6 +157,16 @@ public class RichTextContext: ObservableObject {
         isCheckboxActive.toggle()
         isBulletListActive = false // Exclusive with bullet list
         actionPublisher.send(.toggleBlockFormat(.checkbox))
+    }
+    
+    /// Increase indentation
+    public func indentIn() {
+        actionPublisher.send(.indentIn)
+    }
+    
+    /// Decrease indentation
+    public func indentOut() {
+        actionPublisher.send(.indentOut)
     }
     
     /// Perform undo action
@@ -166,20 +190,75 @@ public class RichTextContext: ObservableObject {
             guard let self = self else { return }
             guard self.selectedRange.length >= 0 && self.attributedString.length > 0 else { return }
             
-            // Get attributes at current selection with safe bounds checking
-            let safeIndex = max(0, min(self.selectedRange.location, self.attributedString.length - 1))
-            guard safeIndex < self.attributedString.length else { return }
+            // If formatting was just applied, don't reset based on cursor position
+            if self.formattingJustApplied {
+                print("🛡️ RichTextContext: Skipping formatting state update - formatting just applied")
+                // Reset the flag after a longer delay to allow typing attributes to be set
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    self.formattingJustApplied = false
+                    print("🔄 RichTextContext: formattingJustApplied flag reset")
+                }
+                self.updateBlockFormatState() // Still update block format state
+                return
+            }
             
-            let attributes = self.attributedString.attributes(
-                at: safeIndex,
-                effectiveRange: nil
-            )
+            // For cursor position (no selection), check if we're at the end of formatted text
+            // If so, preserve the formatting intent for new text
+            if self.selectedRange.length == 0 && self.selectedRange.location > 0 {
+                // Check the character just before the cursor to see if it has formatting
+                let prevIndex = self.selectedRange.location - 1
+                if prevIndex < self.attributedString.length {
+                    let prevAttributes = self.attributedString.attributes(
+                        at: prevIndex,
+                        effectiveRange: nil
+                    )
+                    
+                    // If the previous character has bold formatting, maintain it
+                    if let font = prevAttributes[.font] as? UIFont {
+                        let hadBold = font.fontDescriptor.symbolicTraits.contains(.traitBold) || 
+                                     font.fontName.contains("Bold")
+                        if hadBold && !self.isBoldActive {
+                            print("🔄 RichTextContext: Maintaining bold from previous character")
+                            self.isBoldActive = true
+                        }
+                    }
+                    
+                    // Check other formatting attributes
+                    if let underlineStyle = prevAttributes[.underlineStyle] as? Int, underlineStyle != 0 {
+                        if !self.isUnderlineActive {
+                            print("🔄 RichTextContext: Maintaining underline from previous character")
+                            self.isUnderlineActive = true
+                        }
+                    }
+                    
+                    if let strikethroughStyle = prevAttributes[.strikethroughStyle] as? Int, strikethroughStyle != 0 {
+                        if !self.isStrikethroughActive {
+                            print("🔄 RichTextContext: Maintaining strikethrough from previous character")
+                            self.isStrikethroughActive = true
+                        }
+                    }
+                }
+            }
             
-            // Update formatting state
-            self.updateBoldState(from: attributes)
-            self.updateItalicState(from: attributes)
-            self.updateUnderlineState(from: attributes)
-            self.updateStrikethroughState(from: attributes)
+            // Only read from cursor position if we have a selection or no previous character formatting
+            if self.selectedRange.length > 0 || self.selectedRange.location == 0 {
+                let safeIndex = max(0, min(self.selectedRange.location, self.attributedString.length - 1))
+                guard safeIndex < self.attributedString.length else { return }
+                
+                let attributes = self.attributedString.attributes(
+                    at: safeIndex,
+                    effectiveRange: nil
+                )
+                
+                // Update formatting state
+                print("📖 RichTextContext: Reading formatting from cursor position \(safeIndex)")
+                self.updateBoldState(from: attributes)
+                self.updateItalicState(from: attributes)
+                self.updateUnderlineState(from: attributes)
+                self.updateStrikethroughState(from: attributes)
+                print("📖 RichTextContext: Updated state - Bold: \(self.isBoldActive), Italic: \(self.isItalicActive)")
+            }
+            
             self.updateBlockFormatState()
         }
     }
@@ -234,8 +313,8 @@ public class RichTextContext: ObservableObject {
         
         // Check for list markers
         let bulletActive = lineText.trimmingCharacters(in: .whitespaces).hasPrefix("◉")
-        let checkboxActive = lineText.trimmingCharacters(in: .whitespaces).hasPrefix("☐") || 
-                            lineText.trimmingCharacters(in: .whitespaces).hasPrefix("☑")
+        let checkboxActive = lineText.trimmingCharacters(in: .whitespaces).hasPrefix("○") || 
+                            lineText.trimmingCharacters(in: .whitespaces).hasPrefix("●")
         
         isBulletListActive = bulletActive
         isCheckboxActive = checkboxActive
@@ -264,6 +343,8 @@ public enum RichTextAction {
     case setSelectedRange(NSRange)
     case toggleStyle(RichTextStyle)
     case toggleBlockFormat(RichTextBlockFormat)
+    case indentIn
+    case indentOut
     case undo
     case redo
 }
