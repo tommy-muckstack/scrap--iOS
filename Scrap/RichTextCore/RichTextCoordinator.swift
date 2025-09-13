@@ -296,13 +296,18 @@ public class RichTextCoordinator: NSObject {
             mutableLineText = String(trimmedLine.dropFirst(2))
             newCursorPosition = lineRange.location + mutableLineText.count
             print("🔸 RichTextCoordinator: Removing bullet from line")
+        } else if trimmedLine.hasPrefix("•") {
+            // Line starts with bullet (but no space) - remove it completely
+            mutableLineText = String(trimmedLine.dropFirst(1)).trimmingCharacters(in: .whitespaces)
+            newCursorPosition = lineRange.location + mutableLineText.count
+            print("🔸 RichTextCoordinator: Removing bullet (no space) from line")
         } else if trimmedLine.hasPrefix("☐ ") || trimmedLine.hasPrefix("☑ ") {
             // Replace checkbox with bullet - cursor goes after "• "
             let contentAfterCheckbox = String(trimmedLine.dropFirst(2))
             mutableLineText = "• " + contentAfterCheckbox
             newCursorPosition = lineRange.location + 2 // Position after "• "
             print("🔸 RichTextCoordinator: Replacing checkbox with bullet")
-        } else if !trimmedLine.contains("• ") {
+        } else if !trimmedLine.contains("•") {
             // Add bullet only if line doesn't already contain bullets - cursor goes after "• "
             mutableLineText = "• " + trimmedLine
             newCursorPosition = lineRange.location + 2 // Position after "• "
@@ -393,6 +398,11 @@ public class RichTextCoordinator: NSObject {
             mutableLineText = String(trimmedLine.dropFirst(2))
             newCursorPosition = lineRange.location + mutableLineText.count
             print("🔸 RichTextCoordinator: Removing checkbox from line")
+        } else if trimmedLine.hasPrefix("☐") || trimmedLine.hasPrefix("☑") {
+            // Line starts with checkbox (but no space) - remove it completely
+            mutableLineText = String(trimmedLine.dropFirst(1)).trimmingCharacters(in: .whitespaces)
+            newCursorPosition = lineRange.location + mutableLineText.count
+            print("🔸 RichTextCoordinator: Removing checkbox (no space) from line")
         } else if trimmedLine.hasPrefix("• ") {
             // Replace bullet with checkbox - cursor goes after "☐ "
             let contentAfterBullet = String(trimmedLine.dropFirst(2))
