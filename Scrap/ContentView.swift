@@ -1533,6 +1533,8 @@ struct ContentView: View {
     @StateObject private var dataManager = FirebaseDataManager()
     @StateObject private var viewModel = ContentViewModel()
     @StateObject private var themeManager = ThemeManager.shared
+    @StateObject private var richTextContext = RichTextContext()
+    @State private var attributedText = NSAttributedString()
     @State private var navigationPath = NavigationPath()
     @State private var showingAccountDrawer = false
     @FocusState private var isInputFieldFocused: Bool
