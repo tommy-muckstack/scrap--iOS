@@ -35,6 +35,11 @@ struct ScrapApp: App {
         FirebaseApp.configure()
         print("ScrapApp: Firebase configured")
         
+        // Reduce Firebase logging verbosity in debug builds
+        #if DEBUG
+        FirebaseConfiguration.shared.setLoggerLevel(.warning)
+        #endif
+        
         // Configure Google Sign In
         if let path = Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist"),
            let plist = NSDictionary(contentsOfFile: path),
