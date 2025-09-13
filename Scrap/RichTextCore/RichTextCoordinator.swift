@@ -47,8 +47,13 @@ public class RichTextCoordinator: NSObject {
         
         super.init()
         
-        setupTextView()
         setupContextObservation()
+    }
+    
+    /// Connect this coordinator to the actual textView (called from makeUIView)
+    public func connectTextView(_ textView: UITextView) {
+        self.textView = textView
+        setupTextView()
         syncInitialState()
     }
     

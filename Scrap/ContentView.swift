@@ -1944,16 +1944,9 @@ struct NavigationNoteEditView: View {
                         .allowsHitTesting(false)
                 }
                 
-                RichTextEditor(
-                    attributedText: $attributedText,
-                    isBoldActive: $formattingState.isBoldActive,
-                    isItalicActive: $formattingState.isItalicActive,
-                    isUnderlineActive: $formattingState.isUnderlineActive,
-                    isStrikethroughActive: $formattingState.isStrikethroughActive,
-                    isListModeActive: $formattingState.isListModeActive,
-                    isCheckboxModeActive: $formattingState.isCheckboxModeActive,
-                    isFocused: $isRichTextFocused,
-                    placeholder: "Now write something brilliant"
+                RichTextEditor.forNotes(
+                    text: $attributedText,
+                    context: richTextContext
                 )
                 .padding(.horizontal, 16)
                 .background(Color.clear)

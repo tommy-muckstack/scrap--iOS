@@ -71,6 +71,10 @@ public struct RichTextEditor: UIViewRepresentable {
         // Set initial content
         textView.attributedText = text
         
+        // Connect the coordinator to this textView
+        let coordinator = context.coordinator
+        coordinator.connectTextView(textView)
+        
         // Apply custom configuration
         configuration(textView)
         
