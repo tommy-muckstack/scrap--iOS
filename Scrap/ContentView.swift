@@ -1924,7 +1924,7 @@ struct NavigationNoteEditView: View {
         TextField("Give me a name", text: $editedTitle, axis: .vertical)
             .font(GentleLightning.Typography.hero)
             .foregroundColor(GentleLightning.Colors.textPrimary)
-            .padding(.horizontal, 20)
+            .padding(.horizontal, 16)
             .padding(.top, 40)
             .padding(.bottom, 8)
             .lineLimit(1...3)
@@ -1944,7 +1944,7 @@ struct NavigationNoteEditView: View {
                     Text("Now write something brilliant")
                         .font(GentleLightning.Typography.bodyLarge)
                         .foregroundColor(Color.gray.opacity(0.5))
-                        .padding(.horizontal, 20)
+                        .padding(.horizontal, 16)
                         .padding(.top, 5)
                         .allowsHitTesting(false)
                 }

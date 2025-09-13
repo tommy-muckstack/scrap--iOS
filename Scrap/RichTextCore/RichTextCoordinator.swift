@@ -516,9 +516,6 @@ public class RichTextCoordinator: NSObject {
     }
     
     private func updateTypingAttributes() {
-        let selectedRange = textView.selectedRange
-        let textLength = textView.attributedText.length
-        
         // Build typing attributes based on current context state and selection
         var typingAttributes = textView.typingAttributes
         
