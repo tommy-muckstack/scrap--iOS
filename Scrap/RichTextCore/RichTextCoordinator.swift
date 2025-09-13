@@ -83,12 +83,25 @@ public class RichTextCoordinator: NSObject {
     }
     
     private func syncInitialState() {
-        // Set initial content
+        // Set initial content safely
         let initialText = textBinding.wrappedValue
-        if textView.attributedText != initialText {
-            textView.attributedText = initialText
-            context.setAttributedString(initialText)
+        
+        // Ensure we have a valid attributed string
+        let safeInitialText = initialText.length > 0 ? initialText : NSAttributedString(string: "")
+        
+        if textView.attributedText != safeInitialText {
+            textView.attributedText = safeInitialText
+            context.setAttributedString(safeInitialText)
         }
+        
+        // Ensure selectedRange is valid for the content
+        let currentRange = textView.selectedRange
+        let maxLocation = max(0, safeInitialText.length)
+        let safeRange = NSRange(
+            location: min(currentRange.location, maxLocation),
+            length: 0
+        )
+        textView.selectedRange = safeRange
         
         // Update initial formatting state
         updateContextFromTextView()
@@ -345,10 +358,16 @@ public class RichTextCoordinator: NSObject {
     
     private func updateTypingAttributes() {
         let selectedRange = textView.selectedRange
-        guard selectedRange.length == 0, selectedRange.location > 0 else { return }
+        guard selectedRange.length == 0, 
+              selectedRange.location > 0,
+              selectedRange.location <= textView.attributedText.length,
+              textView.attributedText.length > 0 else { return }
+        
+        let safeIndex = selectedRange.location - 1
+        guard safeIndex >= 0 && safeIndex < textView.attributedText.length else { return }
         
         let attributes = textView.attributedText.attributes(
-            at: selectedRange.location - 1,
+            at: safeIndex,
             effectiveRange: nil
         )
         textView.typingAttributes = attributes

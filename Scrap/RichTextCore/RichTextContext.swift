@@ -92,6 +92,16 @@ public class RichTextContext: ObservableObject {
     
     /// Set the selected range and update formatting state
     public func setSelectedRange(_ range: NSRange) {
+        // Ensure range is valid for current attributed string
+        guard range.location >= 0 && range.location <= attributedString.length,
+              range.length >= 0 && range.location + range.length <= attributedString.length else {
+            // Set to safe default range
+            selectedRange = NSRange(location: 0, length: 0)
+            actionPublisher.send(.setSelectedRange(NSRange(location: 0, length: 0)))
+            updateFormattingState()
+            return
+        }
+        
         selectedRange = range
         actionPublisher.send(.setSelectedRange(range))
         updateFormattingState()
@@ -151,11 +161,14 @@ public class RichTextContext: ObservableObject {
     
     /// Update formatting state based on current selection
     internal func updateFormattingState() {
-        guard selectedRange.length >= 0 else { return }
+        guard selectedRange.length >= 0 && attributedString.length > 0 else { return }
         
-        // Get attributes at current selection
+        // Get attributes at current selection with safe bounds checking
+        let safeIndex = max(0, min(selectedRange.location, attributedString.length - 1))
+        guard safeIndex < attributedString.length else { return }
+        
         let attributes = attributedString.attributes(
-            at: max(0, min(selectedRange.location, attributedString.length - 1)),
+            at: safeIndex,
             effectiveRange: nil
         )
         
