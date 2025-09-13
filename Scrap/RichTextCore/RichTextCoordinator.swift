@@ -290,11 +290,11 @@ public class RichTextCoordinator: NSObject {
         // Don't process lines that are only whitespace/newlines
         if trimmedLine.isEmpty {
             // Add bullet to empty line and position cursor after it
-            let mutableLineText = "• "
+            let mutableLineText = "◉ "
             let newLine = mutableLineText + (lineText.hasSuffix("\n") ? "\n" : "")
             mutableText.replaceCharacters(in: lineRange, with: newLine)
             textView.attributedText = mutableText
-            let newCursorPosition = lineRange.location + 2 // Position after "• "
+            let newCursorPosition = lineRange.location + 2 // Position after "◉ "
             let safePosition = min(newCursorPosition, mutableText.length)
             textView.selectedRange = NSRange(location: safePosition, length: 0)
             print("🔸 RichTextCoordinator: Added bullet to empty line, cursor at position \(safePosition)")
@@ -305,32 +305,32 @@ public class RichTextCoordinator: NSObject {
         let newCursorPosition: Int
         
         // Check if line already has a bullet (prevent duplicates)
-        if trimmedLine.hasPrefix("• ") {
+        if trimmedLine.hasPrefix("◉ ") {
             // Remove bullet - keep cursor at the beginning of the content
             mutableLineText = String(trimmedLine.dropFirst(2))
             newCursorPosition = lineRange.location + (lineText.count - lineText.ltrimmed().count) + mutableLineText.count
             print("🔸 RichTextCoordinator: Removing bullet from line")
-        } else if trimmedLine.hasPrefix("•") {
+        } else if trimmedLine.hasPrefix("◉") {
             // Line starts with bullet (but no space) - remove it completely
             mutableLineText = String(trimmedLine.dropFirst(1)).trimmingCharacters(in: .whitespaces)
             newCursorPosition = lineRange.location + (lineText.count - lineText.ltrimmed().count) + mutableLineText.count
             print("🔸 RichTextCoordinator: Removing bullet (no space) from line")
         } else if trimmedLine.hasPrefix("○ ") || trimmedLine.hasPrefix("● ") {
-            // Replace checkbox with bullet - cursor goes after "• "
+            // Replace checkbox with bullet - cursor goes after "◉ "
             let contentAfterCheckbox = String(trimmedLine.dropFirst(2))
-            mutableLineText = "• " + contentAfterCheckbox
-            newCursorPosition = lineRange.location + 2 // Position after "• "
+            mutableLineText = "◉ " + contentAfterCheckbox
+            newCursorPosition = lineRange.location + 2 // Position after "◉ "
             print("🔸 RichTextCoordinator: Replacing checkbox with bullet")
-        } else if !trimmedLine.contains("•") {
-            // Add bullet only if line doesn't already contain bullets - cursor goes after "• "
-            mutableLineText = "• " + trimmedLine
-            newCursorPosition = lineRange.location + 2 // Position after "• "
+        } else if !trimmedLine.contains("◉") {
+            // Add bullet only if line doesn't already contain bullets - cursor goes after "◉ "
+            mutableLineText = "◉ " + trimmedLine
+            newCursorPosition = lineRange.location + 2 // Position after "◉ "
             print("🔸 RichTextCoordinator: Adding bullet to line")
         } else {
             // Line already contains bullets somewhere - clean up duplicates instead of adding more
             print("🚫 RichTextCoordinator: Line contains bullets - cleaning up duplicates")
             mutableLineText = cleanupDuplicateBullets(trimmedLine)
-            newCursorPosition = lineRange.location + 2 // Position after single "• "
+            newCursorPosition = lineRange.location + 2 // Position after single "◉ "
         }
         
         let newLine = mutableLineText + (lineText.hasSuffix("\n") ? "\n" : "")
@@ -349,9 +349,9 @@ public class RichTextCoordinator: NSObject {
     /// Clean up duplicate bullets on a line, keeping only one at the start
     private func cleanupDuplicateBullets(_ line: String) -> String {
         // Remove all bullet points and clean up extra spaces
-        let withoutBullets = line.replacingOccurrences(of: "• ", with: "").trimmingCharacters(in: .whitespaces)
+        let withoutBullets = line.replacingOccurrences(of: "◉ ", with: "").trimmingCharacters(in: .whitespaces)
         // Add single bullet at start
-        return "• " + withoutBullets
+        return "◉ " + withoutBullets
     }
     
     /// Clean up the entire text content to remove duplicate bullets/checkboxes
@@ -364,7 +364,7 @@ public class RichTextCoordinator: NSObject {
             let trimmedLine = line.trimmingCharacters(in: .whitespaces)
             
             // Count bullets and checkboxes
-            let bulletCount = trimmedLine.components(separatedBy: "• ").count - 1
+            let bulletCount = trimmedLine.components(separatedBy: "◉ ").count - 1
             let checkboxCount = (trimmedLine.components(separatedBy: "○ ").count - 1) + 
                                (trimmedLine.components(separatedBy: "● ").count - 1)
             
@@ -435,7 +435,7 @@ public class RichTextCoordinator: NSObject {
             mutableLineText = String(trimmedLine.dropFirst(1)).trimmingCharacters(in: .whitespaces)
             newCursorPosition = lineRange.location + mutableLineText.count
             print("🔸 RichTextCoordinator: Removing checkbox (no space) from line")
-        } else if trimmedLine.hasPrefix("• ") {
+        } else if trimmedLine.hasPrefix("◉ ") {
             // Replace bullet with checkbox - cursor goes after "○ "
             let contentAfterBullet = String(trimmedLine.dropFirst(2))
             mutableLineText = "○ " + contentAfterBullet
@@ -557,7 +557,7 @@ extension RichTextCoordinator: UITextViewDelegate {
         let trimmedLine = lineText.trimmingCharacters(in: .whitespacesAndNewlines)
         
         // Continue bullet lists
-        if trimmedLine.hasPrefix("• ") {
+        if trimmedLine.hasPrefix("◉ ") {
             let remainingText = String(trimmedLine.dropFirst(2)).trimmingCharacters(in: .whitespaces)
             if remainingText.isEmpty {
                 // Empty bullet - remove it
@@ -570,7 +570,7 @@ extension RichTextCoordinator: UITextViewDelegate {
             } else {
                 // Add new bullet
                 let mutableText = NSMutableAttributedString(attributedString: textView.attributedText)
-                mutableText.replaceCharacters(in: range, with: "\n• ")
+                mutableText.replaceCharacters(in: range, with: "\n◉ ")
                 textView.attributedText = mutableText
                 textView.selectedRange = NSRange(location: range.location + 3, length: 0)
                 return false
@@ -609,7 +609,7 @@ extension RichTextCoordinator: UITextViewDelegate {
         
         // Check if we're at the beginning of a list item
         if range.location == lineRange.location + (lineText.count - lineText.ltrimmed().count) {
-            if trimmedLine.hasPrefix("• ") || trimmedLine.hasPrefix("○ ") || trimmedLine.hasPrefix("● ") {
+            if trimmedLine.hasPrefix("◉ ") || trimmedLine.hasPrefix("○ ") || trimmedLine.hasPrefix("● ") {
                 // Remove the list marker
                 let mutableText = NSMutableAttributedString(attributedString: textView.attributedText)
                 let markerRange = NSRange(location: lineRange.location + (lineText.count - lineText.ltrimmed().count), length: 2)

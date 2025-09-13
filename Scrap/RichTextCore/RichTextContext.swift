@@ -230,7 +230,7 @@ public class RichTextContext: ObservableObject {
         let lineText = (currentText as NSString).substring(with: lineRange)
         
         // Check for list markers
-        let bulletActive = lineText.trimmingCharacters(in: .whitespaces).hasPrefix("•")
+        let bulletActive = lineText.trimmingCharacters(in: .whitespaces).hasPrefix("◉")
         let checkboxActive = lineText.trimmingCharacters(in: .whitespaces).hasPrefix("○") || 
                             lineText.trimmingCharacters(in: .whitespaces).hasPrefix("●")
         

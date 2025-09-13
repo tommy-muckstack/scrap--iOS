@@ -1812,6 +1812,7 @@ struct NavigationNoteEditView: View {
     @State private var attributedText: NSAttributedString = NSAttributedString()
     @StateObject private var richTextContext = RichTextContext()
     @FocusState private var isTextFieldFocused: Bool
+    @FocusState private var isTitleFocused: Bool
     @State private var showingActionSheet = false
     @State private var showingDeleteAlert = false
     @State private var isContentReady = true
@@ -1823,6 +1824,7 @@ struct NavigationNoteEditView: View {
     // Consolidated formatting state
     @State private var formattingState = FormattingState()
     @State private var isRichTextFocused = false
+    @State private var isBodyTextFocused = false
     @State private var canUndo = false
     @State private var canRedo = false
     @State private var isUpdatingText = false
@@ -1917,6 +1919,7 @@ struct NavigationNoteEditView: View {
             .padding(.bottom, 8)
             .lineLimit(1...3)
             .multilineTextAlignment(.leading)
+            .focused($isTitleFocused)
             .onChange(of: editedTitle) { newTitle in
                 guard !newTitle.isEmpty else { return }
                 item.title = newTitle
@@ -1942,6 +1945,12 @@ struct NavigationNoteEditView: View {
                 )
                 .padding(.horizontal, 16)
                 .background(Color.clear)
+                .onTapGesture {
+                    // Focus the body text editor when tapped
+                    isBodyTextFocused = true
+                    isRichTextFocused = true
+                    richTextContext.isEditingText = true
+                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -2130,15 +2139,24 @@ struct NavigationNoteEditView: View {
         .background(Color.white)
         .contentShape(Rectangle()) // Make the entire area tappable for keyboard dismissal
         .onTapGesture {
-            // Dismiss keyboard when tapping outside text area (like in main app)
-            if isRichTextFocused {
-                print("🎯 Dismissing keyboard via tap gesture")
-                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            // Only dismiss keyboard when tapping outside both title and text areas
+            // Check if we're tapping in empty space by comparing with focused states
+            if isRichTextFocused && !isTitleFocused {
+                // Give a small delay to allow text editor tap to register first
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    // Only dismiss if neither title nor body got focus
+                    if !isTitleFocused && !isBodyTextFocused {
+                        print("🎯 Dismissing keyboard via tap gesture on empty area")
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                        isRichTextFocused = false
+                        isBodyTextFocused = false
+                    }
+                }
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            // Formatting toolbar for note editing
-            if isRichTextFocused {
+            // Formatting toolbar for body text editing only (not title)
+            if isRichTextFocused && isBodyTextFocused && !isTitleFocused {
                 FormattingToolbarView(context: richTextContext)
             }
         }
@@ -2155,11 +2173,12 @@ struct NavigationNoteEditView: View {
             // Update toolbar state to reflect formatting at the beginning of the loaded RTF content
             updateInitialToolbarState()
             
-            // Auto-focus when entering note editor
+            // Auto-focus the body text editor when entering note editor
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 isRichTextFocused = true
+                isBodyTextFocused = true
                 richTextContext.isEditingText = true
-                print("🎯 NavigationNoteEditView: Auto-focusing note editor")
+                print("🎯 NavigationNoteEditView: Auto-focusing body text editor")
             }
             
             print("✅ NavigationNoteEditView onAppear: Content ready - Rich text editor should show with proper formatting")
@@ -2178,11 +2197,21 @@ struct NavigationNoteEditView: View {
                 print("🎯 DEBUG: Focus state updated - isTextFieldFocused=\(isTextFieldFocused), keyboardHeight=\(keyboardHeight)")
             }
         }
+        .onChange(of: isTitleFocused) { newValue in
+            print("🎯 NavigationNoteEditView: isTitleFocused changed to \(newValue)")
+            if newValue {
+                // When title gets focus, body loses focus
+                isBodyTextFocused = false
+            }
+        }
         .onChange(of: richTextContext.isEditingText) { newValue in
-            // Sync RichTextContext editing state with our focus state
-            if isRichTextFocused != newValue {
-                isRichTextFocused = newValue
-                print("🎯 NavigationNoteEditView: richTextContext.isEditingText changed to \(newValue), updating isRichTextFocused")
+            print("🎯 NavigationNoteEditView: richTextContext.isEditingText changed to \(newValue)")
+            if newValue {
+                // When body text gets focus, update our state
+                isBodyTextFocused = true
+                isTitleFocused = false
+            } else {
+                isBodyTextFocused = false
             }
         }
         .onChange(of: attributedText) { newValue in
