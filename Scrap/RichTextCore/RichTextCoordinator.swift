@@ -26,7 +26,7 @@ public class RichTextCoordinator: NSObject {
     // MARK: - Properties
     
     private let textBinding: Binding<NSAttributedString>
-    private let textView: UITextView
+    private var textView: UITextView
     private let context: RichTextContext
     private var cancellables = Set<AnyCancellable>()
     

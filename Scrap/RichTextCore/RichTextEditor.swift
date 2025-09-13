@@ -110,7 +110,7 @@ public struct RichTextEditor: UIViewRepresentable {
     public static func basic(
         text: Binding<NSAttributedString>,
         context: RichTextContext
-    ) -> RichTextEditor {
+    ) -> Self {
         RichTextEditor(text: text, context: context)
     }
     
@@ -118,7 +118,7 @@ public struct RichTextEditor: UIViewRepresentable {
     public static func forNotes(
         text: Binding<NSAttributedString>,
         context: RichTextContext
-    ) -> RichTextEditor {
+    ) -> Self {
         RichTextEditor(text: text, context: context) { textView in
             // Optimize for note-taking
             textView.autocorrectionType = .yes
