@@ -1821,6 +1821,7 @@ struct NavigationNoteEditView: View {
     
     @State private var editedText: String = ""
     @State private var attributedText: NSAttributedString = NSAttributedString()
+    @StateObject private var richTextContext = RichTextContext()
     @FocusState private var isTextFieldFocused: Bool
     @State private var showingActionSheet = false
     @State private var showingDeleteAlert = false
