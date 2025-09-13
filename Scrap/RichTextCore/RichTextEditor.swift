@@ -61,12 +61,10 @@ public struct RichTextEditor: UIViewRepresentable {
         
         // Enable standard iOS text interactions
         textView.isUserInteractionEnabled = true
-        textView.canBecomeFirstResponder = true
         textView.isMultipleTouchEnabled = true
         textView.isExclusiveTouch = false
         
         // Configure selection and editing behaviors
-        textView.selectionAffinity = .downstream
         textView.clearsOnInsertion = false
         
         // Enable copy/paste menu
