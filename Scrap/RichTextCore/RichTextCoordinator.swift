@@ -94,9 +94,12 @@ public class RichTextCoordinator: NSObject {
             context.setAttributedString(safeInitialText)
         }
         
+        // Clean up any existing duplicate formatting
+        cleanupDuplicateFormatting()
+        
         // Ensure selectedRange is valid for the content
         let currentRange = textView.selectedRange
-        let maxLocation = max(0, safeInitialText.length)
+        let maxLocation = max(0, textView.attributedText.length)
         let safeRange = NSRange(
             location: min(currentRange.location, maxLocation),
             length: 0
@@ -282,6 +285,8 @@ public class RichTextCoordinator: NSObject {
     
     private func applyBulletFormat(_ mutableText: NSMutableAttributedString, _ lineRange: NSRange, _ lineText: String) {
         let trimmedLine = lineText.trimmingCharacters(in: .whitespaces)
+        print("🔍 RichTextCoordinator: Processing line: '\(trimmedLine)'")
+        
         let mutableLineText: String
         let newCursorPosition: Int
         
@@ -303,9 +308,10 @@ public class RichTextCoordinator: NSObject {
             newCursorPosition = lineRange.location + 2 // Position after "• "
             print("🔸 RichTextCoordinator: Adding bullet to line")
         } else {
-            // Line already contains bullets somewhere - don't add another
-            print("🚫 RichTextCoordinator: Line already contains bullets - not adding another")
-            return
+            // Line already contains bullets somewhere - clean up duplicates instead of adding more
+            print("🚫 RichTextCoordinator: Line contains bullets - cleaning up duplicates")
+            mutableLineText = cleanupDuplicateBullets(trimmedLine)
+            newCursorPosition = lineRange.location + 2 // Position after single "• "
         }
         
         let newLine = mutableLineText + (lineText.hasSuffix("\n") ? "\n" : "")
@@ -315,7 +321,65 @@ public class RichTextCoordinator: NSObject {
         textView.attributedText = mutableText
         textView.selectedRange = NSRange(location: newCursorPosition, length: 0)
         
-        print("🎯 RichTextCoordinator: Bullet format applied - cursor at position \(newCursorPosition)")
+        print("🎯 RichTextCoordinator: Bullet format applied - result: '\(mutableLineText)', cursor at position \(newCursorPosition)")
+    }
+    
+    /// Clean up duplicate bullets on a line, keeping only one at the start
+    private func cleanupDuplicateBullets(_ line: String) -> String {
+        // Remove all bullet points and clean up extra spaces
+        let withoutBullets = line.replacingOccurrences(of: "• ", with: "").trimmingCharacters(in: .whitespaces)
+        // Add single bullet at start
+        return "• " + withoutBullets
+    }
+    
+    /// Clean up the entire text content to remove duplicate bullets/checkboxes
+    public func cleanupDuplicateFormatting() {
+        let currentText = textView.attributedText.string
+        let lines = currentText.components(separatedBy: .newlines)
+        var cleanedLines: [String] = []
+        
+        for line in lines {
+            let trimmedLine = line.trimmingCharacters(in: .whitespaces)
+            
+            // Count bullets and checkboxes
+            let bulletCount = trimmedLine.components(separatedBy: "• ").count - 1
+            let checkboxCount = (trimmedLine.components(separatedBy: "☐ ").count - 1) + 
+                               (trimmedLine.components(separatedBy: "☑ ").count - 1)
+            
+            if bulletCount > 1 {
+                // Multiple bullets - clean up
+                let cleanedLine = cleanupDuplicateBullets(trimmedLine)
+                cleanedLines.append(cleanedLine)
+                print("🧹 RichTextCoordinator: Cleaned duplicate bullets: '\(trimmedLine)' → '\(cleanedLine)'")
+            } else if checkboxCount > 1 {
+                // Multiple checkboxes - clean up
+                let cleanedLine = cleanupDuplicateCheckboxes(trimmedLine)
+                cleanedLines.append(cleanedLine)
+                print("🧹 RichTextCoordinator: Cleaned duplicate checkboxes: '\(trimmedLine)' → '\(cleanedLine)'")
+            } else {
+                // Line is clean
+                cleanedLines.append(line)
+            }
+        }
+        
+        let cleanedText = cleanedLines.joined(separator: "\n")
+        if cleanedText != currentText {
+            let attributedCleanedText = NSAttributedString(string: cleanedText)
+            textView.attributedText = attributedCleanedText
+            updateBindingFromTextView()
+            print("✅ RichTextCoordinator: Text cleanup completed - removed duplicate formatting")
+        }
+    }
+    
+    /// Clean up duplicate checkboxes on a line, keeping only one at the start
+    private func cleanupDuplicateCheckboxes(_ line: String) -> String {
+        // Remove all checkboxes and clean up extra spaces
+        let withoutCheckboxes = line.replacingOccurrences(of: "☐ ", with: "")
+                                   .replacingOccurrences(of: "☑ ", with: "")
+                                   .trimmingCharacters(in: .whitespaces)
+        // Add single checkbox at start (preserve checked state if any were checked)
+        let hadCheckedBox = line.contains("☑ ")
+        return (hadCheckedBox ? "☑ " : "☐ ") + withoutCheckboxes
     }
     
     private func applyCheckboxFormat(_ mutableText: NSMutableAttributedString, _ lineRange: NSRange, _ lineText: String) {
