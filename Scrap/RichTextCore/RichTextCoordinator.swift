@@ -533,12 +533,16 @@ extension RichTextCoordinator: UITextViewDelegate {
     }
     
     public func textViewDidBeginEditing(_ textView: UITextView) {
-        context.isEditingText = true
+        DispatchQueue.main.async { [weak self] in
+            self?.context.isEditingText = true
+        }
         updateContextFromTextView()
     }
     
     public func textViewDidEndEditing(_ textView: UITextView) {
-        context.isEditingText = false
+        DispatchQueue.main.async { [weak self] in
+            self?.context.isEditingText = false
+        }
         updateContextFromTextView()
     }
     
