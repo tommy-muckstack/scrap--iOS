@@ -70,6 +70,8 @@ public class RichTextCoordinator: NSObject {
             .font: UIFont(name: context.fontName, size: context.fontSize) ?? UIFont.systemFont(ofSize: context.fontSize),
             .foregroundColor: UIColor.label
         ]
+        
+        // No custom gestures needed - UITextView handles all selection natively
     }
     
     private func setupContextObservation() {
@@ -154,11 +156,24 @@ public class RichTextCoordinator: NSObject {
     }
     
     private func updateSelectedRange(_ range: NSRange) {
-        let safeRange = NSRange(
-            location: min(range.location, textView.attributedText.length),
-            length: min(range.length, textView.attributedText.length - min(range.location, textView.attributedText.length))
-        )
-        textView.selectedRange = safeRange
+        let textLength = textView.attributedText.length
+        let safeLocation = max(0, min(range.location, textLength))
+        let remainingLength = textLength - safeLocation
+        let safeLength = max(0, min(range.length, remainingLength))
+        
+        let safeRange = NSRange(location: safeLocation, length: safeLength)
+        
+        // Additional validation to prevent CoreGraphics NaN errors
+        if safeRange.location >= 0 && 
+           safeRange.length >= 0 && 
+           safeRange.location + safeRange.length <= textLength &&
+           !safeRange.location.isNaN &&
+           !safeRange.length.isNaN {
+            textView.selectedRange = safeRange
+        } else {
+            // Fallback to cursor at end
+            textView.selectedRange = NSRange(location: textLength, length: 0)
+        }
     }
     
     // MARK: - Style Application
@@ -518,6 +533,9 @@ public class RichTextCoordinator: NSObject {
     }
 }
 
+// MARK: - Native UITextView Behavior
+// All text selection, copy/paste, and interaction handled natively by UITextView
+
 // MARK: - UITextViewDelegate
 
 extension RichTextCoordinator: UITextViewDelegate {
@@ -633,44 +651,9 @@ extension RichTextCoordinator: UITextViewDelegate {
         return true
     }
     
-    /// Handle tap gesture for checkbox toggling
-    @objc public func handleTap(_ gesture: UITapGestureRecognizer) {
-        let point = gesture.location(in: textView)
-        toggleCheckboxAtPoint(point)
-    }
-    
-    /// Toggle checkbox state when tapped
-    public func toggleCheckboxAtPoint(_ point: CGPoint) {
-        let textPosition = textView.closestPosition(to: point)
-        guard let position = textPosition else { return }
-        
-        let tapIndex = textView.offset(from: textView.beginningOfDocument, to: position)
-        let currentText = textView.text ?? ""
-        
-        // Find the line containing the tap
-        let lineRange = (currentText as NSString).lineRange(for: NSRange(location: tapIndex, length: 0))
-        let lineText = (currentText as NSString).substring(with: lineRange)
-        let trimmedLine = lineText.trimmingCharacters(in: .whitespaces)
-        
-        // Check if this line has a checkbox
-        if trimmedLine.hasPrefix("○ ") {
-            // Toggle to checked
-            let newLineText = lineText.replacingOccurrences(of: "○ ", with: "● ")
-            let mutableText = NSMutableAttributedString(attributedString: textView.attributedText)
-            mutableText.replaceCharacters(in: lineRange, with: newLineText)
-            textView.attributedText = mutableText
-            updateBindingFromTextView()
-            print("✅ RichTextCoordinator: Toggled checkbox to checked")
-        } else if trimmedLine.hasPrefix("● ") {
-            // Toggle to unchecked
-            let newLineText = lineText.replacingOccurrences(of: "● ", with: "○ ")
-            let mutableText = NSMutableAttributedString(attributedString: textView.attributedText)
-            mutableText.replaceCharacters(in: lineRange, with: newLineText)
-            textView.attributedText = mutableText
-            updateBindingFromTextView()
-            print("✅ RichTextCoordinator: Toggled checkbox to unchecked")
-        }
-    }
+    // MARK: - Checkbox Toggling (via toolbar buttons only)
+    // Checkbox toggling is now handled via the formatting toolbar buttons
+    // No custom tap gestures needed - UITextView handles all text selection natively
 }
 
 // MARK: - String Extensions

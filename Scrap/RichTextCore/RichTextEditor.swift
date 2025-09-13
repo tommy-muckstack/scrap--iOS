@@ -88,14 +88,8 @@ public struct RichTextEditor: UIViewRepresentable {
         let coordinator = context.coordinator
         coordinator.connectTextView(textView)
         
-        // Add tap gesture for checkbox toggling with minimal interference
-        let tapGesture = UITapGestureRecognizer(target: coordinator, action: #selector(RichTextCoordinator.handleTap(_:)))
-        tapGesture.numberOfTapsRequired = 1
-        tapGesture.cancelsTouchesInView = false      // Don't block other touches
-        tapGesture.delaysTouchesEnded = false        // Don't delay text selection
-        tapGesture.delaysTouchesBegan = false        // Don't delay touch start
-        tapGesture.requiresExclusiveTouchType = false // Allow multiple touch types
-        textView.addGestureRecognizer(tapGesture)
+        // Use native UITextView behavior - no custom gestures needed!
+        // Double-tap, long-press, copy/paste all work natively
         
         // Apply custom configuration
         configuration(textView)
@@ -109,11 +103,24 @@ public struct RichTextEditor: UIViewRepresentable {
             let selectedRange = uiView.selectedRange
             uiView.attributedText = text
             
-            // Restore cursor position safely
-            let newLocation = min(selectedRange.location, text.length)
-            let safeRange = NSRange(location: newLocation, length: selectedRange.length)
-            if safeRange.location + safeRange.length <= text.length {
+            // Restore cursor position safely with comprehensive validation
+            let textLength = text.length
+            let safeLocation = max(0, min(selectedRange.location, textLength))
+            let remainingLength = textLength - safeLocation
+            let safeLength = max(0, min(selectedRange.length, remainingLength))
+            
+            let safeRange = NSRange(location: safeLocation, length: safeLength)
+            
+            // Additional validation to prevent CoreGraphics issues
+            if safeRange.location >= 0 && 
+               safeRange.length >= 0 && 
+               safeRange.location + safeRange.length <= textLength &&
+               !safeRange.location.isNaN &&
+               !safeRange.length.isNaN {
                 uiView.selectedRange = safeRange
+            } else {
+                // Fallback to cursor at end of text
+                uiView.selectedRange = NSRange(location: textLength, length: 0)
             }
         }
         
