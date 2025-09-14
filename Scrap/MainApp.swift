@@ -225,11 +225,12 @@ class FirebaseDataManager: ObservableObject {
         ]
         let attributedText = NSAttributedString(string: text, attributes: attributes)
         
-        // Convert to RTF data
+        // Convert to RTF data using trait preservation
         var rtfData: Data? = nil
         do {
-            rtfData = try attributedText.data(
-                from: NSRange(location: 0, length: attributedText.length),
+            let rtfCompatibleString = prepareForRTFSave(attributedText)
+            rtfData = try rtfCompatibleString.data(
+                from: NSRange(location: 0, length: rtfCompatibleString.length),
                 documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
             )
         } catch {
@@ -277,14 +278,16 @@ class FirebaseDataManager: ObservableObject {
     func createItemFromAttributedText(_ attributedText: NSAttributedString, creationType: String = "rich_text") {
         print("📝 Creating item from NSAttributedString with \(attributedText.length) characters")
         
-        // Convert attributed text to RTF data for storage
+        // Convert attributed text to RTF data for storage using proper trait preservation
         var rtfData: Data? = nil
         do {
-            rtfData = try attributedText.data(
-                from: NSRange(location: 0, length: attributedText.length),
+            // Convert custom fonts to system fonts before RTF generation to preserve traits
+            let rtfCompatibleString = prepareForRTFSave(attributedText)
+            rtfData = try rtfCompatibleString.data(
+                from: NSRange(location: 0, length: rtfCompatibleString.length),
                 documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
             )
-            print("✅ Successfully created RTF data (\(rtfData?.count ?? 0) bytes)")
+            print("✅ Successfully created RTF data (\(rtfData?.count ?? 0) bytes) with trait preservation")
         } catch {
             print("❌ Failed to create RTF data: \(error)")
         }
@@ -403,5 +406,37 @@ class FirebaseDataManager: ObservableObject {
                 }
             }
         }
+    }
+    
+    // MARK: - RTF Font Trait Preservation
+    
+    // Prepare attributed string for RTF saving by converting to system fonts with preserved traits
+    private func prepareForRTFSave(_ attributedString: NSAttributedString) -> NSAttributedString {
+        let mutableString = NSMutableAttributedString(attributedString: attributedString)
+        let range = NSRange(location: 0, length: mutableString.length)
+        
+        mutableString.enumerateAttribute(.font, in: range, options: []) { value, range, _ in
+            guard let font = value as? UIFont else { return }
+            
+            // Only convert custom fonts (SpaceGrotesk) to system fonts
+            if font.fontName.contains("SpaceGrotesk") {
+                let isBold = font.fontName.contains("Bold")
+                let size = font.pointSize
+                
+                // Convert to system font while preserving traits
+                var systemFont: UIFont
+                if isBold {
+                    systemFont = UIFont.boldSystemFont(ofSize: size)
+                    print("💾 RTF Save prep: '\(font.fontName)' -> Bold System Font (size: \(size))")
+                } else {
+                    systemFont = UIFont.systemFont(ofSize: size)
+                    print("💾 RTF Save prep: '\(font.fontName)' -> Regular System Font (size: \(size))")
+                }
+                
+                mutableString.addAttribute(.font, value: systemFont, range: range)
+            }
+        }
+        
+        return mutableString
     }
 }

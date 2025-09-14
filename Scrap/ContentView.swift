@@ -2197,19 +2197,53 @@ struct NavigationNoteEditView: View {
     
     // MARK: - NSAttributedString Persistence Methods
     
-    // Convert NSAttributedString to NSData for storage
+    // Convert NSAttributedString to NSData for storage with proper font trait preservation
     static func attributedStringToData(_ attributedString: NSAttributedString) -> Data? {
         do {
-            let data = try attributedString.data(
-                from: NSRange(location: 0, length: attributedString.length),
+            // STEP 1: Convert custom fonts to system fonts while preserving traits
+            // This ensures RTF can properly encode the font traits
+            let rtfCompatibleString = prepareForRTFSave(attributedString)
+            
+            let data = try rtfCompatibleString.data(
+                from: NSRange(location: 0, length: rtfCompatibleString.length),
                 documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
             )
-            print("💾 Converted NSAttributedString to RTF data: \(data.count) bytes")
+            print("💾 Converted NSAttributedString to RTF data: \(data.count) bytes (with trait preservation)")
             return data
         } catch {
             print("❌ Failed to convert NSAttributedString to data: \(error)")
             return nil
         }
+    }
+    
+    // Prepare attributed string for RTF saving by converting to system fonts with preserved traits
+    static func prepareForRTFSave(_ attributedString: NSAttributedString) -> NSAttributedString {
+        let mutableString = NSMutableAttributedString(attributedString: attributedString)
+        let range = NSRange(location: 0, length: mutableString.length)
+        
+        mutableString.enumerateAttribute(.font, in: range, options: []) { value, range, _ in
+            guard let font = value as? UIFont else { return }
+            
+            // Only convert custom fonts (SpaceGrotesk) to system fonts
+            if font.fontName.contains("SpaceGrotesk") {
+                let isBold = font.fontName.contains("Bold")
+                let size = font.pointSize
+                
+                // Convert to system font while preserving traits
+                var systemFont: UIFont
+                if isBold {
+                    systemFont = UIFont.boldSystemFont(ofSize: size)
+                    print("💾 RTF Save prep: '\(font.fontName)' -> Bold System Font (size: \(size))")
+                } else {
+                    systemFont = UIFont.systemFont(ofSize: size)
+                    print("💾 RTF Save prep: '\(font.fontName)' -> Regular System Font (size: \(size))")
+                }
+                
+                mutableString.addAttribute(.font, value: systemFont, range: range)
+            }
+        }
+        
+        return mutableString
     }
     
     // Convert NSData back to NSAttributedString
@@ -2273,7 +2307,7 @@ struct NavigationNoteEditView: View {
         }
     }
     
-    // Restore custom fonts after RTF loading (fixes font fallback issues)
+    // Restore custom fonts after RTF loading - converts system fonts back to SpaceGrotesk
     static func restoreCustomFonts(in attributedString: NSAttributedString) -> NSAttributedString {
         let mutableString = NSMutableAttributedString(attributedString: attributedString)
         let range = NSRange(location: 0, length: mutableString.length)
@@ -2282,46 +2316,28 @@ struct NavigationNoteEditView: View {
         mutableString.enumerateAttribute(.font, in: range, options: []) { value, range, _ in
             guard let font = value as? UIFont else { return }
             
-            var replacementFont: UIFont? = nil
-            
-            // Check if this is a system font that should be a custom font
+            // Only process system fonts (convert them back to SpaceGrotesk)
             if !font.fontName.contains("SpaceGrotesk") {
-                let isBold = font.fontDescriptor.symbolicTraits.contains(.traitBold) || font.fontName.contains("Bold")
-                let isItalic = font.fontDescriptor.symbolicTraits.contains(.traitItalic) || font.fontName.contains("Italic")
+                let isBold = font.fontDescriptor.symbolicTraits.contains(.traitBold)
+                let size = font.pointSize
                 
-                print("📖 Font restoration: Found system font '\(font.fontName)' - bold: \(isBold), italic: \(isItalic)")
+                print("📖 Font restoration: '\(font.fontName)' (bold: \(isBold), size: \(size))")
                 
-                // Map to appropriate Space Grotesk variant
-                let targetFontName: String
-                if isBold && isItalic {
-                    targetFontName = "SpaceGrotesk-Bold" // Space Grotesk doesn't have italic variants, use bold
-                } else if isBold {
-                    targetFontName = "SpaceGrotesk-Bold"
-                } else if isItalic {
-                    targetFontName = "SpaceGrotesk-Regular" // No italic variant, use regular
-                } else {
-                    targetFontName = "SpaceGrotesk-Regular"
-                }
+                // Map to appropriate Space Grotesk variant based on actual traits
+                let targetFontName = isBold ? "SpaceGrotesk-Bold" : "SpaceGrotesk-Regular"
                 
-                replacementFont = UIFont(name: targetFontName, size: font.pointSize)
-                
-                if let replacementFont = replacementFont {
-                    print("📖 ✅ Restored font: '\(font.fontName)' -> '\(replacementFont.fontName)'")
+                if let replacementFont = UIFont(name: targetFontName, size: size) {
+                    mutableString.addAttribute(.font, value: replacementFont, range: range)
+                    print("📖 ✅ Restored: '\(font.fontName)' -> '\(replacementFont.fontName)'")
                 } else {
                     print("📖 ❌ Failed to restore font: '\(targetFontName)' not available")
                     
-                    // Debug: List all available fonts containing "SpaceGrotesk"
+                    // Debug: List available fonts if restoration fails
                     let availableFonts = UIFont.familyNames.flatMap { familyName in
                         UIFont.fontNames(forFamilyName: familyName)
                     }.filter { $0.contains("SpaceGrotesk") }
-                    
-                    print("📖 🔍 Available SpaceGrotesk fonts at runtime: \(availableFonts)")
+                    print("📖 Available SpaceGrotesk fonts: \(availableFonts)")
                 }
-            }
-            
-            // Apply the replacement font if found
-            if let replacementFont = replacementFont {
-                mutableString.addAttribute(.font, value: replacementFont, range: range)
             }
         }
         
