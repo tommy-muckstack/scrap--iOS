@@ -3025,22 +3025,25 @@ struct SearchBarView: View {
                 
                 // Magnifying glass button - stays on the right
                 Button(action: {
-                    withAnimation(GentleLightning.Animation.swoosh) {
-                        isExpanded.toggle()
-                        if isExpanded {
-                            // Focus the search field when expanding - sync with swoosh animation
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                                isSearchFieldFocused.wrappedValue = true
-                            }
-                        } else {
-                            // Clear search when collapsing
-                            searchText = ""
-                            searchResults = []
-                            hasSearched = false
-                            searchTask?.cancel()
-                            searchTask = nil
-                            isSearchFieldFocused.wrappedValue = false
+                    if isExpanded {
+                        // Collapsing search
+                        withAnimation(GentleLightning.Animation.swoosh) {
+                            isExpanded = false
                         }
+                        // Clear search when collapsing
+                        searchText = ""
+                        searchResults = []
+                        hasSearched = false
+                        searchTask?.cancel()
+                        searchTask = nil
+                        isSearchFieldFocused.wrappedValue = false
+                    } else {
+                        // Expanding search
+                        withAnimation(GentleLightning.Animation.swoosh) {
+                            isExpanded = true
+                        }
+                        // Focus immediately for better UX - user can start typing right away
+                        isSearchFieldFocused.wrappedValue = true
                     }
                 }) {
                     ZStack {
