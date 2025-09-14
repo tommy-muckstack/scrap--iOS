@@ -84,6 +84,10 @@ struct NoteEditor: View {
                             text: $editedText,
                             showingFormatting: $showingFormatting
                         )
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .bottom).combined(with: .opacity).animation(GentleLightning.Animation.swoosh),
+                            removal: .move(edge: .bottom).combined(with: .opacity).animation(GentleLightning.Animation.gentle)
+                        ))
                     }
                 }
             }
@@ -105,6 +109,7 @@ struct NoteEditor: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button("Options") { showingOptions = true }
+                    .font(.system(size: 14))
             }
         }
         .confirmationDialog("Note Options", isPresented: $showingOptions) {
@@ -121,7 +126,9 @@ struct NoteEditor: View {
         }
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                isTextFocused = true
+                withAnimation(GentleLightning.Animation.swoosh) {
+                    isTextFocused = true
+                }
             }
         }
     }
@@ -239,7 +246,7 @@ struct FormattingSheet: View {
                     FormatButton(title: "Italic", symbol: "italic", action: { applyFormat("*", "*") })
                     FormatButton(title: "Underline", symbol: "underline", action: { applyFormat("<u>", "</u>") })
                     FormatButton(title: "Strikethrough", symbol: "strikethrough", action: { applyFormat("~~", "~~") })
-                    FormatButton(title: "Code", symbol: "curlybraces", action: { applyFormat("`", "`") })
+                    FormatButton(title: "Code", symbol: "chevron.left.forwardslash.chevron.right", action: { applyFormat("`", "`") })
                     FormatButton(title: "Quote", symbol: "quote.bubble", action: { applyFormat("> ", "") })
                     FormatButton(title: "Bullet", symbol: "list.bullet", action: { applyFormat("• ", "") })
                     FormatButton(title: "Number", symbol: "list.number", action: { applyFormat("1. ", "") })

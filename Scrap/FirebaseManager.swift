@@ -354,6 +354,23 @@ class FirebaseManager: ObservableObject {
             let docRef = try db.collection("notes").addDocument(from: note)
             print("🎉 FirebaseManager: Successfully saved note with ID: \(docRef.documentID)")
             
+            // Update note with actual document ID for vector search
+            var noteWithId = note
+            noteWithId.id = docRef.documentID
+            
+            // Index note for vector search (async, don't block save)
+            print("🔍 FirebaseManager: Starting async indexing task for note \(docRef.documentID)")
+            Task {
+                do {
+                    print("🔍 FirebaseManager: Calling VectorSearchService.indexNote...")
+                    try await VectorSearchService.shared.indexNote(noteWithId)
+                    print("✅ FirebaseManager: Successfully indexed note \(docRef.documentID)")
+                } catch {
+                    print("⚠️ FirebaseManager: Failed to index note for vector search: \(error)")
+                    // Don't throw - vector indexing failure shouldn't block note saving
+                }
+            }
+            
             // Track analytics
             AnalyticsManager.shared.trackItemCreated(isTask: isTask, contentLength: content.count, creationType: creationType)
             
@@ -369,6 +386,19 @@ class FirebaseManager: ObservableObject {
             "content": newContent,
             "updatedAt": Date()
         ])
+        
+        // Update vector search index (async, don't block update)
+        Task {
+            do {
+                // Fetch the updated note to get complete data for re-indexing
+                let noteDoc = try await db.collection("notes").document(noteId).getDocument()
+                if let note = try? noteDoc.data(as: FirebaseNote.self) {
+                    try await VectorSearchService.shared.indexNote(note)
+                }
+            } catch {
+                print("⚠️ FirebaseManager: Failed to update vector index after note update: \(error)")
+            }
+        }
     }
     
     func updateNoteWithRTF(noteId: String, rtfData: Data) async throws {
@@ -424,6 +454,15 @@ class FirebaseManager: ObservableObject {
     
     func deleteNote(noteId: String) async throws {
         try await db.collection("notes").document(noteId).delete()
+        
+        // Remove from vector search index (async, don't block delete)
+        Task {
+            do {
+                try await VectorSearchService.shared.removeNoteFromIndex(noteId)
+            } catch {
+                print("⚠️ FirebaseManager: Failed to remove note from vector index: \(error)")
+            }
+        }
         
         // Track analytics
         AnalyticsManager.shared.trackItemDeleted(isTask: false) // We don't have task info here

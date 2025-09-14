@@ -6,6 +6,26 @@ import NaturalLanguage
 import UIKit
 import Speech
 import AVFoundation
+import FirebaseAuth
+
+// MARK: - Search Result Model (Shared)
+struct SearchResult: Identifiable {
+    let id = UUID()
+    let firebaseId: String
+    let content: String
+    let similarity: Double
+    let isTask: Bool
+    let categories: [String]
+    let createdAt: Date
+    
+    var confidencePercentage: Int {
+        Int(similarity * 100)
+    }
+    
+    var previewContent: String {
+        String(content.prefix(150)) + (content.count > 150 ? "..." : "")
+    }
+}
 
 // MARK: - Notification Names
 extension Notification.Name {
@@ -208,39 +228,39 @@ struct GentleLightning {
     struct Colors {
         // MARK: - Theme-Aware Colors
         static func background(isDark: Bool) -> Color {
-            isDark ? Color(red: 0.08, green: 0.08, blue: 0.09) : Color.white
+            isDark ? Color.black : Color.white
         }
         
         static func backgroundWarm(isDark: Bool) -> Color {
-            isDark ? Color(red: 0.09, green: 0.09, blue: 0.10) : Color.white
+            isDark ? Color.black : Color.white
         }
         
         static func surface(isDark: Bool) -> Color {
-            isDark ? Color(red: 0.12, green: 0.12, blue: 0.14) : Color.white
+            isDark ? Color.black : Color.white
         }
         
         static func surfaceSecondary(isDark: Bool) -> Color {
-            isDark ? Color(red: 0.15, green: 0.15, blue: 0.17) : Color(red: 0.98, green: 0.98, blue: 0.99)
+            isDark ? Color(red: 0.05, green: 0.05, blue: 0.05) : Color(red: 0.98, green: 0.98, blue: 0.99)
         }
         
         static func textPrimary(isDark: Bool) -> Color {
-            isDark ? Color(red: 0.95, green: 0.95, blue: 0.97) : Color(red: 0.12, green: 0.12, blue: 0.15)
+            isDark ? Color(red: 0.224, green: 1.0, blue: 0.078) : Color(red: 0.12, green: 0.12, blue: 0.15) // #39FF14 for dark mode
         }
         
         static func textSecondary(isDark: Bool) -> Color {
-            isDark ? Color(red: 0.65, green: 0.65, blue: 0.70) : Color(red: 0.45, green: 0.45, blue: 0.5)
+            isDark ? Color(red: 0.224, green: 1.0, blue: 0.078).opacity(0.7) : Color(red: 0.45, green: 0.45, blue: 0.5) // Dimmed neon green
         }
         
         static func textTertiary(isDark: Bool) -> Color {
-            isDark ? Color(red: 0.50, green: 0.50, blue: 0.55) : Color(red: 0.60, green: 0.60, blue: 0.65)
+            isDark ? Color(red: 0.224, green: 1.0, blue: 0.078).opacity(0.5) : Color(red: 0.60, green: 0.60, blue: 0.65) // More dimmed neon green
         }
         
         static func border(isDark: Bool) -> Color {
-            isDark ? Color(red: 0.25, green: 0.25, blue: 0.28) : Color(red: 0.90, green: 0.90, blue: 0.92)
+            isDark ? Color(red: 0.224, green: 1.0, blue: 0.078).opacity(0.3) : Color(red: 0.90, green: 0.90, blue: 0.92) // Subtle neon green border
         }
         
         static func shadow(isDark: Bool) -> Color {
-            isDark ? Color.black.opacity(0.15) : Color.black.opacity(0.03)
+            isDark ? Color(red: 0.224, green: 1.0, blue: 0.078).opacity(0.1) : Color.black.opacity(0.03) // Subtle neon glow
         }
         
         // MARK: - Static Colors (Theme Independent)
@@ -1300,7 +1320,7 @@ struct NoteEditView: View {
                     showingActionSheet = true
                 }) {
                     Image(systemName: "ellipsis")
-                        .font(GentleLightning.Typography.bodyInput)
+                        .font(.system(size: 14))
                         .foregroundColor(GentleLightning.Colors.textPrimary)
                 }
             )
@@ -1536,7 +1556,7 @@ struct AccountDrawerView: View {
                     // App info
                     VStack(spacing: 8) {
                         Text("Scrap")
-                            .font(GentleLightning.Typography.title)
+                            .font(GentleLightning.Typography.titleEmphasis)
                             .foregroundColor(GentleLightning.Colors.textBlack)
                         
                         Text("Version \(appVersion) (\(buildNumber))")
@@ -1641,6 +1661,13 @@ struct ContentView: View {
     @State private var showingAccountDrawer = false
     @FocusState private var isInputFieldFocused: Bool
     
+    // Search functionality
+    @State private var isSearchExpanded = false
+    @State private var searchText = ""
+    @State private var searchResults: [SearchResult] = []
+    @State private var isSearching = false
+    @FocusState private var isSearchFieldFocused: Bool
+    
     var body: some View {
         NavigationStack(path: $navigationPath) {
         ZStack {
@@ -1679,6 +1706,55 @@ struct ContentView: View {
                 // Smaller spacer below
                 Spacer()
                     .frame(maxHeight: 20)
+                
+                // My Notes header with search functionality overlay
+                ZStack {
+                    // Base content: My Notes text and horizontal line
+                    HStack {
+                        Text("My Notes")
+                            .font(GentleLightning.Typography.caption)
+                            .foregroundColor(GentleLightning.Colors.textSecondary)
+                            .padding(.leading, GentleLightning.Layout.Padding.lg)
+                        
+                        Rectangle()
+                            .fill(GentleLightning.Colors.textSecondary.opacity(0.3))
+                            .frame(height: 1)
+                            .padding(.horizontal, 8) // Shorter horizontal line to accommodate right shift
+                        
+                        Spacer()
+                    }
+                    .opacity(isSearchExpanded ? 0 : 1) // Hide when search is expanded
+                    .animation(GentleLightning.Animation.swoosh, value: isSearchExpanded)
+                    
+                    // Overlay: Search bar
+                    HStack {
+                        Spacer()
+                        SearchBarView(
+                            isExpanded: $isSearchExpanded,
+                            searchText: $searchText,
+                            searchResults: $searchResults,
+                            isSearching: $isSearching,
+                            isSearchFieldFocused: $isSearchFieldFocused,
+                            onResultTap: { result in
+                                // Find the matching item in dataManager.items and navigate to it
+                                if let item = dataManager.items.first(where: { $0.id == result.firebaseId }) {
+                                    navigationPath.append(item)
+                                    // Collapse search after navigation
+                                    withAnimation {
+                                        isSearchExpanded = false
+                                        searchText = ""
+                                        searchResults = []
+                                    }
+                                }
+                            },
+                            onSearch: performSearch,
+                            onReindex: triggerReindexing
+                        )
+                        .padding(.trailing, 36) // 20pt (outer) + 16pt (inner) to match microphone button center
+                    }
+                }
+                .padding(.top, 16)
+                .padding(.bottom, 8)
                 
                 // Items List - scrollable content
                 ScrollView {
@@ -1791,6 +1867,67 @@ struct ContentView: View {
             }
         }
     }
+    
+    private func performSearch() {
+        guard !self.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            self.searchResults = []
+            return
+        }
+        
+        self.isSearching = true
+        
+        Task { @MainActor in
+            do {
+                let results = try await VectorSearchService.shared.semanticSearch(
+                    query: self.searchText,
+                    limit: 10
+                )
+                
+                self.searchResults = results
+                self.isSearching = false
+            } catch {
+                print("Search failed: \(error)")
+                self.isSearching = false
+                // Could show error state here
+            }
+        }
+    }
+    
+    private func triggerReindexing() {
+        print("🔄 ContentView: Manual reindexing triggered by long press")
+        
+        Task {
+            // Get all current items and convert to FirebaseNote format for reindexing
+            let firebaseNotes = self.dataManager.items.compactMap { item -> FirebaseNote? in
+                guard let firebaseId = item.firebaseId else { return nil }
+                
+                return FirebaseNote(
+                    id: firebaseId,
+                    userId: Auth.auth().currentUser?.uid ?? "",
+                    content: item.content,
+                    title: item.title,
+                    categoryIds: item.categoryIds,
+                    isTask: item.isTask,
+                    categories: [], // Legacy field
+                    createdAt: item.createdAt,
+                    updatedAt: Date(), // Use current date since SparkItem doesn't have updatedAt
+                    pineconeId: nil,
+                    creationType: "manual_reindex",
+                    rtfContent: nil
+                )
+            }
+            
+            print("🔄 ContentView: Starting reindex of \(firebaseNotes.count) notes...")
+            await VectorSearchService.shared.reindexAllNotes(firebaseNotes)
+            print("✅ ContentView: Reindexing completed!")
+            
+            // Show success feedback
+            await MainActor.run {
+                // Could show a toast or alert here
+                print("💡 ContentView: Reindexing finished - try searching again!")
+            }
+        }
+    }
 }
 
 // MARK: - Formatting Toolbar View (Extracted Component)
@@ -1805,11 +1942,8 @@ struct FormattingToolbarView: View {
                 .frame(height: 1)
                 .frame(maxWidth: .infinity)
             
-            // Centered horizontal layout with better spacing
-            HStack(spacing: 8) {
-                // Left spacer for centering
-                Spacer(minLength: 0)
-                
+            // Evenly spaced horizontal layout
+            HStack {
                 // Core formatting buttons
                 Button(action: { 
                     context.toggleBold()
@@ -1823,6 +1957,8 @@ struct FormattingToolbarView: View {
                         .clipped()
                 }
                 
+                Spacer()
+                
                 Button(action: { 
                     context.toggleItalic()
                 }) {
@@ -1833,6 +1969,8 @@ struct FormattingToolbarView: View {
                         .background(context.isItalicActive ? .black : Color.clear)
                         .clipShape(Circle())
                 }
+                
+                Spacer()
                 
                 Button(action: { 
                     context.toggleStrikethrough()
@@ -1845,10 +1983,7 @@ struct FormattingToolbarView: View {
                         .clipShape(Circle())
                 }
                 
-                // Compact divider
-                Rectangle()
-                    .fill(Color.gray.opacity(0.3))
-                    .frame(width: 1, height: 20)
+                Spacer()
                 
                 // List buttons
                 Button(action: { 
@@ -1862,6 +1997,8 @@ struct FormattingToolbarView: View {
                         .clipShape(Circle())
                 }
                 
+                Spacer()
+                
                 Button(action: { 
                     context.toggleCheckbox()
                 }) {
@@ -1873,38 +2010,21 @@ struct FormattingToolbarView: View {
                         .clipShape(Circle())
                 }
                 
-                // Compact divider
-                Rectangle()
-                    .fill(Color.gray.opacity(0.3))
-                    .frame(width: 1, height: 20)
+                Spacer()
                 
-                // Indent/Outdent buttons
+                // Code block button
                 Button(action: { 
-                    context.indentOut()
+                    context.toggleCodeBlock()
                 }) {
-                    Image(systemName: "decrease.indent")
+                    Image(systemName: "chevron.left.forwardslash.chevron.right")
                         .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.black)
+                        .foregroundColor(context.isCodeBlockActive ? .white : .black)
                         .frame(width: 32, height: 32)
-                        .background(Color.clear)
+                        .background(context.isCodeBlockActive ? .black : Color.clear)
                         .clipShape(Circle())
                 }
                 
-                Button(action: { 
-                    context.indentIn()
-                }) {
-                    Image(systemName: "increase.indent")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.black)
-                        .frame(width: 32, height: 32)
-                        .background(Color.clear)
-                        .clipShape(Circle())
-                }
-                
-                // Compact divider
-                Rectangle()
-                    .fill(Color.gray.opacity(0.3))
-                    .frame(width: 1, height: 20)
+                Spacer()
                 
                 // Keyboard dismiss button
                 Button(action: { 
@@ -1918,9 +2038,6 @@ struct FormattingToolbarView: View {
                         .background(GentleLightning.Colors.accentNeutral.opacity(0.1))
                         .clipShape(Circle())
                 }
-                
-                // Right spacer for centering
-                Spacer(minLength: 0)
             }
             .padding(.horizontal, 16) // Match content padding for consistency
             .padding(.vertical, 12)
@@ -2151,7 +2268,10 @@ struct NavigationNoteEditView: View {
                 FormattingToolbarView(context: richTextContext)
                     .background(Color.white)
                     .id("main-formatting-toolbar") // Unique identifier to prevent duplication
-                    .transition(.opacity) // Smooth transition
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .bottom).combined(with: .opacity).animation(GentleLightning.Animation.swoosh),
+                        removal: .move(edge: .bottom).combined(with: .opacity).animation(GentleLightning.Animation.gentle)
+                    ))
             }
         }
         .simultaneousGesture(
@@ -2217,22 +2337,28 @@ struct NavigationNoteEditView: View {
             }
         }
         .onChange(of: isRichTextFocused) { newValue in
-            isTextFieldFocused = newValue
+            withAnimation(GentleLightning.Animation.swoosh) {
+                isTextFieldFocused = newValue
+            }
         }
         .onChange(of: isTitleFocused) { newValue in
-            if newValue {
-                isBodyTextFocused = false
-                richTextContext.isEditingText = false
+            withAnimation(GentleLightning.Animation.gentle) {
+                if newValue {
+                    isBodyTextFocused = false
+                    richTextContext.isEditingText = false
+                }
             }
         }
         .onChange(of: richTextContext.isEditingText) { newValue in
-            if newValue {
-                isBodyTextFocused = true
-                isRichTextFocused = true  // This was missing!
-                isTitleFocused = false
-            } else {
-                isBodyTextFocused = false
-                isRichTextFocused = false
+            withAnimation(GentleLightning.Animation.swoosh) {
+                if newValue {
+                    isBodyTextFocused = true
+                    isRichTextFocused = true  // This was missing!
+                    isTitleFocused = false
+                } else {
+                    isBodyTextFocused = false
+                    isRichTextFocused = false
+                }
             }
         }
         .onChange(of: attributedText) { newValue in
@@ -2286,7 +2412,7 @@ struct NavigationNoteEditView: View {
                     showingActionSheet = true
                 }) {
                     Image(systemName: "ellipsis")
-                        .font(.system(size: 22))
+                        .font(.system(size: 16))
                         .foregroundColor(GentleLightning.Colors.textPrimary)
                         .rotationEffect(.degrees(90))
                 }
@@ -2556,7 +2682,7 @@ struct FormattingSheet: View {
                     FormatButton(title: "Italic", symbol: "italic", action: { applyFormat("*", "*") })
                     FormatButton(title: "Underline", symbol: "underline", action: { applyFormat("<u>", "</u>") })
                     FormatButton(title: "Strikethrough", symbol: "strikethrough", action: { applyFormat("~~", "~~") })
-                    FormatButton(title: "Code", symbol: "curlybraces", action: { applyFormat("`", "`") })
+                    FormatButton(title: "Code", symbol: "chevron.left.forwardslash.chevron.right", action: { applyFormat("`", "`") })
                     FormatButton(title: "Quote", symbol: "quote.bubble", action: { applyFormat("> ", "") })
                     FormatButton(title: "Bullet", symbol: "list.bullet", action: { applyFormat("• ", "") })
                     FormatButton(title: "Number", symbol: "list.number", action: { applyFormat("1. ", "") })
@@ -2614,6 +2740,242 @@ struct FormatButton: View {
                             .stroke(GentleLightning.Colors.textSecondary.opacity(0.2), lineWidth: 1)
                     )
             )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Search Bar View
+struct SearchBarView: View {
+    @Binding var isExpanded: Bool
+    @Binding var searchText: String
+    @Binding var searchResults: [SearchResult]
+    @Binding var isSearching: Bool
+    var isSearchFieldFocused: FocusState<Bool>.Binding
+    let onResultTap: (SearchResult) -> Void
+    let onSearch: () -> Void
+    let onReindex: () -> Void
+    
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 8) {
+            // Horizontal search bar with magnifying glass
+            HStack {
+                // Search input field - slides in from the right when expanded
+                if isExpanded {
+                    HStack {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 16))
+                            .foregroundColor(GentleLightning.Colors.textSecondary)
+                        
+                        TextField("Search your notes...", text: $searchText)
+                            .font(GentleLightning.Typography.body)
+                            .foregroundColor(GentleLightning.Colors.textPrimary)
+                            .focused(isSearchFieldFocused)
+                            .onSubmit {
+                                onSearch()
+                            }
+                            .onLongPressGesture {
+                                // Debug feature: long press to trigger reindexing
+                                onReindex()
+                            }
+                            .onChange(of: searchText) { newValue in
+                                // Debounced search - perform search after user stops typing for 0.5 seconds
+                                if !newValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                    // Cancel previous search task and create new one
+                                    Task {
+                                        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                                        if searchText == newValue { // Only search if text hasn't changed
+                                            onSearch()
+                                        }
+                                    }
+                                } else {
+                                    searchResults = []
+                                }
+                            }
+                        
+                        if isSearching {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                                .tint(GentleLightning.Colors.accentNeutral)
+                        }
+                        
+                        if !searchText.isEmpty {
+                            Button(action: {
+                                searchText = ""
+                                searchResults = []
+                            }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 16))
+                                    .foregroundColor(GentleLightning.Colors.textSecondary)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(GentleLightning.Colors.surface)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(GentleLightning.Colors.border(isDark: false), lineWidth: 1)
+                            )
+                    )
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .trailing).combined(with: .opacity).animation(GentleLightning.Animation.swoosh),
+                        removal: .move(edge: .trailing).combined(with: .opacity).animation(GentleLightning.Animation.swoosh)
+                    ))
+                }
+                
+                // Magnifying glass button - stays on the right
+                Button(action: {
+                    withAnimation(GentleLightning.Animation.swoosh) {
+                        isExpanded.toggle()
+                        if isExpanded {
+                            // Focus the search field when expanding - sync with swoosh animation
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                                isSearchFieldFocused.wrappedValue = true
+                            }
+                        } else {
+                            // Clear search when collapsing
+                            searchText = ""
+                            searchResults = []
+                            isSearchFieldFocused.wrappedValue = false
+                        }
+                    }
+                }) {
+                    Image(systemName: isExpanded ? "xmark" : "magnifyingglass")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(GentleLightning.Colors.textSecondary)
+                        .frame(width: 32, height: 32)
+                        .transition(.asymmetric(
+                            insertion: .opacity.combined(with: .scale(scale: 0.8)),
+                            removal: .opacity.combined(with: .scale(scale: 1.2))
+                        ))
+                        .background(
+                            Circle()
+                                .fill(GentleLightning.Colors.surface)
+                                .overlay(
+                                    Circle()
+                                        .stroke(GentleLightning.Colors.border(isDark: false), lineWidth: 1)
+                                )
+                        )
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+            
+            // Search results or empty state shown below when expanded
+            if isExpanded {
+                VStack(spacing: 4) {
+                    if !searchResults.isEmpty {
+                        // Show search results
+                        ForEach(searchResults.prefix(3)) { result in
+                            SearchResultRow(result: result) {
+                                onResultTap(result)
+                            }
+                        }
+                        
+                        if searchResults.count > 3 {
+                            Text("+ \(searchResults.count - 3) more results")
+                                .font(GentleLightning.Typography.caption)
+                                .foregroundColor(GentleLightning.Colors.textSecondary)
+                                .padding(.top, 4)
+                                .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                        }
+                    } else if !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSearching {
+                        // Show empty state when search has no results
+                        VStack(spacing: 8) {
+                            Image(systemName: "doc.text.magnifyingglass")
+                                .font(.system(size: 24))
+                                .foregroundColor(GentleLightning.Colors.textSecondary)
+                            
+                            Text("No results found")
+                                .font(GentleLightning.Typography.heading)
+                                .foregroundColor(GentleLightning.Colors.textPrimary)
+                            
+                            Text("Try different keywords or check your spelling")
+                                .font(GentleLightning.Typography.caption)
+                                .foregroundColor(GentleLightning.Colors.textSecondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .padding(.vertical, 16)
+                        .padding(.horizontal, 8)
+                    } else if !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && isSearching {
+                        // Show loading state during search
+                        VStack(spacing: 8) {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                                .tint(GentleLightning.Colors.accentNeutral)
+                            
+                            Text("Searching...")
+                                .font(GentleLightning.Typography.caption)
+                                .foregroundColor(GentleLightning.Colors.textSecondary)
+                        }
+                        .padding(.vertical, 16)
+                        .padding(.horizontal, 8)
+                    }
+                }
+                .padding(8)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(GentleLightning.Colors.surface)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(GentleLightning.Colors.border(isDark: false), lineWidth: 1)
+                        )
+                )
+                .transition(.asymmetric(
+                    insertion: .scale(scale: 0.95).combined(with: .opacity).animation(GentleLightning.Animation.swoosh),
+                    removal: .opacity.animation(GentleLightning.Animation.swoosh)
+                ))
+            }
+        }
+    }
+}
+
+// MARK: - Search Result Row
+struct SearchResultRow: View {
+    let result: SearchResult
+    let onTap: () -> Void
+    
+    var body: some View {
+        Button(action: onTap) {
+            HStack(alignment: .top, spacing: 8) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(result.previewContent)
+                        .font(GentleLightning.Typography.body)
+                        .foregroundColor(GentleLightning.Colors.textPrimary)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(2)
+                    
+                    HStack(spacing: 8) {
+                        Text("\(result.confidencePercentage)% match")
+                            .font(GentleLightning.Typography.caption)
+                            .foregroundColor(GentleLightning.Colors.textSecondary)
+                        
+                        if result.isTask {
+                            Text("Task")
+                                .font(GentleLightning.Typography.caption)
+                                .foregroundColor(GentleLightning.Colors.accentNeutral)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(
+                                    Capsule()
+                                        .fill(GentleLightning.Colors.accentNeutral.opacity(0.1))
+                                )
+                        }
+                        
+                        Spacer()
+                    }
+                }
+                
+                Spacer()
+                
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 12))
+                    .foregroundColor(GentleLightning.Colors.textSecondary)
+            }
+            .padding(8)
         }
         .buttonStyle(PlainButtonStyle())
     }

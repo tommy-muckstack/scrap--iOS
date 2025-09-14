@@ -54,6 +54,22 @@ struct ScrapApp: App {
         // Initialize analytics when app launches
         AnalyticsManager.shared.initialize()
         print("SparkApp: Analytics initialized")
+        
+        // Configure navigation bar appearance for smaller buttons and no separator
+        let appearance = UINavigationBarAppearance()
+        appearance.configureWithTransparentBackground()
+        appearance.backgroundColor = UIColor.systemBackground
+        appearance.shadowColor = UIColor.clear // Remove separator line
+        appearance.shadowImage = UIImage() // Ensure no shadow image
+        
+        // Make back button smaller
+        UIBarButtonItem.appearance().setTitleTextAttributes([
+            .font: UIFont.systemFont(ofSize: 14)
+        ], for: .normal)
+        
+        UINavigationBar.appearance().standardAppearance = appearance
+        UINavigationBar.appearance().compactAppearance = appearance
+        UINavigationBar.appearance().scrollEdgeAppearance = appearance
     }
     
     var body: some Scene {
@@ -99,10 +115,6 @@ struct RootView: View {
                         Text("Scrap")
                             .font(GentleLightning.Typography.hero)
                             .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
-                        
-                        ProgressView()
-                            .scaleEffect(1.2)
-                            .tint(GentleLightning.Colors.accentNeutral)
                     }
                 }
                 .onAppear {

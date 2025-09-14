@@ -386,6 +386,22 @@ class FirebaseDataManager: ObservableObject {
         firebaseManager.startListening { [weak self] firebaseNotes in
             let sparkItems = firebaseNotes.map(SparkItem.init)
             self?.items = sparkItems
+            
+            // Index existing notes for vector search
+            Task {
+                do {
+                    // Test connection first
+                    let isConnected = try await VectorSearchService.shared.testConnection()
+                    if isConnected {
+                        print("🔍 ChromaDB connection successful, indexing \(firebaseNotes.count) existing notes...")
+                        await VectorSearchService.shared.reindexAllNotes(firebaseNotes)
+                    } else {
+                        print("⚠️ ChromaDB connection failed, vector search will not be available")
+                    }
+                } catch {
+                    print("⚠️ Failed to test ChromaDB connection or index notes: \(error)")
+                }
+            }
         }
     }
 }

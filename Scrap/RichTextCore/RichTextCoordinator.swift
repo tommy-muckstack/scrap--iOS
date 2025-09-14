@@ -77,7 +77,13 @@ public class RichTextCoordinator: NSObject {
             .foregroundColor: UIColor.label
         ]
         
-        // No custom gestures needed - UITextView handles all selection natively
+        // Update typing attributes based on context state
+        updateTypingAttributes()
+        
+        // Add tap gesture for checkbox interaction
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
+        tapGesture.delegate = self
+        textView.addGestureRecognizer(tapGesture)
     }
     
     private func setupContextObservation() {
@@ -213,22 +219,21 @@ public class RichTextCoordinator: NSObject {
         // Update binding first to sync the attributed text
         updateBindingFromTextView()
         
-        // For selections, don't update the context formatting state immediately
-        // This prevents the formatting from being overridden
-        if selectedRange.length == 0 {
-            // For cursor position (no selection), update typing attributes
-            updateTypingAttributes()
-        } else {
-            // For text selection, prevent context updates for a longer period
+        // For text selection, prevent context updates for a short period
+        // This prevents the formatting from being immediately overridden
+        if selectedRange.length > 0 {
             isPreventingContextUpdates = true
             print("🎯 RichTextCoordinator: Applied formatting to selection - preventing context updates")
             
-            // Reset prevention flag after a longer delay to allow user to complete their action
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            // Reset prevention flag after a short delay
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 self.isPreventingContextUpdates = false
                 print("🔓 RichTextCoordinator: Context update prevention reset")
             }
         }
+        
+        // NOTE: updateTypingAttributes() is now called after context state is updated 
+        // in each individual toggle method to ensure proper timing
     }
     
     private func toggleBoldInRange(_ mutableText: NSMutableAttributedString, _ range: NSRange) {
@@ -246,97 +251,175 @@ public class RichTextCoordinator: NSObject {
             }
             // If any text is bold, remove bold from all; otherwise add bold to all
             shouldAddBold = !hasBoldText
-        } else if range.location > 0 {
-            // For cursor position, check typing attributes or previous character
-            let prevIndex = range.location - 1
-            if prevIndex < mutableText.length {
-                let prevFont = mutableText.attribute(.font, at: prevIndex, effectiveRange: nil) as? UIFont
-                shouldAddBold = !(prevFont?.fontDescriptor.symbolicTraits.contains(.traitBold) ?? false)
-            }
+        } else {
+            // For cursor position (no selection), use the context state
+            // This ensures the button state matches what will happen
+            shouldAddBold = !context.isBoldActive
         }
         
         print("🎯 RichTextCoordinator: Bold toggle - shouldAddBold: \(shouldAddBold), range: \(range)")
         
         // Apply formatting consistently across the range
-        let targetRange = range.length > 0 ? range : NSRange(location: range.location, length: 0)
-        
-        mutableText.enumerateAttribute(.font, in: targetRange.length > 0 ? targetRange : NSRange(location: 0, length: mutableText.length)) { value, subRange, _ in
-            if range.length == 0 && subRange.location != range.location && subRange.location + subRange.length != range.location {
-                return // Skip ranges that don't include cursor position
-            }
-            
-            if let font = value as? UIFont {
-                let newFont: UIFont
-                if shouldAddBold {
-                    // Add bold
-                    let traits = font.fontDescriptor.symbolicTraits.union(.traitBold)
-                    if let descriptor = font.fontDescriptor.withSymbolicTraits(traits) {
-                        newFont = UIFont(descriptor: descriptor, size: font.pointSize)
+        if range.length > 0 {
+            // For selections, apply to the selected text
+            mutableText.enumerateAttribute(.font, in: range) { value, subRange, _ in
+                if let font = value as? UIFont {
+                    let newFont: UIFont
+                    if shouldAddBold {
+                        // Add bold
+                        let traits = font.fontDescriptor.symbolicTraits.union(.traitBold)
+                        if let descriptor = font.fontDescriptor.withSymbolicTraits(traits) {
+                            newFont = UIFont(descriptor: descriptor, size: font.pointSize)
+                        } else {
+                            newFont = UIFont.boldSystemFont(ofSize: font.pointSize)
+                        }
                     } else {
-                        newFont = UIFont.boldSystemFont(ofSize: font.pointSize)
+                        // Remove bold
+                        let traits = font.fontDescriptor.symbolicTraits.subtracting(.traitBold)
+                        if let descriptor = font.fontDescriptor.withSymbolicTraits(traits) {
+                            newFont = UIFont(descriptor: descriptor, size: font.pointSize)
+                        } else {
+                            newFont = UIFont(name: context.fontName, size: font.pointSize) ?? font
+                        }
                     }
-                } else {
-                    // Remove bold
-                    let traits = font.fontDescriptor.symbolicTraits.subtracting(.traitBold)
-                    if let descriptor = font.fontDescriptor.withSymbolicTraits(traits) {
-                        newFont = UIFont(descriptor: descriptor, size: font.pointSize)
-                    } else {
-                        newFont = UIFont(name: context.fontName, size: font.pointSize) ?? font
-                    }
+                    mutableText.addAttribute(.font, value: newFont, range: subRange)
                 }
-                mutableText.addAttribute(.font, value: newFont, range: subRange)
             }
+        } else {
+            // For cursor position, just update typing attributes
+            // No need to modify existing text
         }
         
         // Update context state to reflect the actual result
+        // For cursor position, this sets what will happen to new typed text
+        // For selections, this reflects whether we added or removed bold
         DispatchQueue.main.async {
             self.context.isBoldActive = shouldAddBold
+            // Update typing attributes after context state is updated
+            self.updateTypingAttributes()
+            print("🎨 Bold toggle complete - context updated and typing attributes refreshed")
         }
     }
     
     private func toggleItalicInRange(_ mutableText: NSMutableAttributedString, _ range: NSRange) {
-        mutableText.enumerateAttribute(.font, in: range) { value, subRange, _ in
-            if let font = value as? UIFont {
-                let newFont: UIFont
-                if font.fontDescriptor.symbolicTraits.contains(.traitItalic) {
-                    // Remove italic
-                    let traits = font.fontDescriptor.symbolicTraits.subtracting(.traitItalic)
-                    if let descriptor = font.fontDescriptor.withSymbolicTraits(traits) {
-                        newFont = UIFont(descriptor: descriptor, size: font.pointSize)
-                    } else {
-                        newFont = UIFont(name: context.fontName, size: font.pointSize) ?? font
-                    }
-                } else {
-                    // Add italic
-                    let traits = font.fontDescriptor.symbolicTraits.union(.traitItalic)
-                    if let descriptor = font.fontDescriptor.withSymbolicTraits(traits) {
-                        newFont = UIFont(descriptor: descriptor, size: font.pointSize)
-                    } else {
-                        newFont = UIFont.italicSystemFont(ofSize: font.pointSize)
-                    }
+        var shouldAddItalic = true
+        var hasItalicText = false
+        
+        if range.length > 0 {
+            // For selections, check if ANY text in selection is italic
+            mutableText.enumerateAttribute(.font, in: range) { value, _, _ in
+                if let font = value as? UIFont,
+                   font.fontDescriptor.symbolicTraits.contains(.traitItalic) {
+                    hasItalicText = true
                 }
-                mutableText.addAttribute(.font, value: newFont, range: subRange)
             }
+            shouldAddItalic = !hasItalicText
+        } else {
+            // For cursor position, use the context state
+            shouldAddItalic = !context.isItalicActive
+        }
+        
+        if range.length > 0 {
+            // Apply to selection
+            mutableText.enumerateAttribute(.font, in: range) { value, subRange, _ in
+                if let font = value as? UIFont {
+                    let newFont: UIFont
+                    if shouldAddItalic {
+                        // Add italic
+                        let traits = font.fontDescriptor.symbolicTraits.union(.traitItalic)
+                        if let descriptor = font.fontDescriptor.withSymbolicTraits(traits) {
+                            newFont = UIFont(descriptor: descriptor, size: font.pointSize)
+                        } else {
+                            newFont = UIFont.italicSystemFont(ofSize: font.pointSize)
+                        }
+                    } else {
+                        // Remove italic
+                        let traits = font.fontDescriptor.symbolicTraits.subtracting(.traitItalic)
+                        if let descriptor = font.fontDescriptor.withSymbolicTraits(traits) {
+                            newFont = UIFont(descriptor: descriptor, size: font.pointSize)
+                        } else {
+                            newFont = UIFont(name: context.fontName, size: font.pointSize) ?? font
+                        }
+                    }
+                    mutableText.addAttribute(.font, value: newFont, range: subRange)
+                }
+            }
+        }
+        
+        // Update context state
+        DispatchQueue.main.async {
+            self.context.isItalicActive = shouldAddItalic
+            // Update typing attributes after context state is updated
+            self.updateTypingAttributes()
+            print("🎨 Italic toggle complete - context updated and typing attributes refreshed")
         }
     }
     
     private func toggleUnderlineInRange(_ mutableText: NSMutableAttributedString, _ range: NSRange) {
-        mutableText.enumerateAttribute(.underlineStyle, in: range) { value, subRange, _ in
-            let currentStyle = value as? Int ?? 0
-            let newStyle = currentStyle == 0 ? 
-                          NSUnderlineStyle.single.rawValue : 
-                          0
-            mutableText.addAttribute(.underlineStyle, value: newStyle, range: subRange)
+        var shouldAddUnderline = true
+        
+        if range.length > 0 {
+            // Check if any text has underline
+            var hasUnderline = false
+            mutableText.enumerateAttribute(.underlineStyle, in: range) { value, _, _ in
+                if let style = value as? Int, style != 0 {
+                    hasUnderline = true
+                }
+            }
+            shouldAddUnderline = !hasUnderline
+        } else {
+            // For cursor position, use context state
+            shouldAddUnderline = !context.isUnderlineActive
+        }
+        
+        if range.length > 0 {
+            // Apply to selection
+            mutableText.enumerateAttribute(.underlineStyle, in: range) { value, subRange, _ in
+                let newStyle = shouldAddUnderline ? NSUnderlineStyle.single.rawValue : 0
+                mutableText.addAttribute(.underlineStyle, value: newStyle, range: subRange)
+            }
+        }
+        
+        // Update context state
+        DispatchQueue.main.async {
+            self.context.isUnderlineActive = shouldAddUnderline
+            // Update typing attributes after context state is updated
+            self.updateTypingAttributes()
+            print("🎨 Underline toggle complete - context updated and typing attributes refreshed")
         }
     }
     
     private func toggleStrikethroughInRange(_ mutableText: NSMutableAttributedString, _ range: NSRange) {
-        mutableText.enumerateAttribute(.strikethroughStyle, in: range) { value, subRange, _ in
-            let currentStyle = value as? Int ?? 0
-            let newStyle = currentStyle == 0 ? 
-                          NSUnderlineStyle.single.rawValue : 
-                          0
-            mutableText.addAttribute(.strikethroughStyle, value: newStyle, range: subRange)
+        var shouldAddStrikethrough = true
+        
+        if range.length > 0 {
+            // Check if any text has strikethrough
+            var hasStrikethrough = false
+            mutableText.enumerateAttribute(.strikethroughStyle, in: range) { value, _, _ in
+                if let style = value as? Int, style != 0 {
+                    hasStrikethrough = true
+                }
+            }
+            shouldAddStrikethrough = !hasStrikethrough
+        } else {
+            // For cursor position, use context state
+            shouldAddStrikethrough = !context.isStrikethroughActive
+        }
+        
+        if range.length > 0 {
+            // Apply to selection
+            mutableText.enumerateAttribute(.strikethroughStyle, in: range) { value, subRange, _ in
+                let newStyle = shouldAddStrikethrough ? NSUnderlineStyle.single.rawValue : 0
+                mutableText.addAttribute(.strikethroughStyle, value: newStyle, range: subRange)
+            }
+        }
+        
+        // Update context state
+        DispatchQueue.main.async {
+            self.context.isStrikethroughActive = shouldAddStrikethrough
+            // Update typing attributes after context state is updated
+            self.updateTypingAttributes()
+            print("🎨 Strikethrough toggle complete - context updated and typing attributes refreshed")
         }
     }
     
@@ -356,6 +439,8 @@ public class RichTextCoordinator: NSObject {
             applyBulletFormat(mutableText, lineRange, lineText)
         case .checkbox:
             applyCheckboxFormat(mutableText, lineRange, lineText)
+        case .codeBlock:
+            applyCodeBlockFormat(mutableText, lineRange, lineText)
         }
         
         updateBindingFromTextView()
@@ -368,11 +453,11 @@ public class RichTextCoordinator: NSObject {
         // Don't process lines that are only whitespace/newlines
         if trimmedLine.isEmpty {
             // Add bullet to empty line and position cursor after it
-            let mutableLineText = "◉ "
+            let mutableLineText = "• "
             let newLine = mutableLineText + (lineText.hasSuffix("\n") ? "\n" : "")
             mutableText.replaceCharacters(in: lineRange, with: newLine)
             
-            // Clear formatting from bullet character only (first 2 characters: "◉ ")
+            // Clear formatting from bullet character only (first 2 characters: "• ")
             let bulletRange = NSRange(location: lineRange.location, length: 2)
             if bulletRange.location + bulletRange.length <= mutableText.length {
                 // Apply clean attributes to bullet point only
@@ -388,7 +473,7 @@ public class RichTextCoordinator: NSObject {
             }
             
             textView.attributedText = mutableText
-            let newCursorPosition = lineRange.location + 2 // Position after "◉ "
+            let newCursorPosition = lineRange.location + 2 // Position after "• "
             let safePosition = min(newCursorPosition, mutableText.length)
             textView.selectedRange = NSRange(location: safePosition, length: 0)
             print("🔸 RichTextCoordinator: Added bullet to empty line, cursor at position \(safePosition)")
@@ -399,39 +484,39 @@ public class RichTextCoordinator: NSObject {
         let newCursorPosition: Int
         
         // Check if line already has a bullet (prevent duplicates)
-        if trimmedLine.hasPrefix("◉ ") {
+        if trimmedLine.hasPrefix("• ") {
             // Remove bullet - keep cursor at the beginning of the content
             mutableLineText = String(trimmedLine.dropFirst(2))
             newCursorPosition = lineRange.location + (lineText.count - lineText.ltrimmed().count) + mutableLineText.count
             print("🔸 RichTextCoordinator: Removing bullet from line")
-        } else if trimmedLine.hasPrefix("◉") {
+        } else if trimmedLine.hasPrefix("•") {
             // Line starts with bullet (but no space) - remove it completely
             mutableLineText = String(trimmedLine.dropFirst(1)).trimmingCharacters(in: .whitespaces)
             newCursorPosition = lineRange.location + (lineText.count - lineText.ltrimmed().count) + mutableLineText.count
             print("🔸 RichTextCoordinator: Removing bullet (no space) from line")
         } else if trimmedLine.hasPrefix("☐ ") || trimmedLine.hasPrefix("☑ ") {
-            // Replace checkbox with bullet - cursor goes after "◉ "
+            // Replace checkbox with bullet - cursor goes after "• "
             let contentAfterCheckbox = String(trimmedLine.dropFirst(2))
-            mutableLineText = "◉ " + contentAfterCheckbox
-            newCursorPosition = lineRange.location + 2 // Position after "◉ "
+            mutableLineText = "• " + contentAfterCheckbox
+            newCursorPosition = lineRange.location + 2 // Position after "• "
             print("🔸 RichTextCoordinator: Replacing checkbox with bullet")
-        } else if !trimmedLine.contains("◉") {
-            // Add bullet only if line doesn't already contain bullets - cursor goes after "◉ "
-            mutableLineText = "◉ " + trimmedLine
-            newCursorPosition = lineRange.location + 2 // Position after "◉ "
+        } else if !trimmedLine.contains("•") {
+            // Add bullet only if line doesn't already contain bullets - cursor goes after "• "
+            mutableLineText = "• " + trimmedLine
+            newCursorPosition = lineRange.location + 2 // Position after "• "
             print("🔸 RichTextCoordinator: Adding bullet to line")
         } else {
             // Line already contains bullets somewhere - clean up duplicates instead of adding more
             print("🚫 RichTextCoordinator: Line contains bullets - cleaning up duplicates")
             mutableLineText = cleanupDuplicateBullets(trimmedLine)
-            newCursorPosition = lineRange.location + 2 // Position after single "◉ "
+            newCursorPosition = lineRange.location + 2 // Position after single "• "
         }
         
         let newLine = mutableLineText + (lineText.hasSuffix("\n") ? "\n" : "")
         mutableText.replaceCharacters(in: lineRange, with: newLine)
         
-        // Clear formatting from bullet character only (first 2 characters: "◉ ")
-        if mutableLineText.hasPrefix("◉ ") {
+        // Clear formatting from bullet character only (first 2 characters: "• ")
+        if mutableLineText.hasPrefix("• ") {
             let bulletRange = NSRange(location: lineRange.location, length: min(2, newLine.count))
             if bulletRange.location + bulletRange.length <= mutableText.length {
                 // Apply clean attributes to bullet point only
@@ -460,9 +545,9 @@ public class RichTextCoordinator: NSObject {
     /// Clean up duplicate bullets on a line, keeping only one at the start
     private func cleanupDuplicateBullets(_ line: String) -> String {
         // Remove all bullet points and clean up extra spaces
-        let withoutBullets = line.replacingOccurrences(of: "◉ ", with: "").trimmingCharacters(in: .whitespaces)
+        let withoutBullets = line.replacingOccurrences(of: "• ", with: "").trimmingCharacters(in: .whitespaces)
         // Add single bullet at start
-        return "◉ " + withoutBullets
+        return "• " + withoutBullets
     }
     
     /// Clean up the entire text content to remove duplicate bullets/checkboxes
@@ -475,7 +560,7 @@ public class RichTextCoordinator: NSObject {
             let trimmedLine = line.trimmingCharacters(in: .whitespaces)
             
             // Count bullets and checkboxes
-            let bulletCount = trimmedLine.components(separatedBy: "◉ ").count - 1
+            let bulletCount = trimmedLine.components(separatedBy: "• ").count - 1
             let checkboxCount = (trimmedLine.components(separatedBy: "○ ").count - 1) + 
                                (trimmedLine.components(separatedBy: "● ").count - 1)
             
@@ -506,10 +591,15 @@ public class RichTextCoordinator: NSObject {
     
     /// Clean up duplicate checkboxes on a line, keeping only one at the start
     private func cleanupDuplicateCheckboxes(_ line: String) -> String {
-        // Remove all checkboxes and clean up extra spaces
-        let withoutCheckboxes = line.replacingOccurrences(of: "○ ", with: "")
+        // Remove all checkboxes but preserve spaces after content
+        var withoutCheckboxes = line.replacingOccurrences(of: "○ ", with: "")
                                    .replacingOccurrences(of: "● ", with: "")
-                                   .trimmingCharacters(in: .whitespaces)
+        
+        // Only trim leading whitespace, preserve trailing and internal spaces
+        while withoutCheckboxes.hasPrefix(" ") {
+            withoutCheckboxes = String(withoutCheckboxes.dropFirst())
+        }
+        
         // Add single checkbox at start (preserve checked state if any were checked)
         let hadCheckedBox = line.contains("● ")
         return (hadCheckedBox ? "● " : "○ ") + withoutCheckboxes
@@ -520,21 +610,22 @@ public class RichTextCoordinator: NSObject {
         
         // Don't process lines that are only whitespace/newlines
         if trimmedLine.isEmpty {
-            // Add custom checkbox to empty line
+            // Add custom checkbox attachment to empty line
             let checkboxAttachment = createCustomCheckboxAttachment(isChecked: false)
-            let checkboxString = NSMutableAttributedString(attachment: checkboxAttachment)
-            checkboxString.append(NSAttributedString(string: " ")) // Space after checkbox
+            let attachmentString = NSAttributedString(attachment: checkboxAttachment)
+            let spaceString = NSAttributedString(string: " ")
+            let checkboxWithSpace = NSMutableAttributedString()
+            checkboxWithSpace.append(attachmentString)
+            checkboxWithSpace.append(spaceString)
             
-            let newLine = NSMutableAttributedString()
-            newLine.append(checkboxString)
             if lineText.hasSuffix("\n") {
-                newLine.append(NSAttributedString(string: "\n"))
+                checkboxWithSpace.append(NSAttributedString(string: "\n"))
             }
             
-            mutableText.replaceCharacters(in: lineRange, with: newLine)
-            textView.attributedText = mutableText
+            mutableText.replaceCharacters(in: lineRange, with: checkboxWithSpace)
             
-            let newCursorPosition = lineRange.location + 1 // Position after checkbox attachment
+            textView.attributedText = mutableText
+            let newCursorPosition = lineRange.location + 2 // Position after checkbox + space
             let safePosition = min(newCursorPosition, mutableText.length)
             textView.selectedRange = NSRange(location: safePosition, length: 0)
             print("🔸 RichTextCoordinator: Added custom checkbox to empty line, cursor at position \(safePosition)")
@@ -553,50 +644,69 @@ public class RichTextCoordinator: NSObject {
             newCursorPosition = lineRange.location + mutableLineText.count
             print("🔸 RichTextCoordinator: Removing checkbox from line")
         } else if trimmedLine.hasPrefix("○") || trimmedLine.hasPrefix("●") {
-            // Line starts with checkbox (but no space) - remove it completely
-            mutableLineText = String(trimmedLine.dropFirst(1)).trimmingCharacters(in: .whitespaces)
+            // Line starts with checkbox (but no space) - remove it completely but preserve trailing spaces
+            var withoutCheckbox = String(trimmedLine.dropFirst(1))
+            // Only trim leading whitespace, preserve trailing spaces
+            while withoutCheckbox.hasPrefix(" ") {
+                withoutCheckbox = String(withoutCheckbox.dropFirst())
+            }
+            mutableLineText = withoutCheckbox
             newCursorPosition = lineRange.location + mutableLineText.count
             print("🔸 RichTextCoordinator: Removing checkbox (no space) from line")
-        } else if trimmedLine.hasPrefix("◉ ") {
+        } else if trimmedLine.hasPrefix("• ") {
             // Replace bullet with custom checkbox
             let contentAfterBullet = String(trimmedLine.dropFirst(2))
             let checkboxAttachment = createCustomCheckboxAttachment(isChecked: false)
-            let checkboxString = NSMutableAttributedString(attachment: checkboxAttachment)
-            checkboxString.append(NSAttributedString(string: " " + contentAfterBullet))
+            let attachmentString = NSAttributedString(attachment: checkboxAttachment)
+            let spaceString = NSAttributedString(string: " ")
+            let contentString = NSAttributedString(string: contentAfterBullet)
             
-            let newLine = NSMutableAttributedString()
-            newLine.append(checkboxString)
+            let checkboxWithContent = NSMutableAttributedString()
+            checkboxWithContent.append(attachmentString)
+            checkboxWithContent.append(spaceString)
+            checkboxWithContent.append(contentString)
+            
             if lineText.hasSuffix("\n") {
-                newLine.append(NSAttributedString(string: "\n"))
+                checkboxWithContent.append(NSAttributedString(string: "\n"))
             }
             
-            mutableText.replaceCharacters(in: lineRange, with: newLine)
+            mutableText.replaceCharacters(in: lineRange, with: checkboxWithContent)
             textView.attributedText = mutableText
             
-            let newCursorPosition = lineRange.location + 1 // Position after checkbox attachment
+            let newCursorPosition = lineRange.location + 2 // Position after checkbox + space
             let safePosition = min(newCursorPosition, mutableText.length)
             textView.selectedRange = NSRange(location: safePosition, length: 0)
+            
             print("🔸 RichTextCoordinator: Replaced bullet with custom checkbox")
+            updateBindingFromTextView()
+            updateContextFromTextView()
             return
         } else if !trimmedLine.contains("○") && !trimmedLine.contains("●") {
-            // Add custom checkbox to line
+            // Add custom checkbox attachment with space
             let checkboxAttachment = createCustomCheckboxAttachment(isChecked: false)
-            let checkboxString = NSMutableAttributedString(attachment: checkboxAttachment)
-            checkboxString.append(NSAttributedString(string: " " + trimmedLine))
+            let attachmentString = NSAttributedString(attachment: checkboxAttachment)
+            let spaceString = NSAttributedString(string: " ")
+            let contentString = NSAttributedString(string: trimmedLine)
             
-            let newLine = NSMutableAttributedString()
-            newLine.append(checkboxString)
+            let checkboxWithContent = NSMutableAttributedString()
+            checkboxWithContent.append(attachmentString)
+            checkboxWithContent.append(spaceString)
+            checkboxWithContent.append(contentString)
+            
             if lineText.hasSuffix("\n") {
-                newLine.append(NSAttributedString(string: "\n"))
+                checkboxWithContent.append(NSAttributedString(string: "\n"))
             }
             
-            mutableText.replaceCharacters(in: lineRange, with: newLine)
+            mutableText.replaceCharacters(in: lineRange, with: checkboxWithContent)
             textView.attributedText = mutableText
             
-            let newCursorPosition = lineRange.location + 1 // Position after checkbox attachment
+            let newCursorPosition = lineRange.location + 2 // Position after checkbox + space
             let safePosition = min(newCursorPosition, mutableText.length)
             textView.selectedRange = NSRange(location: safePosition, length: 0)
+            
             print("🔸 RichTextCoordinator: Added custom checkbox to line")
+            updateBindingFromTextView()
+            updateContextFromTextView()
             return
         } else {
             // Line already contains checkboxes somewhere - don't add another
@@ -604,36 +714,109 @@ public class RichTextCoordinator: NSObject {
             return
         }
         
-        // Fallback for Unicode checkbox removal
+        // Legacy fallback for Unicode checkbox removal (for existing checkboxes)
+        // This handles removal of existing Unicode checkboxes while maintaining the spacing fix
         let newLine = mutableLineText + (lineText.hasSuffix("\n") ? "\n" : "")
         mutableText.replaceCharacters(in: lineRange, with: newLine)
         
-        // Clear formatting from checkbox characters only (first 2 characters if Unicode checkbox: "○ " or "● ")  
-        let checkboxRange = NSRange(location: lineRange.location, length: min(2, newLine.count))
-        if checkboxRange.location + checkboxRange.length <= mutableText.length {
-            let lineStart = (newLine as NSString).substring(to: min(2, newLine.count))
-            if lineStart == "○ " || lineStart == "● " {
-                // Apply clean attributes to checkbox characters only
-                mutableText.removeAttribute(.font, range: checkboxRange)
-                mutableText.removeAttribute(.foregroundColor, range: checkboxRange)
-                mutableText.removeAttribute(.backgroundColor, range: checkboxRange)
-                mutableText.removeAttribute(.underlineStyle, range: checkboxRange)
-                mutableText.removeAttribute(.strikethroughStyle, range: checkboxRange)
-                
-                // Set basic font for checkbox
-                mutableText.addAttribute(.font, value: UIFont.systemFont(ofSize: 16), range: checkboxRange)
-                mutableText.addAttribute(.foregroundColor, value: UIColor.label, range: checkboxRange)
-            }
-        }
-        
-        // Update text view with correct cursor position
+        // Update text view with correct cursor position  
         textView.attributedText = mutableText
         
         // Ensure cursor position is valid for the new text length
         let safePosition = min(newCursorPosition, mutableText.length)
         textView.selectedRange = NSRange(location: safePosition, length: 0)
         
-        print("🎯 RichTextCoordinator: Checkbox format applied - cursor at position \(safePosition)")
+        updateBindingFromTextView()
+        updateContextFromTextView()
+        
+        print("🎯 RichTextCoordinator: Legacy checkbox format applied - cursor at position \(safePosition)")
+    }
+    
+    private func applyCodeBlockFormat(_ mutableText: NSMutableAttributedString, _ lineRange: NSRange, _ lineText: String) {
+        let trimmedLine = lineText.trimmingCharacters(in: .whitespaces)
+        
+        // Don't process lines that are only whitespace/newlines
+        if trimmedLine.isEmpty {
+            // Add code block formatting to empty line - create formatted area without visible backticks
+            let codeText = NSMutableAttributedString(string: "\n" + (lineText.hasSuffix("\n") ? "\n" : ""))
+            
+            // Apply Monaco monospace font to code block
+            let codeFont = UIFont(name: "Monaco", size: 14) ?? UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+            let codeAttributes: [NSAttributedString.Key: Any] = [
+                .font: codeFont,
+                .foregroundColor: UIColor.label,
+                .backgroundColor: UIColor.systemGray6
+            ]
+            codeText.addAttributes(codeAttributes, range: NSRange(location: 0, length: codeText.length))
+            
+            mutableText.replaceCharacters(in: lineRange, with: codeText)
+            textView.attributedText = mutableText
+            
+            let newCursorPosition = lineRange.location + 1 // Position inside the code block (after "\n")
+            let safePosition = min(newCursorPosition, mutableText.length)
+            textView.selectedRange = NSRange(location: safePosition, length: 0)
+            
+            updateBindingFromTextView()
+            updateContextFromTextView()
+            
+            print("🔸 RichTextCoordinator: Added code block to empty line, cursor at position \(safePosition)")
+            return
+        }
+        
+        let mutableLineText: String
+        let newCursorPosition: Int
+        
+        // Check if line already has Monaco font (indicating code block formatting)
+        let currentAttributes = mutableText.attributes(at: lineRange.location, effectiveRange: nil)
+        let hasCodeFormatting = (currentAttributes[.font] as? UIFont)?.fontName.contains("Monaco") == true
+        
+        if hasCodeFormatting {
+            // Remove code block formatting - convert to regular text
+            mutableLineText = trimmedLine
+            newCursorPosition = lineRange.location + trimmedLine.count
+            print("🔸 RichTextCoordinator: Removing code block formatting from line")
+        } else {
+            // Add code block formatting - keep text as-is but apply Monaco font
+            mutableLineText = trimmedLine
+            newCursorPosition = lineRange.location + trimmedLine.count
+            print("🔸 RichTextCoordinator: Adding code block formatting to line")
+        }
+        
+        // Apply the formatting
+        let newLine = mutableLineText + (lineText.hasSuffix("\n") ? "\n" : "")
+        let newAttributedText = NSMutableAttributedString(string: newLine)
+        
+        // Apply Monaco font and background to code blocks or remove formatting
+        if hasCodeFormatting {
+            // Remove code formatting - apply default font
+            let defaultFont = UIFont.systemFont(ofSize: 17)
+            let defaultAttributes: [NSAttributedString.Key: Any] = [
+                .font: defaultFont,
+                .foregroundColor: UIColor.label,
+                .backgroundColor: UIColor.clear
+            ]
+            newAttributedText.addAttributes(defaultAttributes, range: NSRange(location: 0, length: newAttributedText.length))
+        } else {
+            // Apply Monaco code formatting
+            let codeFont = UIFont(name: "Monaco", size: 14) ?? UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+            let codeAttributes: [NSAttributedString.Key: Any] = [
+                .font: codeFont,
+                .foregroundColor: UIColor.label,
+                .backgroundColor: UIColor.systemGray6
+            ]
+            newAttributedText.addAttributes(codeAttributes, range: NSRange(location: 0, length: newAttributedText.length))
+        }
+        
+        mutableText.replaceCharacters(in: lineRange, with: newAttributedText)
+        textView.attributedText = mutableText
+        
+        let safePosition = min(max(0, newCursorPosition), mutableText.length)
+        textView.selectedRange = NSRange(location: safePosition, length: 0)
+        
+        updateBindingFromTextView()
+        updateContextFromTextView()
+        
+        print("🎯 RichTextCoordinator: Code block format applied - cursor at position \(safePosition)")
     }
     
     // MARK: - Indentation
@@ -653,35 +836,50 @@ public class RichTextCoordinator: NSObject {
             lineRange = (text as NSString).lineRange(for: selectedRange)
         }
         
-        // Get all lines that overlap with the selection
+        // Process line by line to preserve formatting
         let selectedText = (text as NSString).substring(with: lineRange)
         let lines = selectedText.components(separatedBy: .newlines)
         
-        var newLines: [String] = []
-        for line in lines {
+        var currentOffset = lineRange.location
+        
+        for (index, line) in lines.enumerated() {
+            let lineLength = line.count
+            let lineEndLength = (index == lines.count - 1) ? 0 : 1 // Account for \n except last line
+            let _ = NSRange(location: currentOffset, length: lineLength + lineEndLength)
+            
             if increase {
-                // Add 4 spaces for indentation
-                newLines.append("    " + line)
+                // Add 4 spaces at the beginning while preserving all formatting
+                let indentString = NSAttributedString(string: "    ")
+                mutableText.insert(indentString, at: currentOffset)
+                currentOffset += 4 // Account for added spaces
             } else {
-                // Remove up to 4 spaces from the beginning
-                let trimmed = line.hasPrefix("    ") ? String(line.dropFirst(4)) :
-                             line.hasPrefix("   ") ? String(line.dropFirst(3)) :
-                             line.hasPrefix("  ") ? String(line.dropFirst(2)) :
-                             line.hasPrefix(" ") ? String(line.dropFirst(1)) : line
-                newLines.append(trimmed)
+                // Remove up to 4 spaces from the beginning while preserving formatting
+                let spacesToRemove = min(4, line.prefix(4).count { $0 == " " })
+                if spacesToRemove > 0 {
+                    let removalRange = NSRange(location: currentOffset, length: spacesToRemove)
+                    if removalRange.location + removalRange.length <= mutableText.length {
+                        mutableText.deleteCharacters(in: removalRange)
+                        currentOffset -= spacesToRemove // Account for removed spaces
+                    }
+                }
+            }
+            
+            // Move to next line
+            currentOffset += lineLength + lineEndLength
+            if !increase {
+                // Adjust for any spaces we removed
+                let spacesRemoved = min(4, line.prefix(4).count { $0 == " " })
+                currentOffset -= spacesRemoved
             }
         }
-        
-        let newContent = newLines.joined(separator: "\n")
-        mutableText.replaceCharacters(in: lineRange, with: newContent)
         
         // Update text view
         textView.attributedText = mutableText
         
         // Adjust cursor position based on indentation change
-        let lengthDifference = newContent.count - selectedText.count
-        let newCursorLocation = min(selectedRange.location + lengthDifference, mutableText.length)
-        textView.selectedRange = NSRange(location: max(0, newCursorLocation), length: 0)
+        let spacesChange = increase ? 4 : -min(4, text.prefix(4).count { $0 == " " })
+        let newCursorLocation = min(max(0, selectedRange.location + spacesChange), mutableText.length)
+        textView.selectedRange = NSRange(location: newCursorLocation, length: 0)
         
         updateBindingFromTextView()
         updateContextFromTextView()
@@ -808,6 +1006,10 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
     }
     
     public func textViewDidBeginEditing(_ textView: UITextView) {
+        // Update typing attributes immediately when editing begins
+        // This ensures that if formatting is active, it applies to the first character
+        updateTypingAttributes()
+        
         DispatchQueue.main.async { [weak self] in
             self?.context.isEditingText = true
         }
@@ -827,11 +1029,130 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
             return handleNewlineInsertion(textView, range)
         }
         
-        // Handle backspace at beginning of list items
+        // Handle backspace at beginning of list items (both selection deletion and single character backspace)
         if text.isEmpty && range.length > 0 {
             return handleBackspaceInList(textView, range)
         }
         
+        // Handle single character backspace that might remove list markers
+        if text.isEmpty && range.length == 1 {
+            return handleSingleCharacterBackspace(textView, range)
+        }
+        
+        // Handle automatic bullet/checkbox conversion
+        if text == " " {
+            return handleAutomaticFormatting(textView, range)
+        }
+        
+        return true
+    }
+    
+    // MARK: - Automatic Formatting
+    
+    private func handleAutomaticFormatting(_ textView: UITextView, _ range: NSRange) -> Bool {
+        let currentText = textView.text ?? ""
+        let lineRange = (currentText as NSString).lineRange(for: range)
+        let lineText = (currentText as NSString).substring(with: lineRange)
+        let _ = lineText.trimmingCharacters(in: .whitespaces)
+        
+        // Get the text from start of line to current cursor position
+        let lineStartToRange = NSRange(location: lineRange.location, length: range.location - lineRange.location)
+        let textBeforeCursor = (currentText as NSString).substring(with: lineStartToRange).trimmingCharacters(in: .whitespaces)
+        
+        // Convert '* ' to bullet point
+        if textBeforeCursor == "*" {
+            let mutableText = NSMutableAttributedString(attributedString: textView.attributedText)
+            
+            // Replace the '*' with '• '
+            let replacementRange = NSRange(location: range.location - 1, length: 1)
+            mutableText.replaceCharacters(in: replacementRange, with: "• ")
+            
+            // Clear formatting from bullet character only (first 2 characters: "• ")
+            let bulletRange = NSRange(location: replacementRange.location, length: 2)
+            if bulletRange.location + bulletRange.length <= mutableText.length {
+                // Apply clean attributes to bullet point only
+                mutableText.removeAttribute(.font, range: bulletRange)
+                mutableText.removeAttribute(.foregroundColor, range: bulletRange)
+                mutableText.removeAttribute(.backgroundColor, range: bulletRange)
+                mutableText.removeAttribute(.underlineStyle, range: bulletRange)
+                mutableText.removeAttribute(.strikethroughStyle, range: bulletRange)
+                
+                // Set basic font for bullet
+                mutableText.addAttribute(.font, value: UIFont.systemFont(ofSize: 16), range: bulletRange)
+                mutableText.addAttribute(.foregroundColor, value: UIColor.label, range: bulletRange)
+            }
+            
+            textView.attributedText = mutableText
+            textView.selectedRange = NSRange(location: range.location + 1, length: 0) // Position after "• "
+            
+            updateBindingFromTextView()
+            updateContextFromTextView()
+            
+            print("🔄 RichTextCoordinator: Auto-converted '* ' to bullet point")
+            return false // Prevent the space from being added
+        }
+        
+        // Convert '- ' to bullet point
+        if textBeforeCursor == "-" {
+            let mutableText = NSMutableAttributedString(attributedString: textView.attributedText)
+            
+            // Replace the '-' with '• '
+            let replacementRange = NSRange(location: range.location - 1, length: 1)
+            mutableText.replaceCharacters(in: replacementRange, with: "• ")
+            
+            // Clear formatting from bullet character only (first 2 characters: "• ")
+            let bulletRange = NSRange(location: replacementRange.location, length: 2)
+            if bulletRange.location + bulletRange.length <= mutableText.length {
+                // Apply clean attributes to bullet point only
+                mutableText.removeAttribute(.font, range: bulletRange)
+                mutableText.removeAttribute(.foregroundColor, range: bulletRange)
+                mutableText.removeAttribute(.backgroundColor, range: bulletRange)
+                mutableText.removeAttribute(.underlineStyle, range: bulletRange)
+                mutableText.removeAttribute(.strikethroughStyle, range: bulletRange)
+                
+                // Set basic font for bullet
+                mutableText.addAttribute(.font, value: UIFont.systemFont(ofSize: 16), range: bulletRange)
+                mutableText.addAttribute(.foregroundColor, value: UIColor.label, range: bulletRange)
+            }
+            
+            textView.attributedText = mutableText
+            textView.selectedRange = NSRange(location: range.location + 1, length: 0) // Position after "• "
+            
+            updateBindingFromTextView()
+            updateContextFromTextView()
+            
+            print("🔄 RichTextCoordinator: Auto-converted '- ' to bullet point")
+            return false // Prevent the space from being added
+        }
+        
+        // Convert '[] ' to checkbox
+        if textBeforeCursor == "[]" {
+            let mutableText = NSMutableAttributedString(attributedString: textView.attributedText)
+            
+            // Replace the '[]' with custom checkbox
+            let replacementRange = NSRange(location: range.location - 2, length: 2)
+            
+            let checkboxAttachment = createCustomCheckboxAttachment(isChecked: false)
+            let attachmentString = NSAttributedString(attachment: checkboxAttachment)
+            let spaceString = NSAttributedString(string: " ")
+            
+            let checkboxWithSpace = NSMutableAttributedString()
+            checkboxWithSpace.append(attachmentString)
+            checkboxWithSpace.append(spaceString)
+            
+            mutableText.replaceCharacters(in: replacementRange, with: checkboxWithSpace)
+            
+            textView.attributedText = mutableText
+            textView.selectedRange = NSRange(location: range.location, length: 0) // Position after checkbox + space
+            
+            updateBindingFromTextView()
+            updateContextFromTextView()
+            
+            print("🔄 RichTextCoordinator: Auto-converted '[] ' to checkbox")
+            return false // Prevent the space from being added
+        }
+        
+        // No automatic conversion needed - allow normal space
         return true
     }
     
@@ -845,7 +1166,7 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         let trimmedLine = lineText.trimmingCharacters(in: .whitespacesAndNewlines)
         
         // Continue bullet lists
-        if trimmedLine.hasPrefix("◉ ") {
+        if trimmedLine.hasPrefix("• ") {
             let remainingText = String(trimmedLine.dropFirst(2)).trimmingCharacters(in: .whitespaces)
             if remainingText.isEmpty {
                 // Empty bullet - remove it
@@ -870,10 +1191,10 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
                 // Add new bullet
                 isHandlingNewlineInsertion = true
                 let mutableText = NSMutableAttributedString(attributedString: textView.attributedText)
-                mutableText.replaceCharacters(in: range, with: "\n◉ ")
+                mutableText.replaceCharacters(in: range, with: "\n• ")
                 
                 // Clear formatting from new bullet line (bullet + space only, not affecting existing text)
-                let bulletRange = NSRange(location: range.location + 1, length: 2) // "\n◉ " -> just "◉ "
+                let bulletRange = NSRange(location: range.location + 1, length: 2) // "\n• " -> just "• "
                 if bulletRange.location + bulletRange.length <= mutableText.length {
                     // Remove all text formatting from bullet
                     mutableText.removeAttribute(.font, range: bulletRange)
@@ -897,13 +1218,8 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
                     .foregroundColor: UIColor.label
                 ]
                 
-                // Reset text formatting state in context (keep bullets active)
-                DispatchQueue.main.async { [weak self] in
-                    self?.context.isBoldActive = false
-                    self?.context.isItalicActive = false
-                    self?.context.isUnderlineActive = false
-                    self?.context.isStrikethroughActive = false
-                }
+                // Don't reset text formatting state - let user continue with their selected formatting
+                // Only reset for bullet content, not for regular text formatting
                 
                 // Update binding and context after the change
                 updateBindingFromTextView()
@@ -917,8 +1233,9 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
             }
         }
         
-        // Continue checkbox lists  
-        if trimmedLine.hasPrefix("○ ") || trimmedLine.hasPrefix("● ") {
+        // Continue checkbox lists (handle both custom attachments and Unicode checkboxes)
+        let hasCheckboxAtStart = checkForCheckboxAtLineStart(mutableText: NSMutableAttributedString(attributedString: textView.attributedText), lineRange: lineRange, lineText: lineText)
+        if hasCheckboxAtStart || trimmedLine.hasPrefix("○ ") || trimmedLine.hasPrefix("● ") {
             let remainingText = String(trimmedLine.dropFirst(2)).trimmingCharacters(in: .whitespaces)
             if remainingText.isEmpty {
                 // Empty checkbox - remove it
@@ -940,43 +1257,31 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
                 }
                 return false
             } else {
-                // Add new checkbox
+                // Add new custom checkbox
                 isHandlingNewlineInsertion = true
                 let mutableText = NSMutableAttributedString(attributedString: textView.attributedText)
-                mutableText.replaceCharacters(in: range, with: "\n○ ")
                 
-                // Clear formatting from new checkbox line (checkbox + space only, not affecting existing text)
-                let checkboxRange = NSRange(location: range.location + 1, length: 2) // "\n○ " -> just "○ "
-                if checkboxRange.location + checkboxRange.length <= mutableText.length {
-                    // Remove all text formatting from checkbox
-                    mutableText.removeAttribute(.font, range: checkboxRange)
-                    mutableText.removeAttribute(.foregroundColor, range: checkboxRange)
-                    mutableText.removeAttribute(.backgroundColor, range: checkboxRange)
-                    mutableText.removeAttribute(.underlineStyle, range: checkboxRange)
-                    mutableText.removeAttribute(.strikethroughStyle, range: checkboxRange)
-                    
-                    // Set clean attributes for checkbox
-                    mutableText.addAttribute(.font, value: UIFont.systemFont(ofSize: 16), range: checkboxRange)
-                    mutableText.addAttribute(.foregroundColor, value: UIColor.label, range: checkboxRange)
-                }
+                // Create new checkbox with newline prefix
+                let newlineString = NSAttributedString(string: "\n")
+                let checkboxAttachment = createCustomCheckboxAttachment(isChecked: false)
+                let attachmentString = NSAttributedString(attachment: checkboxAttachment)
+                let spaceString = NSAttributedString(string: " ")
+                
+                let newCheckboxLine = NSMutableAttributedString()
+                newCheckboxLine.append(newlineString)
+                newCheckboxLine.append(attachmentString)
+                newCheckboxLine.append(spaceString)
+                
+                mutableText.replaceCharacters(in: range, with: newCheckboxLine)
                 
                 textView.attributedText = mutableText
-                let newCursorPosition = range.location + 3
+                let newCursorPosition = range.location + 3 // Position after "\n" + checkbox + space
                 textView.selectedRange = NSRange(location: newCursorPosition, length: 0)
                 
-                // Clear typing attributes to reset formatting for new text
-                textView.typingAttributes = [
-                    .font: UIFont.systemFont(ofSize: 16),
-                    .foregroundColor: UIColor.label
-                ]
+                // Update typing attributes to maintain current formatting state
+                updateTypingAttributes()
                 
-                // Reset text formatting state in context (keep checkboxes active)
-                DispatchQueue.main.async { [weak self] in
-                    self?.context.isBoldActive = false
-                    self?.context.isItalicActive = false
-                    self?.context.isUnderlineActive = false
-                    self?.context.isStrikethroughActive = false
-                }
+                // Don't reset text formatting state - let user continue with their selected formatting
                 
                 // Update binding and context after the change
                 updateBindingFromTextView()
@@ -990,20 +1295,11 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
             }
         }
         
-        // No bullets or checkboxes - just reset formatting for regular new line
-        // Clear typing attributes to reset formatting for new text after Enter
-        textView.typingAttributes = [
-            .font: UIFont.systemFont(ofSize: 16),
-            .foregroundColor: UIColor.label
-        ]
+        // No bullets or checkboxes - maintain current formatting for regular new line
+        // Update typing attributes to maintain current formatting state
+        updateTypingAttributes()
         
-        // Reset text formatting state in context
-        DispatchQueue.main.async { [weak self] in
-            self?.context.isBoldActive = false
-            self?.context.isItalicActive = false
-            self?.context.isUnderlineActive = false
-            self?.context.isStrikethroughActive = false
-        }
+        // Don't reset formatting state - let user continue with their selected formatting
         
         return true
     }
@@ -1014,15 +1310,111 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         let lineText = (currentText as NSString).substring(with: lineRange)
         let trimmedLine = lineText.trimmingCharacters(in: .whitespacesAndNewlines)
         
-        // Check if we're at the beginning of a list item
-        if range.location == lineRange.location + (lineText.count - lineText.ltrimmed().count) {
-            if trimmedLine.hasPrefix("◉ ") || trimmedLine.hasPrefix("○ ") || trimmedLine.hasPrefix("● ") {
-                // Remove the list marker
-                let mutableText = NSMutableAttributedString(attributedString: textView.attributedText)
-                let markerRange = NSRange(location: lineRange.location + (lineText.count - lineText.ltrimmed().count), length: 2)
+        // Find the start of the list marker (after any leading whitespace)
+        let leadingWhitespaceCount = lineText.count - lineText.ltrimmed().count
+        let markerPosition = lineRange.location + leadingWhitespaceCount
+        
+        // Check if we're positioned right after a bullet/checkbox marker (cursor is at marker position + 2)
+        let isAfterMarker = range.location == markerPosition + 2
+        let isAtLineStart = range.location == lineRange.location + leadingWhitespaceCount
+        
+        // Handle backspace if cursor is at beginning of line or right after marker
+        if isAtLineStart || isAfterMarker {
+            let mutableText = NSMutableAttributedString(attributedString: textView.attributedText)
+            
+            // Check for custom checkbox attachment first
+            if markerPosition < mutableText.length,
+               let attachment = mutableText.attribute(.attachment, at: markerPosition, effectiveRange: nil) as? NSTextAttachment,
+               attachment.image != nil {
+                // Remove custom checkbox attachment + space
+                let lengthToRemove = min(2, mutableText.length - markerPosition)
+                guard lengthToRemove > 0 else { return true }
+                
+                let markerRange = NSRange(location: markerPosition, length: lengthToRemove)
                 mutableText.replaceCharacters(in: markerRange, with: "")
                 textView.attributedText = mutableText
-                textView.selectedRange = NSRange(location: range.location - 2, length: 0)
+                
+                // Position cursor where the marker was
+                textView.selectedRange = NSRange(location: markerPosition, length: 0)
+                
+                updateBindingFromTextView()
+                updateContextFromTextView()
+                
+                print("🔄 RichTextCoordinator: Removed checkbox with backspace")
+                return false
+            }
+            // Check for Unicode checkboxes and bullets
+            else if trimmedLine.hasPrefix("• ") || trimmedLine.hasPrefix("○ ") || trimmedLine.hasPrefix("● ") {
+                // Remove the list marker + space
+                let lengthToRemove = min(2, mutableText.length - markerPosition)
+                guard lengthToRemove > 0 else { return true }
+                
+                let markerRange = NSRange(location: markerPosition, length: lengthToRemove)
+                mutableText.replaceCharacters(in: markerRange, with: "")
+                textView.attributedText = mutableText
+                
+                // Position cursor where the marker was
+                textView.selectedRange = NSRange(location: markerPosition, length: 0)
+                
+                updateBindingFromTextView()
+                updateContextFromTextView()
+                
+                print("🔄 RichTextCoordinator: Removed bullet/checkbox with backspace")
+                return false
+            }
+        }
+        
+        return true
+    }
+    
+    private func handleSingleCharacterBackspace(_ textView: UITextView, _ range: NSRange) -> Bool {
+        let currentText = textView.text ?? ""
+        guard range.location > 0 else { return true }
+        
+        let lineRange = (currentText as NSString).lineRange(for: NSRange(location: range.location - 1, length: 0))
+        let lineText = (currentText as NSString).substring(with: lineRange)
+        let trimmedLine = lineText.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // Find the start of the list marker (after any leading whitespace)
+        let leadingWhitespaceCount = lineText.count - lineText.ltrimmed().count
+        let markerPosition = lineRange.location + leadingWhitespaceCount
+        
+        // Check if we're backspacing right after a bullet/checkbox marker
+        // The marker is 2 characters (e.g. "• " or "○ "), so check if cursor is anywhere after that
+        let isAfterMarker = range.location > markerPosition + 1 && 
+                           (trimmedLine.hasPrefix("• ") || trimmedLine.hasPrefix("○ ") || trimmedLine.hasPrefix("● "))
+        
+        // Also check for custom checkbox attachment
+        let hasCustomCheckbox = markerPosition < textView.attributedText.length && 
+                               textView.attributedText.attribute(.attachment, at: markerPosition, effectiveRange: nil) is NSTextAttachment
+        
+        // If we're right after a marker and this line only has the marker + one character, remove the whole line
+        if (isAfterMarker || (hasCustomCheckbox && range.location > markerPosition + 1)) {
+            let contentAfterMarker = trimmedLine.dropFirst(2) // Remove "• " or similar
+            let trimmedContent = contentAfterMarker.trimmingCharacters(in: .whitespaces)
+            
+            // If there's only one character after the marker, remove the entire marker when backspacing
+            if trimmedContent.count == 1 {
+                let mutableText = NSMutableAttributedString(attributedString: textView.attributedText)
+                
+                // Remove the entire marker and its content
+                if hasCustomCheckbox {
+                    let lengthToRemove = min(3, mutableText.length - markerPosition) // attachment + space + character
+                    let removeRange = NSRange(location: markerPosition, length: lengthToRemove)
+                    mutableText.replaceCharacters(in: removeRange, with: "")
+                } else {
+                    let lengthToRemove = min(3, mutableText.length - markerPosition) // marker + space + character  
+                    let removeRange = NSRange(location: markerPosition, length: lengthToRemove)
+                    mutableText.replaceCharacters(in: removeRange, with: "")
+                }
+                
+                textView.attributedText = mutableText
+                textView.selectedRange = NSRange(location: markerPosition, length: 0)
+                
+                updateBindingFromTextView()
+                updateContextFromTextView()
+                
+                print("🔄 RichTextCoordinator: Removed marker and first character with single backspace")
                 return false
             }
         }
@@ -1032,35 +1424,59 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
     
     // MARK: - Individual Checkbox Toggling
     
-    /// Toggle a specific checkbox between ○ (unchecked) and ● (checked)
+    /// Toggle a specific checkbox between unchecked and checked (handles both custom attachments and Unicode)
     public func toggleCheckboxAtPosition(_ position: Int) {
-        let text = textView.text ?? ""
+        guard let attributedText = textView.attributedText else { return }
+        let text = attributedText.string
         guard position < text.count else { return }
         
         let lineRange = (text as NSString).lineRange(for: NSRange(location: position, length: 0))
         let lineText = (text as NSString).substring(with: lineRange)
         let trimmedLine = lineText.trimmingCharacters(in: .whitespaces)
         
-        let mutableText = NSMutableAttributedString(attributedString: textView.attributedText)
+        let mutableText = NSMutableAttributedString(attributedString: attributedText)
+        let checkboxStartPosition = lineRange.location + (lineText.count - lineText.ltrimmed().count)
         
+        // First, check for custom checkbox attachment at the start of the line
+        if checkboxStartPosition < mutableText.length {
+            if let attachment = mutableText.attribute(.attachment, at: checkboxStartPosition, effectiveRange: nil) as? NSTextAttachment,
+               attachment.image != nil {
+                // This is a custom checkbox attachment - toggle it
+                let isCurrentlyChecked = isCheckboxAttachmentChecked(attachment)
+                let newAttachment = createCustomCheckboxAttachment(isChecked: !isCurrentlyChecked)
+                
+                // Replace the attachment while preserving the space (validate bounds first)
+                guard checkboxStartPosition < mutableText.length else { return }
+                mutableText.replaceCharacters(in: NSRange(location: checkboxStartPosition, length: 1), 
+                                            with: NSAttributedString(attachment: newAttachment))
+                
+                textView.attributedText = mutableText
+                updateBindingFromTextView()
+                updateContextFromTextView()
+                print("🔄 RichTextCoordinator: Toggled custom checkbox to \(isCurrentlyChecked ? "unchecked" : "checked")")
+                return
+            }
+        }
+        
+        // Fallback: Handle legacy Unicode checkboxes
         if trimmedLine.hasPrefix("○ ") {
-            // Change unchecked to checked
-            let checkboxRange = NSRange(location: lineRange.location + (lineText.count - lineText.ltrimmed().count), length: 2)
-            let checkedAttachment = createCustomCheckboxAttachment(isChecked: true)
-            mutableText.replaceCharacters(in: checkboxRange, with: NSAttributedString(attachment: checkedAttachment))
+            // Change unchecked to checked - replace just the checkbox character, preserve the space
+            guard checkboxStartPosition < mutableText.length else { return }
+            let checkboxCharRange = NSRange(location: checkboxStartPosition, length: 1)
+            mutableText.replaceCharacters(in: checkboxCharRange, with: "●")
             textView.attributedText = mutableText
             updateBindingFromTextView()
             updateContextFromTextView()
-            print("🔄 RichTextCoordinator: Toggled checkbox to checked")
+            print("🔄 RichTextCoordinator: Toggled Unicode checkbox to checked")
         } else if trimmedLine.hasPrefix("● ") {
-            // Change checked to unchecked
-            let checkboxRange = NSRange(location: lineRange.location + (lineText.count - lineText.ltrimmed().count), length: 2)
-            let uncheckedAttachment = createCustomCheckboxAttachment(isChecked: false)
-            mutableText.replaceCharacters(in: checkboxRange, with: NSAttributedString(attachment: uncheckedAttachment))
+            // Change checked to unchecked - replace just the checkbox character, preserve the space
+            guard checkboxStartPosition < mutableText.length else { return }
+            let checkboxCharRange = NSRange(location: checkboxStartPosition, length: 1)
+            mutableText.replaceCharacters(in: checkboxCharRange, with: "○")
             textView.attributedText = mutableText
             updateBindingFromTextView()
             updateContextFromTextView()
-            print("🔄 RichTextCoordinator: Toggled checkbox to unchecked")
+            print("🔄 RichTextCoordinator: Toggled Unicode checkbox to unchecked")
         }
     }
     
@@ -1075,29 +1491,16 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         // Set accessibility label to track checkbox state
         attachment.accessibilityLabel = isChecked ? "checked" : "unchecked"
         
-        // Size the checkbox to match text line height with safe bounds
-        let fontSize = max(12.0, min(context.fontSize, 24.0)) // Clamp to reasonable range
-        let sizeFactor: CGFloat = 0.9
-        let checkboxWidth = fontSize * sizeFactor
-        let checkboxHeight = fontSize * sizeFactor
+        // Use a fixed, smaller size that aligns better with text
+        let checkboxSize: CGFloat = 14 // Fixed size that works well with most text sizes
         
-        // Validate dimensions to prevent NaN errors
-        guard checkboxWidth > 0 && checkboxHeight > 0 && 
-              checkboxWidth.isFinite && checkboxHeight.isFinite else {
-            print("⚠️ RichTextCoordinator: Invalid checkbox dimensions, using defaults")
-            attachment.bounds = CGRect(x: 0, y: -2, width: 14, height: 14)
-            return attachment
-        }
-        
-        let checkboxSize = CGSize(width: checkboxWidth, height: checkboxHeight)
-        let yOffset = max(-fontSize * 0.2, -4.0) // Reasonable offset
-        
-        // Validate offset to prevent NaN
-        let safeYOffset = yOffset.isFinite && !yOffset.isNaN ? yOffset : -2.0
+        // Simple baseline alignment - position checkbox to align with text baseline
+        // Negative Y value moves the checkbox down to align with text
+        let yOffset: CGFloat = -2 // Slight downward offset to align with text baseline
         
         attachment.bounds = CGRect(
-            origin: CGPoint(x: 0, y: safeYOffset), 
-            size: checkboxSize
+            origin: CGPoint(x: 0, y: yOffset), 
+            size: CGSize(width: checkboxSize, height: checkboxSize)
         )
         
         return attachment
@@ -1105,7 +1508,7 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
     
     /// Generate a custom checkbox image programmatically
     private func generateCheckboxImage(isChecked: Bool) -> UIImage {
-        let size = CGSize(width: 16, height: 16)
+        let size = CGSize(width: 14, height: 14) // Smaller size to match text better
         
         // Validate size to prevent NaN errors
         guard size.width > 0 && size.height > 0 && size.width.isFinite && size.height.isFinite else {
@@ -1120,7 +1523,7 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
             let rect = CGRect(origin: .zero, size: size)
             
             // Ensure all coordinates are valid
-            let insetValue: CGFloat = 1.0
+            let insetValue: CGFloat = 1.5
             let insetRect = rect.insetBy(dx: insetValue, dy: insetValue)
             
             // Validate rect dimensions
@@ -1129,27 +1532,34 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
                 return
             }
             
-            // Draw black circle outline
-            cgContext.setStrokeColor(UIColor.black.cgColor)
-            cgContext.setLineWidth(1.5)
+            // Draw circle outline with better styling
+            cgContext.setStrokeColor(UIColor.systemGray.cgColor)
+            cgContext.setLineWidth(1.8)
             cgContext.addEllipse(in: insetRect)
             cgContext.strokePath()
+            
+            // Fill background if checked
+            if isChecked {
+                cgContext.setFillColor(UIColor.systemGreen.withAlphaComponent(0.15).cgColor)
+                cgContext.addEllipse(in: insetRect)
+                cgContext.fillPath()
+            }
             
             // Draw green checkmark if checked
             if isChecked {
                 cgContext.setStrokeColor(UIColor.systemGreen.cgColor)
-                cgContext.setLineWidth(2.0)
+                cgContext.setLineWidth(1.8) // Thinner line for smaller checkbox
                 cgContext.setLineCap(.round)
                 cgContext.setLineJoin(.round)
                 
-                // Draw checkmark path with validated coordinates
+                // Draw checkmark path with coordinates adjusted for 14x14 size
                 let checkmarkPath = UIBezierPath()
-                let startX: CGFloat = 4.0
-                let startY: CGFloat = 8.0
-                let midX: CGFloat = 7.0
-                let midY: CGFloat = 11.0
-                let endX: CGFloat = 12.0
-                let endY: CGFloat = 5.0
+                let startX: CGFloat = 3.5
+                let startY: CGFloat = 7.0
+                let midX: CGFloat = 6.0
+                let midY: CGFloat = 9.5
+                let endX: CGFloat = 10.5
+                let endY: CGFloat = 4.5
                 
                 // Validate all coordinates
                 let points = [startX, startY, midX, midY, endX, endY]
@@ -1184,8 +1594,8 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         // Check for NSTextAttachment (custom checkbox)
         if let attachment = attributedText.attribute(.attachment, at: tapIndex, effectiveRange: nil) as? NSTextAttachment,
            attachment.image != nil {
-            // This is a custom checkbox attachment - toggle it
-            toggleCustomCheckboxAtPosition(tapIndex)
+            // This is a custom checkbox attachment - toggle it using the unified method
+            toggleCheckboxAtPosition(tapIndex)
             print("🎯 RichTextCoordinator: Toggled custom checkbox attachment at position \(tapIndex)")
             return
         }
@@ -1205,9 +1615,11 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
             let leadingWhitespace = lineText.count - lineText.ltrimmed().count
             let checkboxPosition = lineStart + leadingWhitespace
             
-            // Check if the tap was on or near the checkbox character (give some tolerance)
-            if abs(tapIndex - checkboxPosition) <= 2 {
-                toggleCheckboxAtPosition(tapIndex)
+            // Much larger tap area for easier interaction
+            // Allow tapping on the checkbox itself, the space after it, and a bit beyond
+            let tapTolerance = 8 // Much larger tap area
+            if abs(tapIndex - checkboxPosition) <= tapTolerance {
+                toggleCheckboxAtPosition(checkboxPosition) // Use checkbox position, not tap position
                 return
             }
         }
@@ -1295,6 +1707,22 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
             }
         }
         
+        return false
+    }
+    
+    // MARK: - Helper Methods
+    
+    /// Check if a line starts with a custom checkbox attachment
+    private func checkForCheckboxAtLineStart(mutableText: NSMutableAttributedString, lineRange: NSRange, lineText: String) -> Bool {
+        let checkboxStartPosition = lineRange.location + (lineText.count - lineText.ltrimmed().count)
+        
+        if checkboxStartPosition < mutableText.length {
+            if let attachment = mutableText.attribute(.attachment, at: checkboxStartPosition, effectiveRange: nil) as? NSTextAttachment,
+               attachment.image != nil {
+                // This looks like a checkbox attachment
+                return true
+            }
+        }
         return false
     }
     

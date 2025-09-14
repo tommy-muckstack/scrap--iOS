@@ -68,6 +68,9 @@ public class RichTextContext: ObservableObject {
     /// Whether checkbox formatting is active
     @Published public internal(set) var isCheckboxActive = false
     
+    /// Whether code block formatting is active
+    @Published public internal(set) var isCodeBlockActive = false
+    
     // MARK: - Editor Capabilities
     
     /// Whether content can be copied
@@ -118,31 +121,29 @@ public class RichTextContext: ObservableObject {
         formattingJustApplied = true
         actionPublisher.send(.toggleStyle(.bold))
         
-        // Update UI state after action is sent to prevent race conditions
-        DispatchQueue.main.async {
-            self.isBoldActive.toggle()
-        }
+        // Don't toggle the state here - let the coordinator update it based on what actually happened
+        // This prevents the UI state from getting out of sync with the actual text formatting
     }
     
     /// Toggle italic formatting
     public func toggleItalic() {
         formattingJustApplied = true
-        isItalicActive.toggle()
         actionPublisher.send(.toggleStyle(.italic))
+        // Don't toggle the state here - let the coordinator update it
     }
     
     /// Toggle underline formatting
     public func toggleUnderline() {
         formattingJustApplied = true
-        isUnderlineActive.toggle()
         actionPublisher.send(.toggleStyle(.underline))
+        // Don't toggle the state here - let the coordinator update it
     }
     
     /// Toggle strikethrough formatting
     public func toggleStrikethrough() {
         formattingJustApplied = true
-        isStrikethroughActive.toggle()
         actionPublisher.send(.toggleStyle(.strikethrough))
+        // Don't toggle the state here - let the coordinator update it
     }
     
     /// Toggle bullet list formatting
@@ -157,6 +158,15 @@ public class RichTextContext: ObservableObject {
         isCheckboxActive.toggle()
         isBulletListActive = false // Exclusive with bullet list
         actionPublisher.send(.toggleBlockFormat(.checkbox))
+    }
+    
+    /// Toggle code block formatting
+    public func toggleCodeBlock() {
+        isCodeBlockActive.toggle()
+        // Code blocks are exclusive with lists
+        isBulletListActive = false
+        isCheckboxActive = false
+        actionPublisher.send(.toggleBlockFormat(.codeBlock))
     }
     
     /// Increase indentation
@@ -299,25 +309,36 @@ public class RichTextContext: ObservableObject {
     }
     
     private func updateBlockFormatState() {
-        // Check if current line has bullet or checkbox formatting
+        // Check if current line has bullet, checkbox, or code block formatting
         let currentText = attributedString.string
         guard selectedRange.location < currentText.count else {
             isBulletListActive = false
             isCheckboxActive = false
+            isCodeBlockActive = false
             return
         }
         
         // Find the current line
         let lineRange = (currentText as NSString).lineRange(for: selectedRange)
         let lineText = (currentText as NSString).substring(with: lineRange)
+        let trimmedLine = lineText.trimmingCharacters(in: .whitespaces)
         
-        // Check for list markers
-        let bulletActive = lineText.trimmingCharacters(in: .whitespaces).hasPrefix("◉")
-        let checkboxActive = lineText.trimmingCharacters(in: .whitespaces).hasPrefix("○") || 
-                            lineText.trimmingCharacters(in: .whitespaces).hasPrefix("●")
+        // Check for list markers and formatting
+        let bulletActive = trimmedLine.hasPrefix("•")
+        let checkboxActive = trimmedLine.hasPrefix("○") || trimmedLine.hasPrefix("●")
+        
+        // Check for code block formatting by looking at font attributes instead of text markers
+        let codeBlockActive: Bool
+        if selectedRange.location < attributedString.length && selectedRange.location >= 0 {
+            let attributes = attributedString.attributes(at: max(0, min(selectedRange.location, attributedString.length - 1)), effectiveRange: nil)
+            codeBlockActive = (attributes[.font] as? UIFont)?.fontName.contains("Monaco") == true
+        } else {
+            codeBlockActive = false
+        }
         
         isBulletListActive = bulletActive
         isCheckboxActive = checkboxActive
+        isCodeBlockActive = codeBlockActive
     }
     
     /// Update undo/redo capabilities
@@ -359,4 +380,5 @@ public enum RichTextStyle {
 public enum RichTextBlockFormat {
     case bulletList
     case checkbox
+    case codeBlock
 }

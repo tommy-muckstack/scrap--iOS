@@ -67,7 +67,7 @@ struct SettingsView: View {
                                     
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text("Scrap")
-                                            .font(GentleLightning.Typography.subtitle)
+                                            .font(GentleLightning.Typography.titleEmphasis)
                                             .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
                                         
                                         Text("The world's simplest notepad")

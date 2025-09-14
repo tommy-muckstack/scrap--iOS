@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		VSB265A2C19F0013D2789802D2 /* VectorSearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = VSBB8F96838EAF9CAB96FC412B /* VectorSearchService.swift */; };
 		RCB7600E0A0B026201786F2131 /* RichTextContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = RCCABB85C9FF0BBEE223B3A7B5 /* RichTextContext.swift */; };
 		RC7A674C6B95C322B02410EC74 /* RichTextCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = RCE4FD307E47D569B669CE633A /* RichTextCoordinator.swift */; };
 		RC7762BA2291946641555033DE /* RichTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = RC6691F824B3D8177B68116C03 /* RichTextEditor.swift */; };
@@ -76,6 +77,7 @@
 		1D1A2B262B1234567890ABCC /* Scrap.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Scrap.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1D1A2B292B1234567890ABCD /* ScrapApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrapApp.swift; sourceTree = "<group>"; };
 		1D1A2B2B2B1234567890ABCE /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		VSBB8F96838EAF9CAB96FC412B /* VectorSearchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VectorSearchService.swift; sourceTree = "<group>"; };
 		RCCABB85C9FF0BBEE223B3A7B5 /* RichTextContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/RichTextContext.swift; sourceTree = "<group>"; };
 		RCE4FD307E47D569B669CE633A /* RichTextCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/RichTextCoordinator.swift; sourceTree = "<group>"; };
 		RC6691F824B3D8177B68116C03 /* RichTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/RichTextEditor.swift; sourceTree = "<group>"; };
@@ -181,6 +183,7 @@
 				BB304E792E6F9E750054DD40 /* GoogleService-Info.plist */,
 				1D1A2B292B1234567890ABCD /* ScrapApp.swift */,
 				1D1A2B2B2B1234567890ABCE /* ContentView.swift */,
+				VSBB8F96838EAF9CAB96FC412B /* VectorSearchService.swift */,
 				RCCABB85C9FF0BBEE223B3A7B5 /* RichTextContext.swift */,
 				RCE4FD307E47D569B669CE633A /* RichTextCoordinator.swift */,
 				RC6691F824B3D8177B68116C03 /* RichTextEditor.swift */,
@@ -371,6 +374,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1D1A2B2C2B1234567890ABCE /* ContentView.swift in Sources */,
+				VSB265A2C19F0013D2789802D2 /* VectorSearchService.swift in Sources */,
 				RCB7600E0A0B026201786F2131 /* RichTextContext.swift in Sources */,
 				RC7A674C6B95C322B02410EC74 /* RichTextCoordinator.swift in Sources */,
 				RC7762BA2291946641555033DE /* RichTextEditor.swift in Sources */,

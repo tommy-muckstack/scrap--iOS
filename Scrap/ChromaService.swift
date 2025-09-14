@@ -2,6 +2,7 @@ import Foundation
 
 // MARK: - Chroma Models
 struct ChromaCollection: Codable {
+    let id: String?
     let name: String
     let metadata: [String: String]?
 }
@@ -29,7 +30,6 @@ struct ChromaMetadata: Codable {
 }
 
 // MARK: - Chroma Service
-@MainActor
 class ChromaService: ObservableObject {
     static let shared = ChromaService()
     
@@ -40,29 +40,54 @@ class ChromaService: ObservableObject {
     @Published var isConnected = false
     @Published var error: String?
     
+    private var collectionId: String?
+    
     init() {
         // Railway Chroma deployment URL
         self.baseURL = "https://spark-ios-production.up.railway.app"
         
-        Task { @MainActor in
+        Task {
             await initializeCollection()
         }
     }
     
     // MARK: - Collection Management
+    @MainActor
     private func initializeCollection() async {
         do {
+            print("🔍 ChromaService: Initializing collection at \(baseURL)")
+            
             // Check if collection exists, create if not
             let collections = try await getCollections()
-            if !collections.contains(where: { $0.name == collectionName }) {
+            print("🔍 ChromaService: Found \(collections.count) collections")
+            
+            // Debug: Print all collections
+            for collection in collections {
+                print("🔍 ChromaService: Collection - ID: \(collection.id ?? "nil"), Name: \(collection.name)")
+            }
+            
+            if let existingCollection = collections.first(where: { $0.name == collectionName }) {
+                print("🔍 ChromaService: Collection '\(collectionName)' already exists")
+                self.collectionId = existingCollection.id
+                print("🔍 ChromaService: Using collection ID: \(existingCollection.id ?? "nil")")
+            } else {
+                print("🔍 ChromaService: Creating collection '\(collectionName)'")
                 try await createCollection()
+                // After creating, get the collection to find its ID
+                let updatedCollections = try await getCollections()
+                if let newCollection = updatedCollections.first(where: { $0.name == collectionName }) {
+                    self.collectionId = newCollection.id
+                    print("🔍 ChromaService: Created collection with ID: \(newCollection.id ?? "nil")")
+                }
             }
             
             self.isConnected = true
             self.error = nil
+            print("✅ ChromaService: Successfully connected to ChromaDB")
         } catch {
             self.isConnected = false
             self.error = "Failed to connect to Chroma: \(error.localizedDescription)"
+            print("💥 ChromaService: Failed to initialize: \(error)")
         }
     }
     
@@ -70,9 +95,16 @@ class ChromaService: ObservableObject {
         let url = URL(string: "\(baseURL)/api/v1/collections")!
         let (data, response) = try await session.data(from: url)
         
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
-            throw ChromaError.networkError("Failed to get collections")
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw ChromaError.networkError("Invalid response format")
+        }
+        
+        guard httpResponse.statusCode == 200 else {
+            let errorMessage = "HTTP \(httpResponse.statusCode)"
+            if let errorData = String(data: data, encoding: .utf8) {
+                print("🔍 ChromaService getCollections error response: \(errorData)")
+            }
+            throw ChromaError.networkError("Failed to get collections: \(errorMessage)")
         }
         
         return try JSONDecoder().decode([ChromaCollection].self, from: data)
@@ -85,6 +117,7 @@ class ChromaService: ObservableObject {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
         let collection = ChromaCollection(
+            id: nil, // Let server assign ID
             name: collectionName,
             metadata: ["description": "Spark notes vector storage"]
         )
@@ -107,7 +140,11 @@ class ChromaService: ObservableObject {
         metadata: ChromaMetadata
     ) async throws {
         
-        let url = URL(string: "\(baseURL)/api/v1/collections/\(collectionName)/add")!
+        guard let collectionId = collectionId else {
+            throw ChromaError.networkError("Collection not initialized")
+        }
+        
+        let url = URL(string: "\(baseURL)/api/v1/collections/\(collectionId)/add")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -150,7 +187,11 @@ class ChromaService: ObservableObject {
         filter: [String: Any]? = nil
     ) async throws -> ChromaQueryResult {
         
-        let url = URL(string: "\(baseURL)/api/v1/collections/\(collectionName)/query")!
+        guard let collectionId = collectionId else {
+            throw ChromaError.networkError("Collection not initialized")
+        }
+        
+        let url = URL(string: "\(baseURL)/api/v1/collections/\(collectionId)/query")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -172,16 +213,27 @@ class ChromaService: ObservableObject {
         
         let (data, response) = try await session.data(for: request)
         
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
-            throw ChromaError.networkError("Failed to query documents")
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw ChromaError.networkError("Invalid response format")
+        }
+        
+        guard httpResponse.statusCode == 200 else {
+            let errorMessage = "HTTP \(httpResponse.statusCode)"
+            if let errorData = String(data: data, encoding: .utf8) {
+                print("🔍 ChromaService query error response: \(errorData)")
+            }
+            throw ChromaError.networkError("Failed to query documents: \(errorMessage)")
         }
         
         return try JSONDecoder().decode(ChromaQueryResult.self, from: data)
     }
     
     func deleteDocument(id: String) async throws {
-        let url = URL(string: "\(baseURL)/api/v1/collections/\(collectionName)/delete")!
+        guard let collectionId = collectionId else {
+            throw ChromaError.networkError("Collection not initialized")
+        }
+        
+        let url = URL(string: "\(baseURL)/api/v1/collections/\(collectionId)/delete")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -235,15 +287,40 @@ enum ChromaError: Error, LocalizedError {
 class EmbeddingService {
     static let shared = EmbeddingService()
     
-    private let openAIKey = "YOUR_OPENAI_API_KEY" // TODO: Add to environment
+    private let apiKey: String
     private let session = URLSession.shared
+    
+    private init() {
+        // Get API key from multiple sources (same as SparkServices)
+        var key = ""
+        
+        // 1. Try environment variable first
+        key = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] ?? ""
+        
+        // 2. Try Info.plist if environment variable is empty
+        if key.isEmpty {
+            key = Bundle.main.object(forInfoDictionaryKey: "OPENAI_API_KEY") as? String ?? ""
+        }
+        
+        self.apiKey = key
+        
+        if apiKey.isEmpty {
+            print("⚠️ OpenAI API key not found for embedding service")
+        } else {
+            print("✅ OpenAI API key configured for embedding service")
+        }
+    }
     
     func generateEmbedding(for text: String) async throws -> [Double] {
         let url = URL(string: "https://api.openai.com/v1/embeddings")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(openAIKey)", forHTTPHeaderField: "Authorization")
+        guard !apiKey.isEmpty else {
+            throw EmbeddingError.missingAPIKey
+        }
+        
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         
         let requestBody: [String: Any] = [
             "model": "text-embedding-3-small",
@@ -269,11 +346,14 @@ class EmbeddingService {
 
 enum EmbeddingError: Error, LocalizedError {
     case apiError(String)
+    case missingAPIKey
     
     var errorDescription: String? {
         switch self {
         case .apiError(let message):
             return "Embedding API error: \(message)"
+        case .missingAPIKey:
+            return "OpenAI API key not configured"
         }
     }
 }

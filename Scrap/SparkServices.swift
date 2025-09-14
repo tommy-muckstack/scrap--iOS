@@ -79,6 +79,76 @@ class OpenAIService {
         }
     }
     
+    // MARK: - Q&A and Summarization
+    
+    func answerQuestion(question: String, context: String) async throws -> String {
+        guard !apiKey.isEmpty else {
+            throw OpenAIError.missingAPIKey
+        }
+        
+        let request = createQARequest(question: question, context: context)
+        
+        do {
+            let (data, urlResponse) = try await URLSession.shared.data(for: request)
+            
+            guard let httpResponse = urlResponse as? HTTPURLResponse else {
+                throw OpenAIError.invalidResponse
+            }
+            
+            guard httpResponse.statusCode == 200 else {
+                print("🔴 OpenAI API Error: Status \(httpResponse.statusCode)")
+                throw OpenAIError.apiError(httpResponse.statusCode)
+            }
+            
+            let response = try JSONDecoder().decode(OpenAIResponse.self, from: data)
+            
+            guard let answer = response.choices.first?.message.content else {
+                throw OpenAIError.noResponse
+            }
+            
+            print("✅ Generated answer for question: '\(question.prefix(50))...'")
+            return answer.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+        } catch {
+            print("💥 OpenAI Q&A failed: \(error)")
+            throw error
+        }
+    }
+    
+    func summarizeContent(_ content: String) async throws -> String {
+        guard !apiKey.isEmpty else {
+            throw OpenAIError.missingAPIKey
+        }
+        
+        let request = createSummaryRequest(for: content)
+        
+        do {
+            let (data, urlResponse) = try await URLSession.shared.data(for: request)
+            
+            guard let httpResponse = urlResponse as? HTTPURLResponse else {
+                throw OpenAIError.invalidResponse
+            }
+            
+            guard httpResponse.statusCode == 200 else {
+                print("🔴 OpenAI API Error: Status \(httpResponse.statusCode)")
+                throw OpenAIError.apiError(httpResponse.statusCode)
+            }
+            
+            let response = try JSONDecoder().decode(OpenAIResponse.self, from: data)
+            
+            guard let summary = response.choices.first?.message.content else {
+                throw OpenAIError.noResponse
+            }
+            
+            print("✅ Generated summary from content (\(content.count) chars)")
+            return summary.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+        } catch {
+            print("💥 OpenAI summarization failed: \(error)")
+            throw error
+        }
+    }
+    
     // MARK: - Private Methods
     
     private func createTitleRequest(for content: String) -> URLRequest {
@@ -134,6 +204,66 @@ class OpenAIService {
         }
         
         return cleaned
+    }
+    
+    private func createQARequest(question: String, context: String) -> URLRequest {
+        var request = URLRequest(url: URL(string: baseURL)!)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let prompt = """
+        Based on the following notes from the user, answer their question accurately and concisely.
+        If the notes don't contain relevant information, say so politely.
+        
+        User's Notes:
+        \(context)
+        
+        Question: \(question)
+        
+        Answer:
+        """
+        
+        let payload = OpenAIRequest(
+            model: "gpt-3.5-turbo",
+            messages: [
+                OpenAIMessage(role: "user", content: prompt)
+            ],
+            maxTokens: 300,
+            temperature: 0.3
+        )
+        
+        request.httpBody = try? JSONEncoder().encode(payload)
+        return request
+    }
+    
+    private func createSummaryRequest(for content: String) -> URLRequest {
+        var request = URLRequest(url: URL(string: baseURL)!)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let prompt = """
+        Please create a comprehensive summary of these notes. Organize the information into key themes, 
+        important points, and actionable items. Make it clear and well-structured.
+        
+        Notes to summarize:
+        \(content)
+        
+        Summary:
+        """
+        
+        let payload = OpenAIRequest(
+            model: "gpt-3.5-turbo",
+            messages: [
+                OpenAIMessage(role: "user", content: prompt)
+            ],
+            maxTokens: 500,
+            temperature: 0.5
+        )
+        
+        request.httpBody = try? JSONEncoder().encode(payload)
+        return request
     }
 }
 
@@ -299,6 +429,7 @@ enum OpenAIError: Error, LocalizedError {
     case invalidResponse
     case apiError(Int)
     case noTitle
+    case noResponse
     
     var errorDescription: String? {
         switch self {
@@ -312,6 +443,8 @@ enum OpenAIError: Error, LocalizedError {
             return "OpenAI API error: \(code)"
         case .noTitle:
             return "No title generated"
+        case .noResponse:
+            return "No response generated"
         }
     }
 }
