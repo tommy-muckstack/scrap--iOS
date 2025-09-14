@@ -29,9 +29,14 @@ class VectorSearchService: ObservableObject {
         print("🔍 VectorSearchService: Indexing note \(note.id ?? "unknown") for vector search...")
         
         do {
-            // Generate embedding for the note content
-            print("🔍 VectorSearchService: Generating embedding for note content...")
-            let embedding = try await embeddingService.generateEmbedding(for: note.content)
+            // Combine title and content for better search indexing
+            let searchableContent = [note.title, note.content]
+                .compactMap { $0 }
+                .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+                .joined(separator: "\n")
+            
+            print("🔍 VectorSearchService: Generating embedding for combined title+content (\(searchableContent.count) chars)...")
+            let embedding = try await embeddingService.generateEmbedding(for: searchableContent)
             print("🔍 VectorSearchService: Generated embedding with \(embedding.count) dimensions")
             
             // Create metadata for ChromaDB
@@ -48,7 +53,7 @@ class VectorSearchService: ObservableObject {
             print("🔍 VectorSearchService: Adding document to ChromaDB...")
             try await chromaService.addDocument(
                 id: note.id ?? UUID().uuidString,
-                content: note.content,
+                content: searchableContent,
                 embedding: embedding,
                 metadata: metadata
             )
@@ -235,14 +240,20 @@ class VectorSearchService: ObservableObject {
             let metadata = chromaResults.metadatas[0][i]
             
             // Convert distance to similarity score (0-1, higher is better)
-            let similarity = max(0, 1 - distance)
+            print("🔍 VectorSearchService: Raw distance for result \(i): \(distance)")
+            
+            // Use inverse relationship for all distances since ChromaDB returns euclidean-style distances
+            // Scale to give meaningful percentages: smaller distances = higher similarity
+            let similarity = 1.0 / (1.0 + distance)
+            
+            print("🔍 VectorSearchService: Calculated similarity for result \(i): \(similarity) (\(Int(similarity * 100))%)")
             
             let result = SearchResult(
                 firebaseId: metadata.firebaseId,
                 content: content,
                 similarity: similarity,
-                isTask: metadata.isTask,
-                categories: metadata.categories,
+                isTask: metadata.isTask ?? false,
+                categories: metadata.categories ?? [],
                 createdAt: ISO8601DateFormatter().date(from: metadata.createdAt) ?? Date()
             )
             

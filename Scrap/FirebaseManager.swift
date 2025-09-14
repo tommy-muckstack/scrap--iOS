@@ -408,6 +408,19 @@ class FirebaseManager: ObservableObject {
             "rtfContent": base64RTF,
             "updatedAt": Date()
         ])
+        
+        // Update vector search index (async, don't block update)
+        Task {
+            do {
+                // Fetch the updated note to get complete data for re-indexing
+                let noteDoc = try await db.collection("notes").document(noteId).getDocument()
+                if let note = try? noteDoc.data(as: FirebaseNote.self) {
+                    try await VectorSearchService.shared.indexNote(note)
+                }
+            } catch {
+                print("⚠️ FirebaseManager: Failed to update vector index after RTF update: \(error)")
+            }
+        }
     }
     
     func updateNotePineconeId(noteId: String, pineconeId: String) async throws {
@@ -422,6 +435,19 @@ class FirebaseManager: ObservableObject {
             "title": title,
             "updatedAt": Date()
         ])
+        
+        // Update vector search index (async, don't block update)
+        Task {
+            do {
+                // Fetch the updated note to get complete data for re-indexing
+                let noteDoc = try await db.collection("notes").document(noteId).getDocument()
+                if let note = try? noteDoc.data(as: FirebaseNote.self) {
+                    try await VectorSearchService.shared.indexNote(note)
+                }
+            } catch {
+                print("⚠️ FirebaseManager: Failed to update vector index after title update: \(error)")
+            }
+        }
     }
     
     func updateNoteCategories(noteId: String, categoryIds: [String]) async throws {

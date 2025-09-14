@@ -647,7 +647,7 @@ class FirebaseDataManager: ObservableObject {
 // MARK: - Content View Model
 class ContentViewModel: ObservableObject {
     @Published var inputText = ""
-    @Published var placeholderText = "Just start typing..."
+    @Published var placeholderText = "Just type or speak..."
 }
 
 // MARK: - Input Field
@@ -701,6 +701,7 @@ struct InputField: View {
                         )
                         .disabled(isRecording)
                         .frame(minHeight: 40, maxHeight: max(40, min(textHeight, 120)), alignment: .topLeading)
+                        .focused(isFieldFocused)
                         .onChange(of: attributedText) { newValue in
                             // Update plain text binding for compatibility
                             let newPlainText = newValue.string
@@ -729,6 +730,13 @@ struct InputField: View {
                     
                     // Check current authorization status
                     authorizationStatus = SFSpeechRecognizer.authorizationStatus()
+                    
+                    // Focus the field if it should be focused
+                    if isFieldFocused.wrappedValue {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            richTextContext.isEditingText = true
+                        }
+                    }
                 }
                 .onChange(of: isFieldFocused.wrappedValue) { isFocused in
                     // Sync external focus state with rich text context
@@ -1086,48 +1094,31 @@ struct ItemRowSimple: View {
     @ObservedObject var item: SparkItem
     let dataManager: FirebaseDataManager
     let onTap: () -> Void
-    // @ObservedObject private var categoryService = CategoryService.shared
     
     var body: some View {
         Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 8) {
-                // Title and content
-                VStack(alignment: .leading, spacing: 4) {
-                    if !item.title.isEmpty {
-                        Text(item.title)
-                            .font(GentleLightning.Typography.title)
-                            .foregroundColor(GentleLightning.Colors.textPrimary)
-                            .lineLimit(2)
-                            .multilineTextAlignment(.leading)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    
+            VStack(alignment: .leading, spacing: 2) {
+                // Title - use content as title if no title exists
+                Text(item.title.isEmpty ? item.content : item.title)
+                    .font(GentleLightning.Typography.body)
+                    .foregroundColor(GentleLightning.Colors.textPrimary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                
+                // Preview text - only show if title exists
+                if !item.title.isEmpty && !item.content.isEmpty {
                     Text(item.content)
-                        .font(item.title.isEmpty ? GentleLightning.Typography.body : GentleLightning.Typography.secondary)
-                        .foregroundColor(item.title.isEmpty ? GentleLightning.Colors.textPrimary : GentleLightning.Colors.textSecondary)
-                        .lineLimit(item.title.isEmpty ? nil : 3)
-                        .multilineTextAlignment(.leading)
+                        .font(GentleLightning.Typography.secondary)
+                        .foregroundColor(GentleLightning.Colors.textSecondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                
-                // Category pills
-                if !item.categoryIds.isEmpty {
-                    HStack(spacing: 6) {
-                        // TODO: Uncomment when CategoryService is added to project
-                        /*
-                        ForEach(categoryService.getCategoriesByIds(item.categoryIds), id: \.id) { category in
-                            CategoryPillSimple(category: category)
-                        }
-                        */
-                        Spacer()
-                    }
-                }
-                
-                Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, GentleLightning.Layout.Padding.lg)
-            .padding(.vertical, GentleLightning.Layout.Padding.lg)
+            .padding(.vertical, 12) // Reduced vertical padding
             .background(
                 RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.medium)
                     .fill(GentleLightning.Colors.surface)
@@ -1556,7 +1547,7 @@ struct AccountDrawerView: View {
                     // App info
                     VStack(spacing: 8) {
                         Text("Scrap")
-                            .font(GentleLightning.Typography.titleEmphasis)
+                            .font(.custom("SharpGrotesk-Bold-Regular", size: 24))
                             .foregroundColor(GentleLightning.Colors.textBlack)
                         
                         Text("Version \(appVersion) (\(buildNumber))")
@@ -1665,8 +1656,14 @@ struct ContentView: View {
     @State private var isSearchExpanded = false
     @State private var searchText = ""
     @State private var searchResults: [SearchResult] = []
+    @State private var searchTask: Task<Void, Never>? = nil
+    @State private var hasSearched = false
     @State private var isSearching = false
     @FocusState private var isSearchFieldFocused: Bool
+    
+    // Pagination
+    @State private var displayedItemsCount = 10
+    private let itemsPerPage = 10
     
     var body: some View {
         NavigationStack(path: $navigationPath) {
@@ -1678,7 +1675,7 @@ struct ContentView: View {
                     Spacer()
                     
                     Text("Scrap")
-                        .font(GentleLightning.Typography.hero)
+                        .font(.custom("SharpGrotesk-Bold-Regular", size: 48))
                         .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
                     
                     Spacer()
@@ -1703,67 +1700,77 @@ struct ContentView: View {
                           isFieldFocused: $isInputFieldFocused)
                 .padding(.horizontal, GentleLightning.Layout.Padding.xl)
                 
-                // Smaller spacer below
-                Spacer()
-                    .frame(maxHeight: 20)
-                
-                // My Notes header with search functionality overlay
-                ZStack {
-                    // Base content: My Notes text and horizontal line
-                    HStack {
-                        Text("My Notes")
-                            .font(GentleLightning.Typography.caption)
-                            .foregroundColor(GentleLightning.Colors.textSecondary)
-                            .padding(.leading, GentleLightning.Layout.Padding.lg)
-                        
-                        Rectangle()
-                            .fill(GentleLightning.Colors.textSecondary.opacity(0.3))
-                            .frame(height: 1)
-                            .padding(.horizontal, 8) // Shorter horizontal line to accommodate right shift
-                        
-                        Spacer()
-                    }
-                    .opacity(isSearchExpanded ? 0 : 1) // Hide when search is expanded
-                    .animation(GentleLightning.Animation.swoosh, value: isSearchExpanded)
+                // Only show My Notes header and search when there are notes to display
+                if !dataManager.items.isEmpty {
+                    // Smaller spacer below
+                    Spacer()
+                        .frame(maxHeight: 20)
                     
-                    // Overlay: Search bar
-                    HStack {
-                        Spacer()
-                        SearchBarView(
-                            isExpanded: $isSearchExpanded,
-                            searchText: $searchText,
-                            searchResults: $searchResults,
-                            isSearching: $isSearching,
-                            isSearchFieldFocused: $isSearchFieldFocused,
-                            onResultTap: { result in
-                                // Find the matching item in dataManager.items and navigate to it
-                                if let item = dataManager.items.first(where: { $0.id == result.firebaseId }) {
-                                    navigationPath.append(item)
-                                    // Collapse search after navigation
-                                    withAnimation {
-                                        isSearchExpanded = false
-                                        searchText = ""
-                                        searchResults = []
+                    // My Notes header with search functionality overlay
+                    ZStack {
+                        // Base content: My Notes text and horizontal line
+                        HStack {
+                            Text("My Notes")
+                                .font(GentleLightning.Typography.caption)
+                                .foregroundColor(GentleLightning.Colors.textSecondary)
+                                .padding(.leading, GentleLightning.Layout.Padding.xl + GentleLightning.Layout.Padding.lg)
+                            
+                            Spacer()
+                        }
+                        .opacity(isSearchExpanded ? 0 : 1) // Hide when search is expanded
+                        .animation(GentleLightning.Animation.swoosh, value: isSearchExpanded)
+                        
+                        // Overlay: Search bar
+                        HStack {
+                            if isSearchExpanded {
+                                Spacer()
+                                    .frame(width: 36) // Match the trailing padding when expanded
+                            } else {
+                                Spacer()
+                            }
+                            SearchBarView(
+                                isExpanded: $isSearchExpanded,
+                                searchText: $searchText,
+                                searchResults: $searchResults,
+                                isSearching: $isSearching,
+                                searchTask: $searchTask,
+                                hasSearched: $hasSearched,
+                                isSearchFieldFocused: $isSearchFieldFocused,
+                                onResultTap: { result in
+                                    // Find the matching item in dataManager.items and navigate to it
+                                    if let item = dataManager.items.first(where: { $0.id == result.firebaseId }) {
+                                        navigationPath.append(item)
+                                        // Collapse search after navigation
+                                        withAnimation {
+                                            isSearchExpanded = false
+                                            searchText = ""
+                                            searchResults = []
+                                            hasSearched = false
+                                            searchTask?.cancel()
+                                            searchTask = nil
+                                        }
                                     }
-                                }
-                            },
-                            onSearch: performSearch,
-                            onReindex: triggerReindexing
-                        )
-                        .padding(.trailing, 36) // 20pt (outer) + 16pt (inner) to match microphone button center
+                                },
+                                onSearch: performSearch,
+                                onReindex: triggerReindexing
+                            )
+                            .padding(.trailing, 36) // 20pt (outer) + 16pt (inner) to match microphone button center
+                        }
                     }
+                    .padding(.top, 16)
+                    .padding(.bottom, 8)
                 }
-                .padding(.top, 16)
-                .padding(.bottom, 8)
                 
                 // Items List - scrollable content
                 ScrollView {
-                    LazyVStack(spacing: 2) {
+                    LazyVStack(spacing: 0) {
                         if dataManager.items.isEmpty {
                             EmptyStateView()
                                 .padding(.top, 20)
                         } else {
-                            ForEach(dataManager.items) { item in
+                            let itemsToDisplay = Array(dataManager.items.prefix(displayedItemsCount))
+                            
+                            ForEach(itemsToDisplay) { item in
                                 ItemRowSimple(item: item, dataManager: dataManager) {
                                     print("🎯 ContentView: Note tap detected - navigating to item.id = '\(item.id)'")
                                     print("🎯 ContentView: item.content = '\(item.content)' (length: \(item.content.count))")
@@ -1780,6 +1787,27 @@ struct ContentView: View {
                                     removal: .move(edge: .leading).combined(with: .opacity)
                                 ))
                                 .animation(GentleLightning.Animation.elastic, value: item.id)
+                                .onAppear {
+                                    // Load more items when reaching the last item
+                                    if item.id == itemsToDisplay.last?.id && displayedItemsCount < dataManager.items.count {
+                                        loadMoreItems()
+                                    }
+                                }
+                            }
+                            
+                            // Loading indicator
+                            if displayedItemsCount < dataManager.items.count {
+                                HStack {
+                                    Spacer()
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle())
+                                        .scaleEffect(0.8)
+                                    Spacer()
+                                }
+                                .padding(.vertical, 20)
+                                .onAppear {
+                                    loadMoreItems()
+                                }
                             }
                         }
                     }
@@ -1816,9 +1844,9 @@ struct ContentView: View {
                         AnalyticsManager.shared.trackAccountDrawerOpened()
                         showingAccountDrawer = true
                     }) {
-                        Text("My Account")
-                            .font(GentleLightning.Typography.body)
-                            .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
+                        Text("...")
+                            .font(.system(size: 32, weight: .medium))
+                            .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
                             .padding(.vertical, 16)
                             .frame(maxWidth: .infinity)
                     }
@@ -1856,7 +1884,7 @@ struct ContentView: View {
             updateWidgetData(noteCount: dataManager.items.count)
             
             // Auto-focus the input field when the app loads
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 isInputFieldFocused = true
                 print("🎯 ContentView: Auto-focused input field on app load - setting focus to true")
                 
@@ -1865,12 +1893,42 @@ struct ContentView: View {
                     print("🎯 ContentView: Checking focus state after delay - isInputFieldFocused: \(isInputFieldFocused)")
                 }
             }
+            
+            // Auto-index notes for search when app loads
+            Task {
+                // Wait a moment for the data to load
+                try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+                
+                // Only index if we have notes and user is authenticated
+                guard !dataManager.items.isEmpty,
+                      Auth.auth().currentUser != nil else {
+                    print("🔍 ContentView: Skipping auto-indexing - no items or not authenticated")
+                    return
+                }
+                
+                print("🔍 ContentView: Starting auto-indexing of \(dataManager.items.count) notes...")
+                triggerReindexing()
+            }
+        }
+        .onChange(of: dataManager.items.count) { _ in
+            // Reset pagination when items change (new item added or deleted)
+            displayedItemsCount = min(10, dataManager.items.count)
+        }
+    }
+    
+    private func loadMoreItems() {
+        // Add a small delay to simulate loading
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            withAnimation {
+                displayedItemsCount = min(displayedItemsCount + itemsPerPage, dataManager.items.count)
+            }
         }
     }
     
     private func performSearch() {
         guard !self.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             self.searchResults = []
+            self.hasSearched = false
             return
         }
         
@@ -1884,9 +1942,11 @@ struct ContentView: View {
                 )
                 
                 self.searchResults = results
+                self.hasSearched = true
                 self.isSearching = false
             } catch {
                 print("Search failed: \(error)")
+                self.hasSearched = true
                 self.isSearching = false
                 // Could show error state here
             }
@@ -1985,6 +2045,20 @@ struct FormattingToolbarView: View {
                 
                 Spacer()
                 
+                // Code block button (moved here between strikethrough and list buttons)
+                Button(action: { 
+                    context.toggleCodeBlock()
+                }) {
+                    Image(systemName: "chevron.left.forwardslash.chevron.right")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(context.isCodeBlockActive ? .white : .black)
+                        .frame(width: 32, height: 32)
+                        .background(context.isCodeBlockActive ? .black : Color.clear)
+                        .clipShape(Circle())
+                }
+                
+                Spacer()
+                
                 // List buttons
                 Button(action: { 
                     context.toggleBulletList()
@@ -2007,20 +2081,6 @@ struct FormattingToolbarView: View {
                         .foregroundColor(context.isCheckboxActive ? .white : .black)
                         .frame(width: 32, height: 32)
                         .background(context.isCheckboxActive ? .black : Color.clear)
-                        .clipShape(Circle())
-                }
-                
-                Spacer()
-                
-                // Code block button
-                Button(action: { 
-                    context.toggleCodeBlock()
-                }) {
-                    Image(systemName: "chevron.left.forwardslash.chevron.right")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(context.isCodeBlockActive ? .white : .black)
-                        .frame(width: 32, height: 32)
-                        .background(context.isCodeBlockActive ? .black : Color.clear)
                         .clipShape(Circle())
                 }
                 
@@ -2751,6 +2811,8 @@ struct SearchBarView: View {
     @Binding var searchText: String
     @Binding var searchResults: [SearchResult]
     @Binding var isSearching: Bool
+    @Binding var searchTask: Task<Void, Never>?
+    @Binding var hasSearched: Bool
     var isSearchFieldFocused: FocusState<Bool>.Binding
     let onResultTap: (SearchResult) -> Void
     let onSearch: () -> Void
@@ -2759,7 +2821,7 @@ struct SearchBarView: View {
     var body: some View {
         VStack(alignment: .trailing, spacing: 8) {
             // Horizontal search bar with magnifying glass
-            HStack {
+            HStack(alignment: .center) {
                 // Search input field - slides in from the right when expanded
                 if isExpanded {
                     HStack {
@@ -2779,17 +2841,41 @@ struct SearchBarView: View {
                                 onReindex()
                             }
                             .onChange(of: searchText) { newValue in
-                                // Debounced search - perform search after user stops typing for 0.5 seconds
-                                if !newValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                    // Cancel previous search task and create new one
-                                    Task {
-                                        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
-                                        if searchText == newValue { // Only search if text hasn't changed
-                                            onSearch()
+                                // Cancel any existing search task
+                                searchTask?.cancel()
+                                
+                                let trimmedValue = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                                
+                                if trimmedValue.isEmpty {
+                                    // Clear search results immediately for empty input
+                                    searchResults = []
+                                    hasSearched = false
+                                    return
+                                }
+                                
+                                // Reset search state when text changes
+                                hasSearched = false
+                                
+                                // Check if input ends with space or has multiple words (trigger immediate search)
+                                let shouldSearchImmediately = newValue.hasSuffix(" ") || trimmedValue.contains(" ") || trimmedValue.count >= 3
+                                
+                                if shouldSearchImmediately {
+                                    // Search immediately for space-terminated input or longer queries
+                                    onSearch()
+                                } else {
+                                    // Debounced search for shorter queries - wait for typing to stop
+                                    searchTask = Task {
+                                        do {
+                                            try await Task.sleep(nanoseconds: 800_000_000) // 0.8 seconds
+                                            if !Task.isCancelled && searchText == newValue {
+                                                await MainActor.run {
+                                                    onSearch()
+                                                }
+                                            }
+                                        } catch {
+                                            // Task was cancelled, ignore
                                         }
                                     }
-                                } else {
-                                    searchResults = []
                                 }
                             }
                         
@@ -2799,17 +2885,6 @@ struct SearchBarView: View {
                                 .tint(GentleLightning.Colors.accentNeutral)
                         }
                         
-                        if !searchText.isEmpty {
-                            Button(action: {
-                                searchText = ""
-                                searchResults = []
-                            }) {
-                                Image(systemName: "xmark.circle.fill")
-                                    .font(.system(size: 16))
-                                    .foregroundColor(GentleLightning.Colors.textSecondary)
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                        }
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 10)
@@ -2840,18 +2915,33 @@ struct SearchBarView: View {
                             // Clear search when collapsing
                             searchText = ""
                             searchResults = []
+                            hasSearched = false
+                            searchTask?.cancel()
+                            searchTask = nil
                             isSearchFieldFocused.wrappedValue = false
                         }
                     }
                 }) {
-                    Image(systemName: isExpanded ? "xmark" : "magnifyingglass")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(GentleLightning.Colors.textSecondary)
-                        .frame(width: 32, height: 32)
-                        .transition(.asymmetric(
-                            insertion: .opacity.combined(with: .scale(scale: 0.8)),
-                            removal: .opacity.combined(with: .scale(scale: 1.2))
-                        ))
+                    ZStack {
+                        // Magnifying glass icon
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(GentleLightning.Colors.textSecondary)
+                            .scaleEffect(isExpanded ? 0.1 : 1.0)
+                            .opacity(isExpanded ? 0.0 : 1.0)
+                            .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                            .animation(.spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0), value: isExpanded)
+                        
+                        // X mark icon
+                        Image(systemName: "xmark")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(GentleLightning.Colors.textSecondary)
+                            .scaleEffect(isExpanded ? 1.0 : 0.1)
+                            .opacity(isExpanded ? 1.0 : 0.0)
+                            .rotationEffect(.degrees(isExpanded ? 0 : -90))
+                            .animation(.spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0).delay(isExpanded ? 0.1 : 0), value: isExpanded)
+                    }
+                    .frame(width: 40, height: 40)
                         .background(
                             Circle()
                                 .fill(GentleLightning.Colors.surface)
@@ -2882,21 +2972,25 @@ struct SearchBarView: View {
                                 .padding(.top, 4)
                                 .transition(.opacity.combined(with: .scale(scale: 0.95)))
                         }
-                    } else if !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSearching {
-                        // Show empty state when search has no results
-                        VStack(spacing: 8) {
-                            Image(systemName: "doc.text.magnifyingglass")
-                                .font(.system(size: 24))
-                                .foregroundColor(GentleLightning.Colors.textSecondary)
-                            
-                            Text("No results found")
-                                .font(GentleLightning.Typography.heading)
-                                .foregroundColor(GentleLightning.Colors.textPrimary)
-                            
-                            Text("Try different keywords or check your spelling")
-                                .font(GentleLightning.Typography.caption)
-                                .foregroundColor(GentleLightning.Colors.textSecondary)
-                                .multilineTextAlignment(.center)
+                    } else if !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSearching && hasSearched {
+                        // Show empty state only AFTER search has completed with no results
+                        HStack {
+                            Spacer()
+                            VStack(spacing: 8) {
+                                Image(systemName: "doc.text.magnifyingglass")
+                                    .font(.system(size: 24))
+                                    .foregroundColor(GentleLightning.Colors.textSecondary)
+                                
+                                Text("No results found")
+                                    .font(GentleLightning.Typography.heading)
+                                    .foregroundColor(GentleLightning.Colors.textPrimary)
+                                
+                                Text("Try different keywords or check your spelling")
+                                    .font(GentleLightning.Typography.caption)
+                                    .foregroundColor(GentleLightning.Colors.textSecondary)
+                                    .multilineTextAlignment(.center)
+                            }
+                            Spacer()
                         }
                         .padding(.vertical, 16)
                         .padding(.horizontal, 8)

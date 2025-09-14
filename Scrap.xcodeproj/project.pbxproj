@@ -7,10 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		VSB265A2C19F0013D2789802D2 /* VectorSearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = VSBB8F96838EAF9CAB96FC412B /* VectorSearchService.swift */; };
-		RCB7600E0A0B026201786F2131 /* RichTextContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = RCCABB85C9FF0BBEE223B3A7B5 /* RichTextContext.swift */; };
-		RC7A674C6B95C322B02410EC74 /* RichTextCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = RCE4FD307E47D569B669CE633A /* RichTextCoordinator.swift */; };
-		RC7762BA2291946641555033DE /* RichTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = RC6691F824B3D8177B68116C03 /* RichTextEditor.swift */; };
 		1D1A2B2A2B1234567890ABCD /* ScrapApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1A2B292B1234567890ABCD /* ScrapApp.swift */; };
 		1D1A2B2C2B1234567890ABCE /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1A2B2B2B1234567890ABCE /* ContentView.swift */; };
 		1D1A2B2E2B1234567890ABCF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1D1A2B2D2B1234567890ABCF /* Assets.xcassets */; };
@@ -38,15 +34,21 @@
 		BBEF41E32E744FA00079202D /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BBEF41E22E744FA00079202D /* WidgetKit.framework */; };
 		BBEF41E52E744FA00079202D /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BBEF41E42E744FA00079202D /* SwiftUI.framework */; };
 		BBEF41F62E744FA10079202D /* ScrapWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BBEF41E02E744FA00079202D /* ScrapWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		BBEF42602E76C7580079202D /* SharpGrotesk-Bold-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBEF425F2E76C7570079202D /* SharpGrotesk-Bold-Regular.ttf */; };
+		BBEF42612E76C7580079202D /* SharpGrotesk-Bold-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBEF425F2E76C7570079202D /* SharpGrotesk-Bold-Regular.ttf */; };
 		CC304E7B3F6F72990054DD42 /* TestContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC304E7C3F6F72990054DD42 /* TestContentView.swift */; };
 		DD304E862E6FA0000054DD42 /* FirebaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD304E872E6FA0000054DD42 /* FirebaseManager.swift */; };
 		EE304E882E6FA1000054DD43 /* AuthenticationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE304E892E6FA1000054DD43 /* AuthenticationView.swift */; };
 		FF304E8A2E6FA2000054DD44 /* ChromaService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF304E8B2E6FA2000054DD44 /* ChromaService.swift */; };
+		RC7762BA2291946641555033DE /* RichTextCore/RichTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = RC6691F824B3D8177B68116C03 /* RichTextCore/RichTextEditor.swift */; };
+		RC7A674C6B95C322B02410EC74 /* RichTextCore/RichTextCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = RCE4FD307E47D569B669CE633A /* RichTextCore/RichTextCoordinator.swift */; };
+		RCB7600E0A0B026201786F2131 /* RichTextCore/RichTextContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = RCCABB85C9FF0BBEE223B3A7B5 /* RichTextCore/RichTextContext.swift */; };
 		RTB79366E98E99 /* RichTextTransformer.swift in Sources */ = {isa = PBXBuildFile; fileRef = RT6C1C6BFA551F /* RichTextTransformer.swift */; };
 		SM746984E3905E9248F740 /* SparkModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = SM988B63B7218D59C335B7 /* SparkModels.swift */; };
 		SS7CB67F2F072D9CA9AE6D /* SparkServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = SS42E11169D5C6456E0538 /* SparkServices.swift */; };
 		SVF04E28F0BE8081BFE5CDA262 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = SVB8AD07F579355BFEA517EECE /* SettingsView.swift */; };
 		TMF4A47D87D17E986129EC9426 /* ThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = TMC622226271474267E1D8B017 /* ThemeManager.swift */; };
+		VSB265A2C19F0013D2789802D2 /* VectorSearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = VSBB8F96838EAF9CAB96FC412B /* VectorSearchService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -77,10 +79,6 @@
 		1D1A2B262B1234567890ABCC /* Scrap.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Scrap.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1D1A2B292B1234567890ABCD /* ScrapApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrapApp.swift; sourceTree = "<group>"; };
 		1D1A2B2B2B1234567890ABCE /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		VSBB8F96838EAF9CAB96FC412B /* VectorSearchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VectorSearchService.swift; sourceTree = "<group>"; };
-		RCCABB85C9FF0BBEE223B3A7B5 /* RichTextContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/RichTextContext.swift; sourceTree = "<group>"; };
-		RCE4FD307E47D569B669CE633A /* RichTextCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/RichTextCoordinator.swift; sourceTree = "<group>"; };
-		RC6691F824B3D8177B68116C03 /* RichTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/RichTextEditor.swift; sourceTree = "<group>"; };
 		1D1A2B2D2B1234567890ABCF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1D1A2B302B1234567890ABD0 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		AA304E7A2F6F72980054DD41 /* AnalyticsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsManager.swift; sourceTree = "<group>"; };
@@ -99,16 +97,21 @@
 		BBEF41E22E744FA00079202D /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		BBEF41E42E744FA00079202D /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		BBEF41FC2E7450510079202D /* ScrapWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ScrapWidgetExtension.entitlements; sourceTree = "<group>"; };
+		BBEF425F2E76C7570079202D /* SharpGrotesk-Bold-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-Bold-Regular.ttf"; sourceTree = "<group>"; };
 		CC123456789012345678901A /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 		CC304E7C3F6F72990054DD42 /* TestContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestContentView.swift; sourceTree = "<group>"; };
 		DD304E872E6FA0000054DD42 /* FirebaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseManager.swift; sourceTree = "<group>"; };
 		EE304E892E6FA1000054DD43 /* AuthenticationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationView.swift; sourceTree = "<group>"; };
 		FF304E8B2E6FA2000054DD44 /* ChromaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChromaService.swift; sourceTree = "<group>"; };
+		RC6691F824B3D8177B68116C03 /* RichTextCore/RichTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/RichTextEditor.swift; sourceTree = "<group>"; };
+		RCCABB85C9FF0BBEE223B3A7B5 /* RichTextCore/RichTextContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/RichTextContext.swift; sourceTree = "<group>"; };
+		RCE4FD307E47D569B669CE633A /* RichTextCore/RichTextCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/RichTextCoordinator.swift; sourceTree = "<group>"; };
 		RT6C1C6BFA551F /* RichTextTransformer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextTransformer.swift; sourceTree = "<group>"; };
 		SM988B63B7218D59C335B7 /* SparkModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparkModels.swift; sourceTree = "<group>"; };
 		SS42E11169D5C6456E0538 /* SparkServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparkServices.swift; sourceTree = "<group>"; };
 		SVB8AD07F579355BFEA517EECE /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		TMC622226271474267E1D8B017 /* ThemeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeManager.swift; sourceTree = "<group>"; };
+		VSBB8F96838EAF9CAB96FC412B /* VectorSearchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VectorSearchService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -184,9 +187,9 @@
 				1D1A2B292B1234567890ABCD /* ScrapApp.swift */,
 				1D1A2B2B2B1234567890ABCE /* ContentView.swift */,
 				VSBB8F96838EAF9CAB96FC412B /* VectorSearchService.swift */,
-				RCCABB85C9FF0BBEE223B3A7B5 /* RichTextContext.swift */,
-				RCE4FD307E47D569B669CE633A /* RichTextCoordinator.swift */,
-				RC6691F824B3D8177B68116C03 /* RichTextEditor.swift */,
+				RCCABB85C9FF0BBEE223B3A7B5 /* RichTextCore/RichTextContext.swift */,
+				RCE4FD307E47D569B669CE633A /* RichTextCore/RichTextCoordinator.swift */,
+				RC6691F824B3D8177B68116C03 /* RichTextCore/RichTextEditor.swift */,
 				TMC622226271474267E1D8B017 /* ThemeManager.swift */,
 				SVB8AD07F579355BFEA517EECE /* SettingsView.swift */,
 				AA304E7A2F6F72980054DD41 /* AnalyticsManager.swift */,
@@ -221,6 +224,7 @@
 				BBC2A31E2E719333000BEABE /* SharpGrotesk-Medium.otf */,
 				BBC2A31F2E719333000BEABE /* SharpGrotesk-MediumItalic.otf */,
 				BBC2A3202E719333000BEABE /* SharpGrotesk-SemiBold.otf */,
+				BBEF425F2E76C7570079202D /* SharpGrotesk-Bold-Regular.ttf */,
 				BBC2A3212E719333000BEABE /* SharpGrotesk-Thin.otf */,
 				BBC2A3222E719333000BEABE /* SharpGrotesk-ThinItalic.otf */,
 			);
@@ -344,6 +348,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BBEF42612E76C7580079202D /* SharpGrotesk-Bold-Regular.ttf in Resources */,
 				BBC2A33D2E719333000BEABE /* SharpGrotesk-SemiBold.otf in Resources */,
 				BBC2A3472E719333000BEABE /* SharpGrotesk-LightItalic.otf in Resources */,
 				BBC2A34C2E719333000BEABE /* SharpGrotesk-BookItalic.otf in Resources */,
@@ -363,6 +368,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BBEF42602E76C7580079202D /* SharpGrotesk-Bold-Regular.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -375,9 +381,9 @@
 			files = (
 				1D1A2B2C2B1234567890ABCE /* ContentView.swift in Sources */,
 				VSB265A2C19F0013D2789802D2 /* VectorSearchService.swift in Sources */,
-				RCB7600E0A0B026201786F2131 /* RichTextContext.swift in Sources */,
-				RC7A674C6B95C322B02410EC74 /* RichTextCoordinator.swift in Sources */,
-				RC7762BA2291946641555033DE /* RichTextEditor.swift in Sources */,
+				RCB7600E0A0B026201786F2131 /* RichTextCore/RichTextContext.swift in Sources */,
+				RC7A674C6B95C322B02410EC74 /* RichTextCore/RichTextCoordinator.swift in Sources */,
+				RC7762BA2291946641555033DE /* RichTextCore/RichTextEditor.swift in Sources */,
 				TMF4A47D87D17E986129EC9426 /* ThemeManager.swift in Sources */,
 				SVF04E28F0BE8081BFE5CDA262 /* SettingsView.swift in Sources */,
 				AA304E792F6F72980054DD41 /* AnalyticsManager.swift in Sources */,

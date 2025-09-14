@@ -24,9 +24,18 @@ struct ChromaQueryResult: Codable {
 struct ChromaMetadata: Codable {
     let firebaseId: String
     let userId: String
-    let isTask: Bool
-    let categories: [String]
+    let isTask: Bool?
+    let categories: [String]?
     let createdAt: String
+    
+    // Custom initializer to provide defaults
+    init(firebaseId: String, userId: String, isTask: Bool, categories: [String], createdAt: String) {
+        self.firebaseId = firebaseId
+        self.userId = userId
+        self.isTask = isTask
+        self.categories = categories
+        self.createdAt = createdAt
+    }
 }
 
 // MARK: - Chroma Service
@@ -153,8 +162,8 @@ class ChromaService: ObservableObject {
         let metadataDict: [String: Any] = [
             "firebaseId": metadata.firebaseId,
             "userId": metadata.userId,
-            "isTask": metadata.isTask,
-            "categories": metadata.categories,
+            "isTask": metadata.isTask ?? false,
+            "categories": metadata.categories ?? [],
             "createdAt": metadata.createdAt
         ]
         
@@ -165,19 +174,35 @@ class ChromaService: ObservableObject {
             documents: [content]
         )
         
-        request.httpBody = try JSONSerialization.data(withJSONObject: [
+        let requestBody: [String: Any] = [
             "ids": document.ids,
             "embeddings": document.embeddings,
             "metadatas": document.metadatas,
             "documents": document.documents
-        ])
+        ]
         
-        let (_, response) = try await session.data(for: request)
+        print("🔍 ChromaService: Adding document with ID: \(id)")
+        print("🔍 ChromaService: Content length: \(content.count)")
+        print("🔍 ChromaService: Embedding dimensions: \(embedding.count)")
+        print("🔍 ChromaService: Metadata: \(metadataDict)")
         
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
-            throw ChromaError.networkError("Failed to add document")
+        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        
+        let (data, response) = try await session.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw ChromaError.networkError("Invalid response format")
         }
+        
+        if httpResponse.statusCode != 200 && httpResponse.statusCode != 201 {
+            let errorMessage = "HTTP \(httpResponse.statusCode)"
+            if let errorData = String(data: data, encoding: .utf8) {
+                print("🔍 ChromaService addDocument error response: \(errorData)")
+            }
+            throw ChromaError.networkError("Failed to add document: \(errorMessage)")
+        }
+        
+        print("✅ ChromaService: Successfully added document to ChromaDB")
     }
     
     func queryDocuments(
