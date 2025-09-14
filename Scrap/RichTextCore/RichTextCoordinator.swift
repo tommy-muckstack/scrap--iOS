@@ -244,9 +244,12 @@ public class RichTextCoordinator: NSObject {
         if range.length > 0 {
             // For selections, check if ANY text in selection is bold
             mutableText.enumerateAttribute(.font, in: range) { value, _, _ in
-                if let font = value as? UIFont,
-                   font.fontDescriptor.symbolicTraits.contains(.traitBold) {
-                    hasBoldText = true
+                if let font = value as? UIFont {
+                    // Check for SharpGrotesk-Bold-Regular font or symbolic traits
+                    if font.fontName == "SharpGrotesk-Bold-Regular" || 
+                       font.fontDescriptor.symbolicTraits.contains(.traitBold) {
+                        hasBoldText = true
+                    }
                 }
             }
             // If any text is bold, remove bold from all; otherwise add bold to all
@@ -266,20 +269,30 @@ public class RichTextCoordinator: NSObject {
                 if let font = value as? UIFont {
                     let newFont: UIFont
                     if shouldAddBold {
-                        // Add bold
-                        let traits = font.fontDescriptor.symbolicTraits.union(.traitBold)
-                        if let descriptor = font.fontDescriptor.withSymbolicTraits(traits) {
-                            newFont = UIFont(descriptor: descriptor, size: font.pointSize)
+                        // Add bold - use specific SharpGrotesk-Bold-Regular font
+                        if let boldFont = UIFont(name: "SharpGrotesk-Bold-Regular", size: font.pointSize) {
+                            newFont = boldFont
                         } else {
-                            newFont = UIFont.boldSystemFont(ofSize: font.pointSize)
+                            // Fallback to system font if custom bold font not available
+                            let traits = font.fontDescriptor.symbolicTraits.union(.traitBold)
+                            if let descriptor = font.fontDescriptor.withSymbolicTraits(traits) {
+                                newFont = UIFont(descriptor: descriptor, size: font.pointSize)
+                            } else {
+                                newFont = UIFont.boldSystemFont(ofSize: font.pointSize)
+                            }
                         }
                     } else {
-                        // Remove bold
-                        let traits = font.fontDescriptor.symbolicTraits.subtracting(.traitBold)
-                        if let descriptor = font.fontDescriptor.withSymbolicTraits(traits) {
-                            newFont = UIFont(descriptor: descriptor, size: font.pointSize)
+                        // Remove bold - revert to regular SharpGrotesk font
+                        if let regularFont = UIFont(name: context.fontName, size: font.pointSize) {
+                            newFont = regularFont
                         } else {
-                            newFont = UIFont(name: context.fontName, size: font.pointSize) ?? font
+                            // Fallback to removing bold trait
+                            let traits = font.fontDescriptor.symbolicTraits.subtracting(.traitBold)
+                            if let descriptor = font.fontDescriptor.withSymbolicTraits(traits) {
+                                newFont = UIFont(descriptor: descriptor, size: font.pointSize)
+                            } else {
+                                newFont = UIFont(name: context.fontName, size: font.pointSize) ?? font
+                            }
                         }
                     }
                     mutableText.addAttribute(.font, value: newFont, range: subRange)
@@ -735,88 +748,136 @@ public class RichTextCoordinator: NSObject {
     private func applyCodeBlockFormat(_ mutableText: NSMutableAttributedString, _ lineRange: NSRange, _ lineText: String) {
         let trimmedLine = lineText.trimmingCharacters(in: .whitespaces)
         
-        // Don't process lines that are only whitespace/newlines
-        if trimmedLine.isEmpty {
-            // Add code block formatting to empty line - create formatted area without visible backticks
-            let codeText = NSMutableAttributedString(string: "\n" + (lineText.hasSuffix("\n") ? "\n" : ""))
-            
-            // Apply Monaco monospace font to code block
-            let codeFont = UIFont(name: "Monaco", size: 14) ?? UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
-            let codeAttributes: [NSAttributedString.Key: Any] = [
-                .font: codeFont,
-                .foregroundColor: UIColor.label,
-                .backgroundColor: UIColor.systemGray6
-            ]
-            codeText.addAttributes(codeAttributes, range: NSRange(location: 0, length: codeText.length))
-            
-            mutableText.replaceCharacters(in: lineRange, with: codeText)
-            textView.attributedText = mutableText
-            
-            let newCursorPosition = lineRange.location + 1 // Position inside the code block (after "\n")
-            let safePosition = min(newCursorPosition, mutableText.length)
-            textView.selectedRange = NSRange(location: safePosition, length: 0)
-            
-            updateBindingFromTextView()
-            updateContextFromTextView()
-            
-            print("🔸 RichTextCoordinator: Added code block to empty line, cursor at position \(safePosition)")
-            return
-        }
+        // Check if cursor is currently in a code block
+        let cursorPosition = textView.selectedRange.location
+        let isInCodeBlock = isPositionInCodeBlock(cursorPosition, in: mutableText)
         
-        let mutableLineText: String
-        let newCursorPosition: Int
-        
-        // Check if line already has Monaco font (indicating code block formatting)
-        let currentAttributes = mutableText.attributes(at: lineRange.location, effectiveRange: nil)
-        let hasCodeFormatting = (currentAttributes[.font] as? UIFont)?.fontName.contains("Monaco") == true
-        
-        if hasCodeFormatting {
-            // Remove code block formatting - convert to regular text
-            mutableLineText = trimmedLine
-            newCursorPosition = lineRange.location + trimmedLine.count
-            print("🔸 RichTextCoordinator: Removing code block formatting from line")
+        if isInCodeBlock {
+            // Turn OFF code formatting - move cursor to line below the code block
+            removeCodeBlockAndMoveCursor(at: cursorPosition, in: mutableText)
+            print("🔸 RichTextCoordinator: Removing code block, moving cursor below")
         } else {
-            // Add code block formatting - keep text as-is but apply Monaco font
-            mutableLineText = trimmedLine
-            newCursorPosition = lineRange.location + trimmedLine.count
-            print("🔸 RichTextCoordinator: Adding code block formatting to line")
+            // Turn ON code formatting - create new code block with cursor inside
+            createCodeBlockAndMoveCursor(at: cursorPosition, in: mutableText)
+            print("🔸 RichTextCoordinator: Creating new code block with cursor inside")
         }
         
-        // Apply the formatting
-        let newLine = mutableLineText + (lineText.hasSuffix("\n") ? "\n" : "")
-        let newAttributedText = NSMutableAttributedString(string: newLine)
-        
-        // Apply Monaco font and background to code blocks or remove formatting
-        if hasCodeFormatting {
-            // Remove code formatting - apply default font
-            let defaultFont = UIFont.systemFont(ofSize: 17)
-            let defaultAttributes: [NSAttributedString.Key: Any] = [
-                .font: defaultFont,
-                .foregroundColor: UIColor.label,
-                .backgroundColor: UIColor.clear
-            ]
-            newAttributedText.addAttributes(defaultAttributes, range: NSRange(location: 0, length: newAttributedText.length))
-        } else {
-            // Apply Monaco code formatting
-            let codeFont = UIFont(name: "Monaco", size: 14) ?? UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
-            let codeAttributes: [NSAttributedString.Key: Any] = [
-                .font: codeFont,
-                .foregroundColor: UIColor.label,
-                .backgroundColor: UIColor.systemGray6
-            ]
-            newAttributedText.addAttributes(codeAttributes, range: NSRange(location: 0, length: newAttributedText.length))
-        }
-        
-        mutableText.replaceCharacters(in: lineRange, with: newAttributedText)
+        // Update the text view with the modified content
         textView.attributedText = mutableText
-        
-        let safePosition = min(max(0, newCursorPosition), mutableText.length)
-        textView.selectedRange = NSRange(location: safePosition, length: 0)
         
         updateBindingFromTextView()
         updateContextFromTextView()
         
-        print("🎯 RichTextCoordinator: Code block format applied - cursor at position \(safePosition)")
+        print("🎯 RichTextCoordinator: Code block format applied")
+    }
+    
+    // MARK: - Code Block Helper Methods
+    
+    /// Check if the given position is within a code block
+    private func isPositionInCodeBlock(_ position: Int, in attributedText: NSMutableAttributedString) -> Bool {
+        guard position >= 0 && position < attributedText.length else { return false }
+        
+        let attributes = attributedText.attributes(at: position, effectiveRange: nil)
+        
+        // Check if position has Monaco font (indicates code block)
+        if let font = attributes[.font] as? UIFont {
+            return font.fontName.contains("Monaco")
+        }
+        
+        // Also check for grey background color (indicates code block)
+        if let backgroundColor = attributes[.backgroundColor] as? UIColor {
+            return backgroundColor == UIColor.systemGray6
+        }
+        
+        return false
+    }
+    
+    /// Create a new code block and position cursor inside it
+    private func createCodeBlockAndMoveCursor(at position: Int, in mutableText: NSMutableAttributedString) {
+        // Create code block text with space for cursor
+        let codeBlockText = "\n \n"
+        
+        // Insert the code block at current position
+        let insertRange = NSRange(location: position, length: 0)
+        mutableText.replaceCharacters(in: insertRange, with: codeBlockText)
+        
+        // Apply Monaco font and grey background to the entire code block
+        let codeBlockRange = NSRange(location: position, length: codeBlockText.count)
+        
+        // Set Monaco font
+        if let monacoFont = UIFont(name: "Monaco", size: 14) {
+            mutableText.addAttribute(.font, value: monacoFont, range: codeBlockRange)
+        } else {
+            // Fallback to monospaced system font
+            let monospacedFont = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+            mutableText.addAttribute(.font, value: monospacedFont, range: codeBlockRange)
+        }
+        
+        // Set grey background
+        mutableText.addAttribute(.backgroundColor, value: UIColor.systemGray6, range: codeBlockRange)
+        
+        // Set text color to ensure readability
+        mutableText.addAttribute(.foregroundColor, value: UIColor.label, range: codeBlockRange)
+        
+        // Position cursor inside the code block (after the first newline, at the space)
+        let cursorPosition = position + 1
+        textView.selectedRange = NSRange(location: cursorPosition, length: 0)
+        
+        print("📦 Created code block at position \(position), cursor at \(cursorPosition)")
+    }
+    
+    /// Remove code block formatting and move cursor to line below
+    private func removeCodeBlockAndMoveCursor(at position: Int, in mutableText: NSMutableAttributedString) {
+        // Find the range of the current code block
+        var codeBlockStart = position
+        var codeBlockEnd = position
+        
+        // Find start of code block (look backwards for first non-Monaco character)
+        while codeBlockStart > 0 {
+            let prevAttributes = mutableText.attributes(at: codeBlockStart - 1, effectiveRange: nil)
+            if let font = prevAttributes[.font] as? UIFont, font.fontName.contains("Monaco") {
+                codeBlockStart -= 1
+            } else {
+                break
+            }
+        }
+        
+        // Find end of code block (look forwards for first non-Monaco character)
+        while codeBlockEnd < mutableText.length {
+            let attributes = mutableText.attributes(at: codeBlockEnd, effectiveRange: nil)
+            if let font = attributes[.font] as? UIFont, font.fontName.contains("Monaco") {
+                codeBlockEnd += 1
+            } else {
+                break
+            }
+        }
+        
+        let codeBlockRange = NSRange(location: codeBlockStart, length: codeBlockEnd - codeBlockStart)
+        
+        // Get the text content without formatting
+        let codeBlockText = mutableText.attributedSubstring(from: codeBlockRange).string
+        let cleanedText = codeBlockText.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // Replace code block with clean text
+        let replacementText = cleanedText.isEmpty ? "" : cleanedText + "\n"
+        mutableText.replaceCharacters(in: codeBlockRange, with: replacementText)
+        
+        // Apply normal formatting to the replacement text
+        let replacementRange = NSRange(location: codeBlockStart, length: replacementText.count)
+        if replacementRange.length > 0 {
+            // Remove code block formatting
+            mutableText.removeAttribute(.backgroundColor, range: replacementRange)
+            
+            // Apply normal font
+            let normalFont = UIFont(name: context.fontName, size: context.fontSize) ?? UIFont.systemFont(ofSize: context.fontSize)
+            mutableText.addAttribute(.font, value: normalFont, range: replacementRange)
+        }
+        
+        // Position cursor at the end of the replacement text (on new line below)
+        let newCursorPosition = codeBlockStart + replacementText.count
+        textView.selectedRange = NSRange(location: newCursorPosition, length: 0)
+        
+        print("🗑️ Removed code block, cursor moved to position \(newCursorPosition)")
     }
     
     // MARK: - Indentation
@@ -959,11 +1020,17 @@ public class RichTextCoordinator: NSObject {
     }
     
     private func applyBoldToFont(_ font: UIFont) -> UIFont {
-        let traits = font.fontDescriptor.symbolicTraits.union(.traitBold)
-        if let descriptor = font.fontDescriptor.withSymbolicTraits(traits) {
-            return UIFont(descriptor: descriptor, size: font.pointSize)
+        // Use specific SharpGrotesk-Bold-Regular font for bold formatting
+        if let boldFont = UIFont(name: "SharpGrotesk-Bold-Regular", size: font.pointSize) {
+            return boldFont
         } else {
-            return UIFont.boldSystemFont(ofSize: font.pointSize)
+            // Fallback to system font symbolic traits
+            let traits = font.fontDescriptor.symbolicTraits.union(.traitBold)
+            if let descriptor = font.fontDescriptor.withSymbolicTraits(traits) {
+                return UIFont(descriptor: descriptor, size: font.pointSize)
+            } else {
+                return UIFont.boldSystemFont(ofSize: font.pointSize)
+            }
         }
     }
     
@@ -1731,6 +1798,139 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
     public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
         // Allow our tap gesture to work alongside UITextView's built-in gestures
         return true
+    }
+    
+    // MARK: - Code Block Helper Methods
+    
+    /// Check if a position is within a code block (Monaco font with grey background)
+    private func isPositionInCodeBlock(_ position: Int, in attributedText: NSMutableAttributedString) -> Bool {
+        guard position < attributedText.length else { return false }
+        
+        let attributes = attributedText.attributes(at: position, effectiveRange: nil)
+        if let font = attributes[.font] as? UIFont,
+           let backgroundColor = attributes[.backgroundColor] as? UIColor,
+           font.fontName.contains("Monaco"),
+           backgroundColor == UIColor.systemGray6 {
+            return true
+        }
+        return false
+    }
+    
+    /// Create a new code block at the cursor position and place cursor inside
+    private func createCodeBlockAndMoveCursor(at position: Int, in mutableText: NSMutableAttributedString) {
+        // Create a code block with a space for content
+        let codeBlockText = "\n \n" // Space in the middle where cursor will be positioned
+        let codeBlockAttributed = NSMutableAttributedString(string: codeBlockText)
+        
+        // Apply Monaco font and grey background to the entire code block
+        let codeFont = UIFont(name: "Monaco", size: 14) ?? UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+        let codeAttributes: [NSAttributedString.Key: Any] = [
+            .font: codeFont,
+            .foregroundColor: UIColor.label,
+            .backgroundColor: UIColor.systemGray6
+        ]
+        
+        // Apply formatting to the entire code block
+        codeBlockAttributed.addAttributes(codeAttributes, range: NSRange(location: 0, length: codeBlockAttributed.length))
+        
+        // Insert the code block at cursor position
+        mutableText.insert(codeBlockAttributed, at: position)
+        textView.attributedText = mutableText
+        
+        // Place cursor in the middle of the code block (position + 1 to skip first newline)
+        let newCursorPosition = position + 1
+        textView.selectedRange = NSRange(location: newCursorPosition, length: 0)
+        
+        // Update typing attributes to Monaco font so new text will be in code format
+        textView.typingAttributes = [
+            .font: codeFont,
+            .foregroundColor: UIColor.label,
+            .backgroundColor: UIColor.systemGray6
+        ]
+        
+        // Update context state
+        context.isCodeBlockActive = true
+    }
+    
+    /// Remove code block formatting and move cursor to the line below
+    private func removeCodeBlockAndMoveCursor(at position: Int, in mutableText: NSMutableAttributedString) {
+        // Find the range of the current code block
+        var codeBlockStart = position
+        var codeBlockEnd = position
+        
+        // Expand backwards to find the start of the code block
+        while codeBlockStart > 0 {
+            let attributes = mutableText.attributes(at: codeBlockStart - 1, effectiveRange: nil)
+            if let font = attributes[.font] as? UIFont,
+               let backgroundColor = attributes[.backgroundColor] as? UIColor,
+               font.fontName.contains("Monaco"),
+               backgroundColor == UIColor.systemGray6 {
+                codeBlockStart -= 1
+            } else {
+                break
+            }
+        }
+        
+        // Expand forwards to find the end of the code block
+        while codeBlockEnd < mutableText.length {
+            let attributes = mutableText.attributes(at: codeBlockEnd, effectiveRange: nil)
+            if let font = attributes[.font] as? UIFont,
+               let backgroundColor = attributes[.backgroundColor] as? UIColor,
+               font.fontName.contains("Monaco"),
+               backgroundColor == UIColor.systemGray6 {
+                codeBlockEnd += 1
+            } else {
+                break
+            }
+        }
+        
+        // Extract the code text (without formatting)
+        let codeRange = NSRange(location: codeBlockStart, length: codeBlockEnd - codeBlockStart)
+        let codeText = mutableText.attributedSubstring(from: codeRange).string
+        
+        // Create regular formatted text
+        let regularFont = UIFont(name: context.fontName, size: context.fontSize) ?? UIFont.systemFont(ofSize: context.fontSize)
+        let regularAttributes: [NSAttributedString.Key: Any] = [
+            .font: regularFont,
+            .foregroundColor: UIColor.label,
+            .backgroundColor: UIColor.clear
+        ]
+        
+        let regularText = NSAttributedString(string: codeText, attributes: regularAttributes)
+        
+        // Replace the code block with regular text
+        mutableText.replaceCharacters(in: codeRange, with: regularText)
+        textView.attributedText = mutableText
+        
+        // Move cursor to end of the converted text + add a new line if needed
+        var newPosition = codeBlockStart + codeText.count
+        
+        // If we're not at the end and the next character isn't a newline, add one
+        if newPosition < mutableText.length {
+            let nextChar = mutableText.attributedSubstring(from: NSRange(location: newPosition, length: 1)).string
+            if nextChar != "\n" {
+                let newLine = NSAttributedString(string: "\n", attributes: regularAttributes)
+                mutableText.insert(newLine, at: newPosition)
+                newPosition += 1
+            }
+        } else {
+            // At the end of document, add a new line
+            let newLine = NSAttributedString(string: "\n", attributes: regularAttributes)
+            mutableText.append(newLine)
+            newPosition = mutableText.length
+        }
+        
+        textView.selectedRange = NSRange(location: newPosition, length: 0)
+        
+        // Update typing attributes to regular font
+        textView.typingAttributes = [
+            .font: regularFont,
+            .foregroundColor: UIColor.label,
+            .backgroundColor: UIColor.clear
+        ]
+        
+        // Update context state
+        context.isCodeBlockActive = false
     }
 }
 
