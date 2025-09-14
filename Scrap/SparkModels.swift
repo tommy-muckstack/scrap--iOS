@@ -66,12 +66,14 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
             let attributedString = NSAttributedString(string: firebaseNote.content, attributes: attributes)
             
             do {
-                let rtfData = try attributedString.data(
-                    from: NSRange(location: 0, length: attributedString.length),
+                // Use trait preservation method for RTF generation
+                let rtfCompatibleString = SparkItem.prepareForRTFSave(attributedString)
+                let rtfData = try rtfCompatibleString.data(
+                    from: NSRange(location: 0, length: rtfCompatibleString.length),
                     documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
                 )
                 self.rtfData = rtfData
-                print("📖 SparkItem init: Created RTF from plain content (\(firebaseNote.content.count) chars)")
+                print("📖 SparkItem init: Created RTF from plain content (\(firebaseNote.content.count) chars) with trait preservation")
             } catch {
                 print("❌ SparkItem init: Failed to create RTF from plain content: \(error)")
                 self.rtfData = nil
@@ -90,6 +92,38 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
     
     static func == (lhs: SparkItem, rhs: SparkItem) -> Bool {
         lhs.id == rhs.id
+    }
+    
+    // MARK: - RTF Font Trait Preservation
+    
+    // Prepare attributed string for RTF saving by converting to system fonts with preserved traits
+    static func prepareForRTFSave(_ attributedString: NSAttributedString) -> NSAttributedString {
+        let mutableString = NSMutableAttributedString(attributedString: attributedString)
+        let range = NSRange(location: 0, length: mutableString.length)
+        
+        mutableString.enumerateAttribute(.font, in: range, options: []) { value, range, _ in
+            guard let font = value as? UIFont else { return }
+            
+            // Only convert custom fonts (SpaceGrotesk) to system fonts
+            if font.fontName.contains("SpaceGrotesk") {
+                let isBold = font.fontName.contains("Bold")
+                let size = font.pointSize
+                
+                // Convert to system font while preserving traits
+                var systemFont: UIFont
+                if isBold {
+                    systemFont = UIFont.boldSystemFont(ofSize: size)
+                    print("💾 RTF Save prep (SparkItem): '\(font.fontName)' -> Bold System Font (size: \(size))")
+                } else {
+                    systemFont = UIFont.systemFont(ofSize: size)
+                    print("💾 RTF Save prep (SparkItem): '\(font.fontName)' -> Regular System Font (size: \(size))")
+                }
+                
+                mutableString.addAttribute(.font, value: systemFont, range: range)
+            }
+        }
+        
+        return mutableString
     }
 }
 

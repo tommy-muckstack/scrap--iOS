@@ -469,20 +469,8 @@ class FirebaseDataManager: ObservableObject {
     func createItemFromAttributedText(_ attributedText: NSAttributedString, creationType: String = "rich_text") {
         print("📝 Creating item from NSAttributedString with \(attributedText.length) characters")
         
-        // Convert attributed text to RTF data for storage
-        let rtfData: Data? = {
-            do {
-                let data = try attributedText.data(
-                    from: NSRange(location: 0, length: attributedText.length),
-                    documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
-                )
-                print("✅ Successfully created RTF data (\(data.count) bytes)")
-                return data
-            } catch {
-                print("❌ Failed to create RTF data: \(error)")
-                return nil
-            }
-        }()
+        // Convert attributed text to RTF data for storage using trait preservation
+        let rtfData: Data? = NavigationNoteEditView.attributedStringToData(attributedText)
         
         // Extract plain text for display and search
         let plainText = attributedText.string
