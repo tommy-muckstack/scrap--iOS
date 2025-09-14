@@ -13,6 +13,9 @@ struct NoteEditor: View {
     @State private var showingOptions = false
     @State private var showingDelete = false
     @State private var showingFormatting = false
+    @State private var showingCategoryManager = false
+    @State private var userCategories: [Category] = []
+    @State private var isLoadingCategories = false
     
     init(item: SparkItem, dataManager: FirebaseDataManager) {
         self.item = item
@@ -94,15 +97,25 @@ struct NoteEditor: View {
             
             Divider()
             
-            // Category section (simplified for now)
-            HStack {
-                Text("Categories:")
-                    .font(GentleLightning.Typography.caption)
-                    .foregroundColor(GentleLightning.Colors.textSecondary)
-                Spacer()
+            // Simple tags display
+            if !selectedCategories.isEmpty {
+                HStack {
+                    Text("Tags:")
+                        .font(GentleLightning.Typography.caption)
+                        .foregroundColor(GentleLightning.Colors.textSecondary)
+                    
+                    // Simple text list of tag names
+                    Text(userCategories.filter { category in
+                        selectedCategories.contains(category.firebaseId ?? category.id)
+                    }.map { $0.name }.joined(separator: ", "))
+                        .font(GentleLightning.Typography.caption)
+                        .foregroundColor(GentleLightning.Colors.textPrimary)
+                    
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
         }
         // .navigationTitle("Edit Note")
         .navigationBarTitleDisplayMode(.inline)
@@ -113,6 +126,10 @@ struct NoteEditor: View {
             }
         }
         .confirmationDialog("Note Options", isPresented: $showingOptions) {
+            Button("Add Tag") { 
+                showingCategoryManager = true 
+                loadCategories()
+            }
             Button("Share") { shareNote() }
             Button("Delete", role: .destructive) { showingDelete = true }
             Button("Cancel", role: .cancel) { }
@@ -124,12 +141,23 @@ struct NoteEditor: View {
         .sheet(isPresented: $showingFormatting) {
             FormattingSheet(text: $editedText)
         }
+        .sheet(isPresented: $showingCategoryManager) {
+            CategoryManagerView(
+                item: item, 
+                selectedCategories: $selectedCategories,
+                userCategories: $userCategories,
+                onCategoryUpdate: { categoryIds in
+                    updateCategories(categoryIds)
+                }
+            )
+        }
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 withAnimation(GentleLightning.Animation.swoosh) {
                     isTextFocused = true
                 }
             }
+            loadCategories()
         }
     }
     
@@ -177,6 +205,24 @@ struct NoteEditor: View {
     private func deleteNote() {
         dataManager.deleteItem(item)
         dismiss()
+    }
+    
+    private func loadCategories() {
+        isLoadingCategories = true
+        Task {
+            do {
+                let categories = try await CategoryService.shared.getUserCategories()
+                await MainActor.run {
+                    userCategories = categories
+                    isLoadingCategories = false
+                }
+            } catch {
+                await MainActor.run {
+                    isLoadingCategories = false
+                }
+                print("Failed to load categories: \(error)")
+            }
+        }
     }
 }
 
@@ -306,6 +352,322 @@ struct FormatButton: View {
             )
         }
         .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Category Manager View
+struct CategoryManagerView: View {
+    let item: SparkItem
+    @Binding var selectedCategories: [String]
+    @Binding var userCategories: [Category]
+    let onCategoryUpdate: ([String]) -> Void
+    
+    @Environment(\.dismiss) private var dismiss
+    @State private var showingCreateCategory = false
+    @State private var newCategoryName = ""
+    @State private var selectedColorKey = ""
+    @State private var availableColors: [(key: String, hex: String, name: String)] = []
+    @State private var isLoading = false
+    @State private var errorMessage: String?
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                // Header
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Manage Categories")
+                        .font(GentleLightning.Typography.title)
+                        .foregroundColor(GentleLightning.Colors.textPrimary)
+                    
+                    Text("\(userCategories.count)/5 categories used")
+                        .font(GentleLightning.Typography.caption)
+                        .foregroundColor(GentleLightning.Colors.textSecondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 20)
+                
+                // Existing Categories
+                if userCategories.isEmpty {
+                    VStack(spacing: 12) {
+                        Text("No categories yet")
+                            .font(GentleLightning.Typography.subtitle)
+                            .foregroundColor(GentleLightning.Colors.textSecondary)
+                        
+                        Text("Create your first category to organize your notes")
+                            .font(GentleLightning.Typography.secondary)
+                            .foregroundColor(GentleLightning.Colors.textSecondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(40)
+                } else {
+                    ScrollView {
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
+                            ForEach(userCategories) { category in
+                                CategoryCard(
+                                    category: category,
+                                    isSelected: selectedCategories.contains(category.firebaseId ?? category.id),
+                                    onToggle: { toggleCategory(category) }
+                                )
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                    }
+                }
+                
+                Spacer()
+                
+                // Create Category Button
+                if userCategories.count < 5 {
+                    Button(action: { 
+                        loadAvailableColors()
+                        showingCreateCategory = true 
+                    }) {
+                        HStack {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 18))
+                            Text("Create New Category")
+                                .font(GentleLightning.Typography.body)
+                        }
+                        .foregroundColor(.white)
+                        .padding(.vertical, 12)
+                        .frame(maxWidth: .infinity)
+                        .background(GentleLightning.Colors.accentNeutral)
+                        .cornerRadius(12)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 20)
+                }
+            }
+            .navigationTitle("Categories")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .foregroundColor(GentleLightning.Colors.accentNeutral)
+                }
+            }
+            .sheet(isPresented: $showingCreateCategory) {
+                CreateCategoryView(
+                    categoryName: $newCategoryName,
+                    selectedColorKey: $selectedColorKey,
+                    availableColors: availableColors,
+                    onCreate: { name, colorKey in
+                        createCategory(name: name, colorKey: colorKey)
+                    }
+                )
+            }
+            .alert("Error", isPresented: .constant(errorMessage != nil)) {
+                Button("OK") { errorMessage = nil }
+            } message: {
+                if let errorMessage = errorMessage {
+                    Text(errorMessage)
+                }
+            }
+        }
+    }
+    
+    private func toggleCategory(_ category: Category) {
+        let categoryId = category.firebaseId ?? category.id
+        
+        if selectedCategories.contains(categoryId) {
+            selectedCategories.removeAll { $0 == categoryId }
+        } else {
+            selectedCategories.append(categoryId)
+        }
+        
+        onCategoryUpdate(selectedCategories)
+    }
+    
+    private func loadAvailableColors() {
+        Task {
+            do {
+                let colors = try await CategoryService.shared.getAvailableColors()
+                await MainActor.run {
+                    availableColors = colors
+                    selectedColorKey = colors.first?.key ?? ""
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = "Failed to load available colors: \(error.localizedDescription)"
+                }
+            }
+        }
+    }
+    
+    private func createCategory(name: String, colorKey: String) {
+        isLoading = true
+        Task {
+            do {
+                let newCategory = try await CategoryService.shared.createCustomCategory(name: name, colorKey: colorKey)
+                
+                await MainActor.run {
+                    userCategories.append(newCategory)
+                    showingCreateCategory = false
+                    newCategoryName = ""
+                    selectedColorKey = ""
+                    isLoading = false
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = error.localizedDescription
+                    isLoading = false
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Category Card
+struct CategoryCard: View {
+    let category: Category
+    let isSelected: Bool
+    let onToggle: () -> Void
+    
+    var body: some View {
+        Button(action: onToggle) {
+            VStack(spacing: 12) {
+                // Color circle
+                Circle()
+                    .fill(category.uiColor)
+                    .frame(width: 40, height: 40)
+                    .overlay(
+                        Circle()
+                            .stroke(.white, lineWidth: isSelected ? 3 : 0)
+                    )
+                    .overlay(
+                        Circle()
+                            .stroke(GentleLightning.Colors.accentNeutral, lineWidth: isSelected ? 2 : 0)
+                    )
+                
+                // Category name
+                Text(category.name)
+                    .font(GentleLightning.Typography.body)
+                    .foregroundColor(GentleLightning.Colors.textPrimary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                
+                // Usage count
+                Text("\(category.usageCount) notes")
+                    .font(GentleLightning.Typography.caption)
+                    .foregroundColor(GentleLightning.Colors.textSecondary)
+            }
+            .frame(height: 120)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(GentleLightning.Colors.surface)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(isSelected ? GentleLightning.Colors.accentNeutral : GentleLightning.Colors.textSecondary.opacity(0.2), lineWidth: isSelected ? 2 : 1)
+                    )
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Create Category View
+struct CreateCategoryView: View {
+    @Binding var categoryName: String
+    @Binding var selectedColorKey: String
+    let availableColors: [(key: String, hex: String, name: String)]
+    let onCreate: (String, String) -> Void
+    
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 24) {
+                // Header
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Create Category")
+                        .font(GentleLightning.Typography.title)
+                        .foregroundColor(GentleLightning.Colors.textPrimary)
+                    
+                    Text("Choose a name and color for your new category")
+                        .font(GentleLightning.Typography.secondary)
+                        .foregroundColor(GentleLightning.Colors.textSecondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 20)
+                
+                // Category Name Input
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Category Name")
+                        .font(GentleLightning.Typography.body)
+                        .foregroundColor(GentleLightning.Colors.textPrimary)
+                    
+                    TextField("Enter category name", text: $categoryName)
+                        .font(GentleLightning.Typography.bodyInput)
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 16)
+                        .background(Color.gray.opacity(0.1))
+                        .cornerRadius(8)
+                }
+                .padding(.horizontal, 20)
+                
+                // Color Selection
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Choose Color")
+                        .font(GentleLightning.Typography.body)
+                        .foregroundColor(GentleLightning.Colors.textPrimary)
+                        .padding(.horizontal, 20)
+                    
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 16) {
+                        ForEach(availableColors, id: \.key) { colorInfo in
+                            Button(action: { selectedColorKey = colorInfo.key }) {
+                                VStack(spacing: 8) {
+                                    Circle()
+                                        .fill(Color(hex: colorInfo.hex) ?? Color.gray)
+                                        .frame(width: 50, height: 50)
+                                        .overlay(
+                                            Circle()
+                                                .stroke(GentleLightning.Colors.accentNeutral, lineWidth: selectedColorKey == colorInfo.key ? 3 : 0)
+                                        )
+                                    
+                                    Text(colorInfo.name)
+                                        .font(GentleLightning.Typography.caption)
+                                        .foregroundColor(GentleLightning.Colors.textPrimary)
+                                }
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                }
+                
+                Spacer()
+                
+                // Create Button
+                Button(action: {
+                    onCreate(categoryName, selectedColorKey)
+                    dismiss()
+                }) {
+                    Text("Create Category")
+                        .font(GentleLightning.Typography.body)
+                        .foregroundColor(.white)
+                        .padding(.vertical, 12)
+                        .frame(maxWidth: .infinity)
+                        .background(
+                            categoryName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || selectedColorKey.isEmpty
+                                ? Color.gray
+                                : GentleLightning.Colors.accentNeutral
+                        )
+                        .cornerRadius(12)
+                }
+                .disabled(categoryName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || selectedColorKey.isEmpty)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 20)
+            }
+            .navigationTitle("New Category")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") { dismiss() }
+                        .foregroundColor(GentleLightning.Colors.accentNeutral)
+                }
+            }
+        }
     }
 }
 

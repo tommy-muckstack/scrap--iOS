@@ -1304,6 +1304,10 @@ struct NoteEditView: View {
                 }
             )
             .confirmationDialog("Note Options", isPresented: $showingActionSheet, titleVisibility: .visible) {
+                Button("Add Tag") {
+                    showingCategoryManager = true
+                    loadCategories()
+                }
                 Button("Share") {
                     shareNote()
                 }
@@ -1320,6 +1324,16 @@ struct NoteEditView: View {
                 Button("Cancel", role: .cancel) { }
             } message: {
                 Text("This note will be permanently deleted. This action cannot be undone.")
+            }
+            .sheet(isPresented: $showingCategoryManager) {
+                CategoryManagerView(
+                    item: item,
+                    selectedCategories: $selectedCategoryIds,
+                    userCategories: $userCategories,
+                    onCategoryUpdate: { categoryIds in
+                        updateCategories(categoryIds)
+                    }
+                )
             }
         }
     }
@@ -1408,6 +1422,40 @@ struct NoteEditView: View {
         }
         
         return sanitizedLines.joined(separator: "\n")
+    }
+    
+    // MARK: - Category Management
+    
+    private func loadCategories() {
+        isLoadingCategories = true
+        Task {
+            do {
+                let categories = try await CategoryService.shared.getUserCategories()
+                await MainActor.run {
+                    userCategories = categories
+                    isLoadingCategories = false
+                }
+            } catch {
+                await MainActor.run {
+                    isLoadingCategories = false
+                }
+                print("Failed to load categories: \(error)")
+            }
+        }
+    }
+    
+    private func updateCategories(_ categoryIds: [String]) {
+        selectedCategoryIds = categoryIds
+        item.categoryIds = categoryIds
+        
+        if let firebaseId = item.firebaseId {
+            Task {
+                try? await dataManager.firebaseManager.updateNoteCategories(noteId: firebaseId, categoryIds: categoryIds)
+                for categoryId in categoryIds {
+                    await CategoryService.shared.updateCategoryUsage(categoryId)
+                }
+            }
+        }
     }
 }
 
@@ -2150,6 +2198,11 @@ struct NavigationNoteEditView: View {
     @State private var isSavingContent = false
     @State private var saveTimer: Timer?
     
+    // Category management state
+    @State private var showingCategoryManager = false
+    @State private var userCategories: [Category] = []
+    @State private var isLoadingCategories = false
+    
     init(item: SparkItem, dataManager: FirebaseDataManager) {
         print("🏗️ NavigationNoteEditView init: STARTING - item.id = '\(item.id)'")
         
@@ -2217,11 +2270,14 @@ struct NavigationNoteEditView: View {
                 let isBold = font.fontName.contains("Bold")
                 let size = font.pointSize
                 
-                // Convert to system font while preserving traits
+                // Convert to system font while preserving traits using font descriptors
                 var systemFont: UIFont
                 if isBold {
-                    systemFont = UIFont.boldSystemFont(ofSize: size)
-                    print("💾 RTF Save prep: '\(font.fontName)' -> Bold System Font (size: \(size))")
+                    // Create system font with explicit bold traits for better RTF preservation
+                    let descriptor = UIFontDescriptor.preferredFontDescriptor(withTextStyle: .body)
+                        .withSymbolicTraits([.traitBold])
+                    systemFont = UIFont(descriptor: descriptor ?? UIFontDescriptor(), size: size)
+                    print("💾 RTF Save prep: '\(font.fontName)' -> Bold System Font with traits (size: \(size))")
                 } else {
                     systemFont = UIFont.systemFont(ofSize: size)
                     print("💾 RTF Save prep: '\(font.fontName)' -> Regular System Font (size: \(size))")

@@ -351,6 +351,24 @@ class CategoryService {
             .delete()
     }
     
+    func updateCategoryUsage(_ categoryId: String) async {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            return
+        }
+        
+        do {
+            try await db.collection("users")
+                .document(userId)
+                .collection("categories")
+                .document(categoryId)
+                .updateData([
+                    "usageCount": FieldValue.increment(Int64(1))
+                ])
+        } catch {
+            print("Failed to update category usage: \(error)")
+        }
+    }
+    
     func incrementUsage(for categoryId: String) async throws {
         guard let userId = Auth.auth().currentUser?.uid else {
             throw CategoryError.notAuthenticated
@@ -390,6 +408,66 @@ class CategoryService {
         )
         
         try await saveCategory(category)
+        return category
+    }
+    
+    // MARK: - 5-Color Category System
+    
+    static let availableColors = [
+        ("blue", "#2563EB", "Blue"),
+        ("red", "#DC2626", "Red"), 
+        ("purple", "#7C3AED", "Purple"),
+        ("green", "#16A34A", "Green"),
+        ("yellow", "#D97706", "Yellow")
+    ]
+    
+    func getUserCategories() async throws -> [Category] {
+        return try await loadCategories()
+    }
+    
+    func canCreateCategory(withColor colorKey: String) async throws -> Bool {
+        let existingCategories = try await loadCategories()
+        return !existingCategories.contains { category in
+            // Check if this color is already used
+            let colorHex = CategoryService.availableColors.first { $0.0 == colorKey }?.1 ?? ""
+            return category.color == colorHex
+        }
+    }
+    
+    func getAvailableColors() async throws -> [(key: String, hex: String, name: String)] {
+        let existingCategories = try await loadCategories()
+        let usedColors = Set(existingCategories.map { $0.color })
+        
+        return CategoryService.availableColors.filter { colorInfo in
+            !usedColors.contains(colorInfo.1)
+        }
+    }
+    
+    func createCustomCategory(name: String, colorKey: String) async throws -> Category {
+        // Validate input
+        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw CategoryError.invalidData
+        }
+        
+        guard let colorInfo = CategoryService.availableColors.first(where: { $0.0 == colorKey }) else {
+            throw CategoryError.invalidData
+        }
+        
+        // Check if color is available
+        guard try await canCreateCategory(withColor: colorKey) else {
+            throw CategoryError.colorAlreadyUsed
+        }
+        
+        // Check if we've reached the limit
+        let existingCategories = try await loadCategories()
+        guard existingCategories.count < 5 else {
+            throw CategoryError.limitReached
+        }
+        
+        // Create the category
+        let category = Category(name: name.trimmingCharacters(in: .whitespacesAndNewlines), color: colorInfo.1)
+        try await saveCategory(category)
+        
         return category
     }
 }
@@ -453,6 +531,8 @@ enum CategoryError: Error, LocalizedError {
     case notAuthenticated
     case invalidData
     case networkError
+    case colorAlreadyUsed
+    case limitReached
     
     var errorDescription: String? {
         switch self {
@@ -462,6 +542,10 @@ enum CategoryError: Error, LocalizedError {
             return "Invalid category data"
         case .networkError:
             return "Network error occurred"
+        case .colorAlreadyUsed:
+            return "This color is already used by another category"
+        case .limitReached:
+            return "Maximum of 5 categories allowed"
         }
     }
 }
