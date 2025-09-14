@@ -262,6 +262,18 @@ public class RichTextCoordinator: NSObject {
         
         print("🎯 RichTextCoordinator: Bold toggle - shouldAddBold: \(shouldAddBold), range: \(range)")
         
+        // Debug available Space Grotesk fonts
+        let availableFonts = UIFont.familyNames.filter { $0.contains("SpaceGrotesk") }
+        print("📝 Available Space Grotesk fonts: \(availableFonts)")
+        let spaceGroteskFonts = UIFont.fontNames(forFamilyName: "Space Grotesk")
+        print("📝 Space Grotesk font names: \(spaceGroteskFonts)")
+        // Test if bold font is actually available
+        if let boldFont = UIFont(name: "SpaceGrotesk-Bold", size: 17) {
+            print("✅ SpaceGrotesk-Bold is available: \(boldFont.fontName)")
+        } else {
+            print("❌ SpaceGrotesk-Bold is NOT available")
+        }
+        
         // Apply formatting consistently across the range
         if range.length > 0 {
             // For selections, apply to the selected text
@@ -272,30 +284,25 @@ public class RichTextCoordinator: NSObject {
                         // Add bold - use specific SpaceGrotesk-Bold font
                         if let boldFont = UIFont(name: "SpaceGrotesk-Bold", size: font.pointSize) {
                             newFont = boldFont
+                            print("✅ Applied SpaceGrotesk-Bold font at size \(font.pointSize)")
                         } else {
-                            // Fallback to system font if custom bold font not available
-                            let traits = font.fontDescriptor.symbolicTraits.union(.traitBold)
-                            if let descriptor = font.fontDescriptor.withSymbolicTraits(traits) {
-                                newFont = UIFont(descriptor: descriptor, size: font.pointSize)
-                            } else {
-                                newFont = UIFont.boldSystemFont(ofSize: font.pointSize)
-                            }
+                            // Fallback to system bold font if custom font not available
+                            newFont = UIFont.boldSystemFont(ofSize: font.pointSize)
+                            print("⚠️ SpaceGrotesk-Bold not available, using system bold font")
                         }
                     } else {
                         // Remove bold - revert to regular SpaceGrotesk font
-                        if let regularFont = UIFont(name: context.fontName, size: font.pointSize) {
+                        if let regularFont = UIFont(name: "SpaceGrotesk-Regular", size: font.pointSize) {
                             newFont = regularFont
+                            print("✅ Applied SpaceGrotesk-Regular font at size \(font.pointSize)")
                         } else {
-                            // Fallback to removing bold trait
-                            let traits = font.fontDescriptor.symbolicTraits.subtracting(.traitBold)
-                            if let descriptor = font.fontDescriptor.withSymbolicTraits(traits) {
-                                newFont = UIFont(descriptor: descriptor, size: font.pointSize)
-                            } else {
-                                newFont = UIFont(name: context.fontName, size: font.pointSize) ?? font
-                            }
+                            // Fallback to system regular font
+                            newFont = UIFont.systemFont(ofSize: font.pointSize)
+                            print("⚠️ SpaceGrotesk-Regular not available, using system regular font")
                         }
                     }
                     mutableText.addAttribute(.font, value: newFont, range: subRange)
+                    print("🎯 Applied font '\(newFont.fontName)' to range \(subRange)")
                 }
             }
         } else {
@@ -1006,15 +1013,13 @@ public class RichTextCoordinator: NSObject {
     private func applyBoldToFont(_ font: UIFont) -> UIFont {
         // Use specific SpaceGrotesk-Bold font for bold formatting
         if let boldFont = UIFont(name: "SpaceGrotesk-Bold", size: font.pointSize) {
+            print("✅ applyBoldToFont: Using SpaceGrotesk-Bold at size \(font.pointSize)")
             return boldFont
         } else {
-            // Fallback to system font symbolic traits
-            let traits = font.fontDescriptor.symbolicTraits.union(.traitBold)
-            if let descriptor = font.fontDescriptor.withSymbolicTraits(traits) {
-                return UIFont(descriptor: descriptor, size: font.pointSize)
-            } else {
-                return UIFont.boldSystemFont(ofSize: font.pointSize)
-            }
+            // Fallback to system bold font
+            let boldSystemFont = UIFont.boldSystemFont(ofSize: font.pointSize)
+            print("⚠️ applyBoldToFont: SpaceGrotesk-Bold not available, using system bold font: \(boldSystemFont.fontName)")
+            return boldSystemFont
         }
     }
     

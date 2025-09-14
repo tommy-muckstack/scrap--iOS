@@ -423,11 +423,14 @@ class FirebaseDataManager: ObservableObject {
                 let isBold = font.fontName.contains("Bold")
                 let size = font.pointSize
                 
-                // Convert to system font while preserving traits
+                // Convert to system font while preserving traits using font descriptors
                 var systemFont: UIFont
                 if isBold {
-                    systemFont = UIFont.boldSystemFont(ofSize: size)
-                    print("💾 RTF Save prep: '\(font.fontName)' -> Bold System Font (size: \(size))")
+                    // Create system font with explicit bold traits for better RTF preservation
+                    let descriptor = UIFontDescriptor.preferredFontDescriptor(withTextStyle: .body)
+                        .withSymbolicTraits([.traitBold])
+                    systemFont = UIFont(descriptor: descriptor ?? UIFontDescriptor(), size: size)
+                    print("💾 RTF Save prep: '\(font.fontName)' -> Bold System Font with traits (size: \(size))")
                 } else {
                     systemFont = UIFont.systemFont(ofSize: size)
                     print("💾 RTF Save prep: '\(font.fontName)' -> Regular System Font (size: \(size))")
