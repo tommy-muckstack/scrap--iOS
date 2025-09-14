@@ -9,6 +9,7 @@ import AVFoundation
 // MARK: - Gentle Lightning Design System
 struct GentleLightning {
     struct Colors {
+        // Static colors (unchanged for existing code compatibility)
         static let background = Color.white
         static let surface = Color.white
         static let textPrimary = Color(red: 0.12, green: 0.12, blue: 0.15)
@@ -17,6 +18,31 @@ struct GentleLightning {
         static let accentTask = Color(red: 0.4, green: 0.65, blue: 1.0)
         static let accentNeutral = Color(red: 0.65, green: 0.7, blue: 1.0)
         static let shadowLight = Color.black.opacity(0.03)
+        
+        // Dynamic theme-aware colors
+        static func background(isDark: Bool) -> Color {
+            isDark ? Color(red: 0.1, green: 0.1, blue: 0.1) : Color.white
+        }
+        
+        static func surface(isDark: Bool) -> Color {
+            isDark ? Color(red: 0.15, green: 0.15, blue: 0.15) : Color.white
+        }
+        
+        static func textPrimary(isDark: Bool) -> Color {
+            isDark ? Color(red: 0.95, green: 0.95, blue: 0.95) : Color(red: 0.12, green: 0.12, blue: 0.15)
+        }
+        
+        static func textSecondary(isDark: Bool) -> Color {
+            isDark ? Color(red: 0.7, green: 0.7, blue: 0.75) : Color(red: 0.45, green: 0.45, blue: 0.5)
+        }
+        
+        static func shadow(isDark: Bool) -> Color {
+            isDark ? Color.white.opacity(0.05) : Color.black.opacity(0.03)
+        }
+        
+        static func border(isDark: Bool) -> Color {
+            isDark ? Color.white.opacity(0.2) : Color.black.opacity(0.1)
+        }
     }
     
     struct Typography {
@@ -58,6 +84,7 @@ struct GentleLightning {
     struct Animation {
         static let gentle = SwiftUI.Animation.easeInOut(duration: 0.4)
         static let elastic = SwiftUI.Animation.spring(response: 0.3, dampingFraction: 0.6)
+        static let swoosh = SwiftUI.Animation.easeInOut(duration: 0.25)
     }
 }
 

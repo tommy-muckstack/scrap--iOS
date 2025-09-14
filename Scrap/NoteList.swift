@@ -73,11 +73,12 @@ struct NoteRow: View {
 // MARK: - Category Pills Display
 struct CategoryPills: View {
     let categoryIds: [String]
-    @ObservedObject private var categoryService = CategoryService.shared
+    @State private var categories: [Category] = []
+    @State private var isLoading = false
     
     var body: some View {
         HStack(spacing: 6) {
-            ForEach(categoryService.getCategoriesByIds(categoryIds), id: \.id) { category in
+            ForEach(categories, id: \.id) { category in
                 HStack(spacing: 4) {
                     Circle()
                         .fill(category.uiColor)
@@ -95,6 +96,40 @@ struct CategoryPills: View {
                 )
             }
             Spacer()
+        }
+        .onAppear {
+            loadCategories()
+        }
+        .onChange(of: categoryIds) { _ in
+            loadCategories()
+        }
+    }
+    
+    private func loadCategories() {
+        guard !categoryIds.isEmpty else {
+            categories = []
+            return
+        }
+        
+        isLoading = true
+        Task {
+            do {
+                let allCategories = try await CategoryService.shared.getUserCategories()
+                let filteredCategories = allCategories.filter { category in
+                    categoryIds.contains(category.firebaseId ?? category.id)
+                }
+                
+                await MainActor.run {
+                    categories = filteredCategories
+                    isLoading = false
+                }
+            } catch {
+                await MainActor.run {
+                    categories = []
+                    isLoading = false
+                }
+                print("Failed to load categories: \(error)")
+            }
         }
     }
 }
