@@ -220,7 +220,7 @@ class FirebaseDataManager: ObservableObject {
     func createItem(from text: String, creationType: String = "text") {
         // Create RTF document from the start
         let attributes: [NSAttributedString.Key: Any] = [
-            .font: UIFont(name: "SharpGrotesk-Book", size: 17) ?? UIFont.systemFont(ofSize: 17),
+            .font: UIFont(name: "SpaceGrotesk-Regular", size: 17) ?? UIFont.systemFont(ofSize: 17),
             .foregroundColor: UIColor.black
         ]
         let attributedText = NSAttributedString(string: text, attributes: attributes)

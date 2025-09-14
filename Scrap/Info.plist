@@ -50,15 +50,12 @@
     <true/>
     <key>UIAppFonts</key>
     <array>
-        <string>SharpGrotesk-Thin.otf</string>
-        <string>SharpGrotesk-ThinItalic.otf</string>
-        <string>SharpGrotesk-Light.otf</string>
-        <string>SharpGrotesk-LightItalic.otf</string>
-        <string>SharpGrotesk-Book.otf</string>
-        <string>SharpGrotesk-BookItalic.otf</string>
-        <string>SharpGrotesk-Medium.otf</string>
-        <string>SharpGrotesk-MediumItalic.otf</string>
-        <string>SharpGrotesk-SemiBold.otf</string>
+        <string>SpaceGrotesk-Light.ttf</string>
+        <string>SpaceGrotesk-Regular.ttf</string>
+        <string>SpaceGrotesk-Medium.ttf</string>
+        <string>SpaceGrotesk-SemiBold.ttf</string>
+        <string>SpaceGrotesk-Bold.ttf</string>
+        <string>SpaceGrotesk-VariableFont_wght.ttf</string>
     </array>
     <key>NSMicrophoneUsageDescription</key>
     <string>Scrap uses your microphone to transcribe voice notes, making it easy to capture your thoughts hands-free.</string>
