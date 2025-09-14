@@ -212,6 +212,12 @@ class ChromaService: ObservableObject {
         filter: [String: Any]? = nil
     ) async throws -> ChromaQueryResult {
         
+        // If collection ID is missing or stale, try to refresh it
+        if collectionId == nil {
+            print("🔍 ChromaService: Collection ID is nil, refreshing...")
+            await initializeCollection()
+        }
+        
         guard let collectionId = collectionId else {
             throw ChromaError.networkError("Collection not initialized")
         }
@@ -240,6 +246,37 @@ class ChromaService: ObservableObject {
         
         guard let httpResponse = response as? HTTPURLResponse else {
             throw ChromaError.networkError("Invalid response format")
+        }
+        
+        // If collection doesn't exist, try to refresh collection ID and retry once
+        if httpResponse.statusCode == 400 || httpResponse.statusCode == 404 {
+            if let errorData = String(data: data, encoding: .utf8),
+               errorData.contains("does not exist") {
+                print("🔍 ChromaService: Collection ID is stale, refreshing and retrying...")
+                await initializeCollection()
+                
+                // Retry with new collection ID
+                if let newCollectionId = self.collectionId {
+                    let retryUrl = URL(string: "\(baseURL)/api/v1/collections/\(newCollectionId)/query")!
+                    var retryRequest = URLRequest(url: retryUrl)
+                    retryRequest.httpMethod = "POST"
+                    retryRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    retryRequest.httpBody = try JSONSerialization.data(withJSONObject: queryData)
+                    
+                    let (retryData, retryResponse) = try await session.data(for: retryRequest)
+                    
+                    guard let retryHttpResponse = retryResponse as? HTTPURLResponse,
+                          retryHttpResponse.statusCode == 200 else {
+                        let errorMessage = "HTTP \(httpResponse.statusCode)"
+                        if let errorData = String(data: data, encoding: .utf8) {
+                            print("🔍 ChromaService query retry error response: \(errorData)")
+                        }
+                        throw ChromaError.networkError("Failed to query documents after retry: \(errorMessage)")
+                    }
+                    
+                    return try JSONDecoder().decode(ChromaQueryResult.self, from: retryData)
+                }
+            }
         }
         
         guard httpResponse.statusCode == 200 else {
