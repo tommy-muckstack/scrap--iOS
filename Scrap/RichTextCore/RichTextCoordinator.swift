@@ -245,8 +245,8 @@ public class RichTextCoordinator: NSObject {
             // For selections, check if ANY text in selection is bold
             mutableText.enumerateAttribute(.font, in: range) { value, _, _ in
                 if let font = value as? UIFont {
-                    // Check for SharpGrotesk-Bold-Regular font or symbolic traits
-                    if font.fontName == "SharpGrotesk-Bold-Regular" || 
+                    // Check for SpaceGrotesk-Bold font or symbolic traits
+                    if font.fontName == "SpaceGrotesk-Bold" || 
                        font.fontDescriptor.symbolicTraits.contains(.traitBold) {
                         hasBoldText = true
                     }
@@ -269,8 +269,8 @@ public class RichTextCoordinator: NSObject {
                 if let font = value as? UIFont {
                     let newFont: UIFont
                     if shouldAddBold {
-                        // Add bold - use specific SharpGrotesk-Bold-Regular font
-                        if let boldFont = UIFont(name: "SharpGrotesk-Bold-Regular", size: font.pointSize) {
+                        // Add bold - use specific SpaceGrotesk-Bold font
+                        if let boldFont = UIFont(name: "SpaceGrotesk-Bold", size: font.pointSize) {
                             newFont = boldFont
                         } else {
                             // Fallback to system font if custom bold font not available
@@ -282,7 +282,7 @@ public class RichTextCoordinator: NSObject {
                             }
                         }
                     } else {
-                        // Remove bold - revert to regular SharpGrotesk font
+                        // Remove bold - revert to regular SpaceGrotesk font
                         if let regularFont = UIFont(name: context.fontName, size: font.pointSize) {
                             newFont = regularFont
                         } else {
@@ -1004,8 +1004,8 @@ public class RichTextCoordinator: NSObject {
     }
     
     private func applyBoldToFont(_ font: UIFont) -> UIFont {
-        // Use specific SharpGrotesk-Bold-Regular font for bold formatting
-        if let boldFont = UIFont(name: "SharpGrotesk-Bold-Regular", size: font.pointSize) {
+        // Use specific SpaceGrotesk-Bold font for bold formatting
+        if let boldFont = UIFont(name: "SpaceGrotesk-Bold", size: font.pointSize) {
             return boldFont
         } else {
             // Fallback to system font symbolic traits

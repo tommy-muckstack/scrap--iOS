@@ -20,28 +20,28 @@ struct GentleLightning {
     }
     
     struct Typography {
-        // HEADINGS / TITLES → SharpGrotesk-Medium (sometimes SemiBold for emphasis)
-        static let hero = Font.custom("SharpGrotesk-SemiBold", size: 34)
-        static let title = Font.custom("SharpGrotesk-Medium", size: 20)
-        static let titleEmphasis = Font.custom("SharpGrotesk-SemiBold", size: 20)
-        static let subtitle = Font.custom("SharpGrotesk-Medium", size: 18)
-        static let heading = Font.custom("SharpGrotesk-Medium", size: 16)
+        // HEADINGS / TITLES → SpaceGrotesk-SemiBold/Bold for emphasis
+        static let hero = Font.custom("SpaceGrotesk-Bold", size: 34)               // Large hero titles
+        static let title = Font.custom("SpaceGrotesk-Medium", size: 20)            // Standard titles/headings
+        static let titleEmphasis = Font.custom("SpaceGrotesk-SemiBold", size: 20)  // Emphasized titles
+        static let subtitle = Font.custom("SpaceGrotesk-Medium", size: 18)         // Subtitles
+        static let heading = Font.custom("SpaceGrotesk-Medium", size: 16)          // Section headings
         
-        // BODY TEXT → SharpGrotesk-Book (regular reading weight)
-        static let body = Font.custom("SharpGrotesk-Book", size: 16)
-        static let bodyInput = Font.custom("SharpGrotesk-Book", size: 17)
-        static let bodyLarge = Font.custom("SharpGrotesk-Book", size: 18)
+        // BODY TEXT → SpaceGrotesk-Regular (regular reading weight)
+        static let body = Font.custom("SpaceGrotesk-Regular", size: 16)            // Primary body text
+        static let bodyInput = Font.custom("SpaceGrotesk-Regular", size: 17)       // Input fields
+        static let bodyLarge = Font.custom("SpaceGrotesk-Regular", size: 18)       // Larger body text
         
-        // SECONDARY / SUBTLE TEXT → SharpGrotesk-Light
-        static let caption = Font.custom("SharpGrotesk-Light", size: 13)
-        static let small = Font.custom("SharpGrotesk-Light", size: 11)
-        static let secondary = Font.custom("SharpGrotesk-Light", size: 14)
-        static let metadata = Font.custom("SharpGrotesk-Light", size: 12)
+        // SECONDARY / SUBTLE TEXT → SpaceGrotesk-Light
+        static let caption = Font.custom("SpaceGrotesk-Light", size: 13)           // Subtle captions
+        static let small = Font.custom("SpaceGrotesk-Light", size: 11)             // Small subtle text
+        static let secondary = Font.custom("SpaceGrotesk-Light", size: 14)         // Secondary information
+        static let metadata = Font.custom("SpaceGrotesk-Light", size: 12)          // Timestamps, metadata
         
-        // ITALIC VARIANTS
-        static let bodyItalic = Font.custom("SharpGrotesk-BookItalic", size: 16)
-        static let titleItalic = Font.custom("SharpGrotesk-MediumItalic", size: 20)
-        static let secondaryItalic = Font.custom("SharpGrotesk-LightItalic", size: 14)
+        // ITALIC VARIANTS - Space Grotesk doesn't have italics, use regular weights
+        static let bodyItalic = Font.custom("SpaceGrotesk-Regular", size: 16)      // No italic variant
+        static let titleItalic = Font.custom("SpaceGrotesk-Medium", size: 20)      // No italic variant
+        static let secondaryItalic = Font.custom("SpaceGrotesk-Light", size: 14)   // No italic variant
     }
     
     struct Layout {

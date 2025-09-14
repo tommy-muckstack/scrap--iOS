@@ -33,28 +33,49 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
         self.createdAt = firebaseNote.createdAt
         self.firebaseId = firebaseNote.id
         
-        // Load RTF data if available and extract clean plain text
+        // Always preserve RTF data - content should maintain formatting
         if let base64RTF = firebaseNote.rtfContent,
            let rtfData = Data(base64Encoded: base64RTF) {
             self.rtfData = rtfData
             
-            // Extract clean plain text from RTF data to prevent showing raw RTF
+            // For content display, extract plain text only for title bar purposes
+            // The actual rich content will be handled by the RTF editor
             do {
                 let attributedString = try NSAttributedString(
                     data: rtfData,
                     options: [.documentType: NSAttributedString.DocumentType.rtf],
                     documentAttributes: nil
                 )
-                self.content = attributedString.string
-                print("📖 SparkItem init: Extracted plain text from RTF (\(attributedString.string.count) chars): '\(attributedString.string.prefix(50))...'")
+                self.content = attributedString.string // Plain text for title bar only
+                print("📖 SparkItem init: Loaded RTF content (\(attributedString.string.count) chars) - RTF preserved for editing: '\(attributedString.string.prefix(50))...'")
             } catch {
-                print("❌ SparkItem init: Failed to extract plain text from RTF, using Firebase content: \(error)")
+                print("❌ SparkItem init: Failed to load RTF, using Firebase content: \(error)")
                 // Fallback to Firebase content if RTF extraction fails
                 self.content = firebaseNote.content
+                self.rtfData = nil
             }
         } else {
-            // No RTF data available, use content from Firebase
+            // No RTF data available - create RTF from plain content
             self.content = firebaseNote.content
+            
+            // Convert plain content to RTF format with default styling
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont(name: "SpaceGrotesk-Regular", size: 17) ?? UIFont.systemFont(ofSize: 17),
+                .foregroundColor: UIColor.black
+            ]
+            let attributedString = NSAttributedString(string: firebaseNote.content, attributes: attributes)
+            
+            do {
+                let rtfData = try attributedString.data(
+                    from: NSRange(location: 0, length: attributedString.length),
+                    documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
+                )
+                self.rtfData = rtfData
+                print("📖 SparkItem init: Created RTF from plain content (\(firebaseNote.content.count) chars)")
+            } catch {
+                print("❌ SparkItem init: Failed to create RTF from plain content: \(error)")
+                self.rtfData = nil
+            }
         }
     }
     

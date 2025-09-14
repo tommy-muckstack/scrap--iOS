@@ -22,20 +22,25 @@
 		BB304E852E6F9F0A0054DD40 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = BB304E842E6F9F0A0054DD40 /* FirebaseStorage */; };
 		BB304E892E6FA8650054DD40 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = BB304E882E6FA8650054DD40 /* GoogleSignIn */; };
 		BB304E8B2E6FA8650054DD40 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = BB304E8A2E6FA8650054DD40 /* GoogleSignInSwift */; };
-		BBC2A33D2E719333000BEABE /* SharpGrotesk-SemiBold.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3202E719333000BEABE /* SharpGrotesk-SemiBold.otf */; };
-		BBC2A3472E719333000BEABE /* SharpGrotesk-LightItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A31D2E719333000BEABE /* SharpGrotesk-LightItalic.otf */; };
-		BBC2A34C2E719333000BEABE /* SharpGrotesk-BookItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A31B2E719333000BEABE /* SharpGrotesk-BookItalic.otf */; };
-		BBC2A34D2E719333000BEABE /* SharpGrotesk-Book.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A31A2E719333000BEABE /* SharpGrotesk-Book.otf */; };
-		BBC2A3572E719333000BEABE /* SharpGrotesk-Medium.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A31E2E719333000BEABE /* SharpGrotesk-Medium.otf */; };
-		BBC2A35F2E719333000BEABE /* SharpGrotesk-Thin.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3212E719333000BEABE /* SharpGrotesk-Thin.otf */; };
-		BBC2A3712E719333000BEABE /* SharpGrotesk-Light.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A31C2E719333000BEABE /* SharpGrotesk-Light.otf */; };
-		BBC2A3722E719333000BEABE /* SharpGrotesk-ThinItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3222E719333000BEABE /* SharpGrotesk-ThinItalic.otf */; };
-		BBC2A3732E719333000BEABE /* SharpGrotesk-MediumItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A31F2E719333000BEABE /* SharpGrotesk-MediumItalic.otf */; };
 		BBEF41E32E744FA00079202D /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BBEF41E22E744FA00079202D /* WidgetKit.framework */; };
 		BBEF41E52E744FA00079202D /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BBEF41E42E744FA00079202D /* SwiftUI.framework */; };
 		BBEF41F62E744FA10079202D /* ScrapWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BBEF41E02E744FA00079202D /* ScrapWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		BBEF42602E76C7580079202D /* SharpGrotesk-Bold-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBEF425F2E76C7570079202D /* SharpGrotesk-Bold-Regular.ttf */; };
-		BBEF42612E76C7580079202D /* SharpGrotesk-Bold-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBEF425F2E76C7570079202D /* SharpGrotesk-Bold-Regular.ttf */; };
+		BBEF426C2E76E0400079202D /* SpaceGrotesk-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBEF42642E76E0400079202D /* SpaceGrotesk-Medium.ttf */; };
+		BBEF426D2E76E0400079202D /* SpaceGrotesk-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBEF42652E76E0400079202D /* SpaceGrotesk-Regular.ttf */; };
+		BBEF426E2E76E0400079202D /* SpaceGrotesk-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBEF42662E76E0400079202D /* SpaceGrotesk-SemiBold.ttf */; };
+		BBEF426F2E76E0400079202D /* SpaceGrotesk-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBEF42622E76E0400079202D /* SpaceGrotesk-Bold.ttf */; };
+		BBEF42702E76E0400079202D /* SpaceGrotesk-VariableFont_wght.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBEF426A2E76E0400079202D /* SpaceGrotesk-VariableFont_wght.ttf */; };
+		BBEF42712E76E0400079202D /* README.txt in Resources */ = {isa = PBXBuildFile; fileRef = BBEF42692E76E0400079202D /* README.txt */; };
+		BBEF42722E76E0400079202D /* SpaceGrotesk-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBEF42632E76E0400079202D /* SpaceGrotesk-Light.ttf */; };
+		BBEF42732E76E0400079202D /* OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = BBEF42682E76E0400079202D /* OFL.txt */; };
+		BBEF42742E76E0400079202D /* SpaceGrotesk-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBEF42642E76E0400079202D /* SpaceGrotesk-Medium.ttf */; };
+		BBEF42752E76E0400079202D /* SpaceGrotesk-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBEF42652E76E0400079202D /* SpaceGrotesk-Regular.ttf */; };
+		BBEF42762E76E0400079202D /* SpaceGrotesk-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBEF42662E76E0400079202D /* SpaceGrotesk-SemiBold.ttf */; };
+		BBEF42772E76E0400079202D /* SpaceGrotesk-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBEF42622E76E0400079202D /* SpaceGrotesk-Bold.ttf */; };
+		BBEF42782E76E0400079202D /* SpaceGrotesk-VariableFont_wght.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBEF426A2E76E0400079202D /* SpaceGrotesk-VariableFont_wght.ttf */; };
+		BBEF42792E76E0400079202D /* README.txt in Resources */ = {isa = PBXBuildFile; fileRef = BBEF42692E76E0400079202D /* README.txt */; };
+		BBEF427A2E76E0400079202D /* SpaceGrotesk-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBEF42632E76E0400079202D /* SpaceGrotesk-Light.ttf */; };
+		BBEF427B2E76E0400079202D /* OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = BBEF42682E76E0400079202D /* OFL.txt */; };
 		CC304E7B3F6F72990054DD42 /* TestContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC304E7C3F6F72990054DD42 /* TestContentView.swift */; };
 		DD304E862E6FA0000054DD42 /* FirebaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD304E872E6FA0000054DD42 /* FirebaseManager.swift */; };
 		EE304E882E6FA1000054DD43 /* AuthenticationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE304E892E6FA1000054DD43 /* AuthenticationView.swift */; };
@@ -84,20 +89,18 @@
 		AA304E7A2F6F72980054DD41 /* AnalyticsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsManager.swift; sourceTree = "<group>"; };
 		BB304E792E6F9E750054DD40 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		BB304E862E6FA71E0054DD40 /* Scrap.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Scrap.entitlements; sourceTree = "<group>"; };
-		BBC2A31A2E719333000BEABE /* SharpGrotesk-Book.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-Book.otf"; sourceTree = "<group>"; };
-		BBC2A31B2E719333000BEABE /* SharpGrotesk-BookItalic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-BookItalic.otf"; sourceTree = "<group>"; };
-		BBC2A31C2E719333000BEABE /* SharpGrotesk-Light.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-Light.otf"; sourceTree = "<group>"; };
-		BBC2A31D2E719333000BEABE /* SharpGrotesk-LightItalic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-LightItalic.otf"; sourceTree = "<group>"; };
-		BBC2A31E2E719333000BEABE /* SharpGrotesk-Medium.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-Medium.otf"; sourceTree = "<group>"; };
-		BBC2A31F2E719333000BEABE /* SharpGrotesk-MediumItalic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-MediumItalic.otf"; sourceTree = "<group>"; };
-		BBC2A3202E719333000BEABE /* SharpGrotesk-SemiBold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-SemiBold.otf"; sourceTree = "<group>"; };
-		BBC2A3212E719333000BEABE /* SharpGrotesk-Thin.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-Thin.otf"; sourceTree = "<group>"; };
-		BBC2A3222E719333000BEABE /* SharpGrotesk-ThinItalic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-ThinItalic.otf"; sourceTree = "<group>"; };
 		BBEF41E02E744FA00079202D /* ScrapWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ScrapWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		BBEF41E22E744FA00079202D /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		BBEF41E42E744FA00079202D /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		BBEF41FC2E7450510079202D /* ScrapWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ScrapWidgetExtension.entitlements; sourceTree = "<group>"; };
-		BBEF425F2E76C7570079202D /* SharpGrotesk-Bold-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-Bold-Regular.ttf"; sourceTree = "<group>"; };
+		BBEF42622E76E0400079202D /* SpaceGrotesk-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Bold.ttf"; sourceTree = "<group>"; };
+		BBEF42632E76E0400079202D /* SpaceGrotesk-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Light.ttf"; sourceTree = "<group>"; };
+		BBEF42642E76E0400079202D /* SpaceGrotesk-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Medium.ttf"; sourceTree = "<group>"; };
+		BBEF42652E76E0400079202D /* SpaceGrotesk-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Regular.ttf"; sourceTree = "<group>"; };
+		BBEF42662E76E0400079202D /* SpaceGrotesk-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-SemiBold.ttf"; sourceTree = "<group>"; };
+		BBEF42682E76E0400079202D /* OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = OFL.txt; sourceTree = "<group>"; };
+		BBEF42692E76E0400079202D /* README.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = README.txt; sourceTree = "<group>"; };
+		BBEF426A2E76E0400079202D /* SpaceGrotesk-VariableFont_wght.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-VariableFont_wght.ttf"; sourceTree = "<group>"; };
 		CC123456789012345678901A /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 		CC304E7C3F6F72990054DD42 /* TestContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestContentView.swift; sourceTree = "<group>"; };
 		DD304E872E6FA0000054DD42 /* FirebaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseManager.swift; sourceTree = "<group>"; };
@@ -214,27 +217,10 @@
 			path = "Preview Content";
 			sourceTree = "<group>";
 		};
-		BBC2A3232E719333000BEABE /* SharpGrotesk */ = {
-			isa = PBXGroup;
-			children = (
-				BBC2A31A2E719333000BEABE /* SharpGrotesk-Book.otf */,
-				BBC2A31B2E719333000BEABE /* SharpGrotesk-BookItalic.otf */,
-				BBC2A31C2E719333000BEABE /* SharpGrotesk-Light.otf */,
-				BBC2A31D2E719333000BEABE /* SharpGrotesk-LightItalic.otf */,
-				BBC2A31E2E719333000BEABE /* SharpGrotesk-Medium.otf */,
-				BBC2A31F2E719333000BEABE /* SharpGrotesk-MediumItalic.otf */,
-				BBC2A3202E719333000BEABE /* SharpGrotesk-SemiBold.otf */,
-				BBEF425F2E76C7570079202D /* SharpGrotesk-Bold-Regular.ttf */,
-				BBC2A3212E719333000BEABE /* SharpGrotesk-Thin.otf */,
-				BBC2A3222E719333000BEABE /* SharpGrotesk-ThinItalic.otf */,
-			);
-			path = SharpGrotesk;
-			sourceTree = "<group>";
-		};
 		BBC2A3242E719333000BEABE /* Fonts */ = {
 			isa = PBXGroup;
 			children = (
-				BBC2A3232E719333000BEABE /* SharpGrotesk */,
+				BBEF426B2E76E0400079202D /* Space_Grotesk */,
 			);
 			path = Fonts;
 			sourceTree = "<group>";
@@ -254,6 +240,21 @@
 				BBEF41E42E744FA00079202D /* SwiftUI.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		BBEF426B2E76E0400079202D /* Space_Grotesk */ = {
+			isa = PBXGroup;
+			children = (
+				BBEF42682E76E0400079202D /* OFL.txt */,
+				BBEF42692E76E0400079202D /* README.txt */,
+				BBEF426A2E76E0400079202D /* SpaceGrotesk-VariableFont_wght.ttf */,
+				BBEF42622E76E0400079202D /* SpaceGrotesk-Bold.ttf */,
+				BBEF42632E76E0400079202D /* SpaceGrotesk-Light.ttf */,
+				BBEF42642E76E0400079202D /* SpaceGrotesk-Medium.ttf */,
+				BBEF42652E76E0400079202D /* SpaceGrotesk-Regular.ttf */,
+				BBEF42662E76E0400079202D /* SpaceGrotesk-SemiBold.ttf */,
+			);
+			path = Space_Grotesk;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -348,16 +349,14 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				BBEF42612E76C7580079202D /* SharpGrotesk-Bold-Regular.ttf in Resources */,
-				BBC2A33D2E719333000BEABE /* SharpGrotesk-SemiBold.otf in Resources */,
-				BBC2A3472E719333000BEABE /* SharpGrotesk-LightItalic.otf in Resources */,
-				BBC2A34C2E719333000BEABE /* SharpGrotesk-BookItalic.otf in Resources */,
-				BBC2A34D2E719333000BEABE /* SharpGrotesk-Book.otf in Resources */,
-				BBC2A3572E719333000BEABE /* SharpGrotesk-Medium.otf in Resources */,
-				BBC2A35F2E719333000BEABE /* SharpGrotesk-Thin.otf in Resources */,
-				BBC2A3712E719333000BEABE /* SharpGrotesk-Light.otf in Resources */,
-				BBC2A3722E719333000BEABE /* SharpGrotesk-ThinItalic.otf in Resources */,
-				BBC2A3732E719333000BEABE /* SharpGrotesk-MediumItalic.otf in Resources */,
+				BBEF42742E76E0400079202D /* SpaceGrotesk-Medium.ttf in Resources */,
+				BBEF42752E76E0400079202D /* SpaceGrotesk-Regular.ttf in Resources */,
+				BBEF42762E76E0400079202D /* SpaceGrotesk-SemiBold.ttf in Resources */,
+				BBEF42772E76E0400079202D /* SpaceGrotesk-Bold.ttf in Resources */,
+				BBEF42782E76E0400079202D /* SpaceGrotesk-VariableFont_wght.ttf in Resources */,
+				BBEF42792E76E0400079202D /* README.txt in Resources */,
+				BBEF427A2E76E0400079202D /* SpaceGrotesk-Light.ttf in Resources */,
+				BBEF427B2E76E0400079202D /* OFL.txt in Resources */,
 				1D1A2B312B1234567890ABD0 /* Preview Assets.xcassets in Resources */,
 				1D1A2B2E2B1234567890ABCF /* Assets.xcassets in Resources */,
 				BB304E7A2E6F9E750054DD40 /* GoogleService-Info.plist in Resources */,
@@ -368,7 +367,14 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				BBEF42602E76C7580079202D /* SharpGrotesk-Bold-Regular.ttf in Resources */,
+				BBEF426C2E76E0400079202D /* SpaceGrotesk-Medium.ttf in Resources */,
+				BBEF426D2E76E0400079202D /* SpaceGrotesk-Regular.ttf in Resources */,
+				BBEF426E2E76E0400079202D /* SpaceGrotesk-SemiBold.ttf in Resources */,
+				BBEF426F2E76E0400079202D /* SpaceGrotesk-Bold.ttf in Resources */,
+				BBEF42702E76E0400079202D /* SpaceGrotesk-VariableFont_wght.ttf in Resources */,
+				BBEF42712E76E0400079202D /* README.txt in Resources */,
+				BBEF42722E76E0400079202D /* SpaceGrotesk-Light.ttf in Resources */,
+				BBEF42732E76E0400079202D /* OFL.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

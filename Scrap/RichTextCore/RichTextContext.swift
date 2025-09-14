@@ -43,7 +43,7 @@ public class RichTextContext: ObservableObject {
     @Published public var isEditingText = false
     
     /// The current font name
-    @Published public var fontName = "SharpGrotesk-Book"
+    @Published public var fontName = "SpaceGrotesk-Regular"
     
     /// The current font size
     @Published public var fontSize: CGFloat = 17
@@ -225,20 +225,26 @@ public class RichTextContext: ObservableObject {
                     let hadBold = font.fontDescriptor.symbolicTraits.contains(.traitBold) || 
                                  font.fontName.contains("Bold")
                     if hadBold && !self.isBoldActive {
-                        self.isBoldActive = true
+                        DispatchQueue.main.async {
+                            self.isBoldActive = true
+                        }
                     }
                 }
                 
                 // Check other formatting attributes
                 if let underlineStyle = prevAttributes[.underlineStyle] as? Int, underlineStyle != 0 {
                     if !self.isUnderlineActive {
-                        self.isUnderlineActive = true
+                        DispatchQueue.main.async {
+                            self.isUnderlineActive = true
+                        }
                     }
                 }
                 
                 if let strikethroughStyle = prevAttributes[.strikethroughStyle] as? Int, strikethroughStyle != 0 {
                     if !self.isStrikethroughActive {
-                        self.isStrikethroughActive = true
+                        DispatchQueue.main.async {
+                            self.isStrikethroughActive = true
+                        }
                     }
                 }
             }
@@ -265,37 +271,57 @@ public class RichTextContext: ObservableObject {
     }
     
     private func updateBoldState(from attributes: [NSAttributedString.Key: Any]) {
+        let newBoldState: Bool
         if let font = attributes[.font] as? UIFont {
             // Check both symbolic traits and font name patterns for bold detection
             let hasTraitBold = font.fontDescriptor.symbolicTraits.contains(.traitBold)
             let hasBoldName = font.fontName.contains("Bold") || font.fontName.contains("SemiBold") || font.fontName.contains("Heavy")
-            isBoldActive = hasTraitBold || hasBoldName
+            newBoldState = hasTraitBold || hasBoldName
         } else {
-            isBoldActive = false
+            newBoldState = false
+        }
+        
+        DispatchQueue.main.async {
+            self.isBoldActive = newBoldState
         }
     }
     
     private func updateItalicState(from attributes: [NSAttributedString.Key: Any]) {
+        let newItalicState: Bool
         if let font = attributes[.font] as? UIFont {
-            isItalicActive = font.fontDescriptor.symbolicTraits.contains(.traitItalic)
+            newItalicState = font.fontDescriptor.symbolicTraits.contains(.traitItalic)
         } else {
-            isItalicActive = false
+            newItalicState = false
+        }
+        
+        DispatchQueue.main.async {
+            self.isItalicActive = newItalicState
         }
     }
     
     private func updateUnderlineState(from attributes: [NSAttributedString.Key: Any]) {
+        let newUnderlineState: Bool
         if let underlineStyle = attributes[.underlineStyle] as? Int {
-            isUnderlineActive = underlineStyle != 0
+            newUnderlineState = underlineStyle != 0
         } else {
-            isUnderlineActive = false
+            newUnderlineState = false
+        }
+        
+        DispatchQueue.main.async {
+            self.isUnderlineActive = newUnderlineState
         }
     }
     
     private func updateStrikethroughState(from attributes: [NSAttributedString.Key: Any]) {
+        let newStrikethroughState: Bool
         if let strikethroughStyle = attributes[.strikethroughStyle] as? Int {
-            isStrikethroughActive = strikethroughStyle != 0
+            newStrikethroughState = strikethroughStyle != 0
         } else {
-            isStrikethroughActive = false
+            newStrikethroughState = false
+        }
+        
+        DispatchQueue.main.async {
+            self.isStrikethroughActive = newStrikethroughState
         }
     }
     
@@ -303,9 +329,11 @@ public class RichTextContext: ObservableObject {
         // Check if current line has bullet, checkbox, or code block formatting
         let currentText = attributedString.string
         guard selectedRange.location < currentText.count else {
-            isBulletListActive = false
-            isCheckboxActive = false
-            isCodeBlockActive = false
+            DispatchQueue.main.async {
+                self.isBulletListActive = false
+                self.isCheckboxActive = false
+                self.isCodeBlockActive = false
+            }
             return
         }
         
@@ -327,9 +355,11 @@ public class RichTextContext: ObservableObject {
             codeBlockActive = false
         }
         
-        isBulletListActive = bulletActive
-        isCheckboxActive = checkboxActive
-        isCodeBlockActive = codeBlockActive
+        DispatchQueue.main.async {
+            self.isBulletListActive = bulletActive
+            self.isCheckboxActive = checkboxActive
+            self.isCodeBlockActive = codeBlockActive
+        }
     }
     
     /// Update undo/redo capabilities

@@ -281,32 +281,32 @@ struct GentleLightning {
     }
     
     struct Typography {
-        // HEADINGS / TITLES → SharpGrotesk-Medium (sometimes SemiBold for emphasis)
-        static let hero = Font.custom("SharpGrotesk-SemiBold", size: 34)           // Large hero titles
-        static let title = Font.custom("SharpGrotesk-Medium", size: 20)            // Standard titles/headings
-        static let titleEmphasis = Font.custom("SharpGrotesk-SemiBold", size: 20)  // Emphasized titles
-        static let subtitle = Font.custom("SharpGrotesk-Medium", size: 18)         // Subtitles
-        static let heading = Font.custom("SharpGrotesk-Medium", size: 16)          // Section headings
+        // HEADINGS / TITLES → SpaceGrotesk-SemiBold/Bold for emphasis
+        static let hero = Font.custom("SpaceGrotesk-Bold", size: 34)               // Large hero titles
+        static let title = Font.custom("SpaceGrotesk-Medium", size: 20)            // Standard titles/headings
+        static let titleEmphasis = Font.custom("SpaceGrotesk-SemiBold", size: 20)  // Emphasized titles
+        static let subtitle = Font.custom("SpaceGrotesk-Medium", size: 18)         // Subtitles
+        static let heading = Font.custom("SpaceGrotesk-Medium", size: 16)          // Section headings
         
-        // BODY TEXT → SharpGrotesk-Book (regular reading weight)
-        static let body = Font.custom("SharpGrotesk-Book", size: 16)               // Primary body text
-        static let bodyInput = Font.custom("SharpGrotesk-Book", size: 19)          // Input fields
-        static let bodyLarge = Font.custom("SharpGrotesk-Book", size: 18)          // Larger body text
+        // BODY TEXT → SpaceGrotesk-Regular (regular reading weight)
+        static let body = Font.custom("SpaceGrotesk-Regular", size: 16)            // Primary body text
+        static let bodyInput = Font.custom("SpaceGrotesk-Regular", size: 19)       // Input fields
+        static let bodyLarge = Font.custom("SpaceGrotesk-Regular", size: 18)       // Larger body text
         
-        // SECONDARY / SUBTLE TEXT → SharpGrotesk-Light
-        static let caption = Font.custom("SharpGrotesk-Light", size: 13)           // Subtle captions
-        static let small = Font.custom("SharpGrotesk-Light", size: 11)             // Small subtle text
-        static let secondary = Font.custom("SharpGrotesk-Light", size: 14)         // Secondary information
-        static let metadata = Font.custom("SharpGrotesk-Light", size: 12)          // Timestamps, metadata
+        // SECONDARY / SUBTLE TEXT → SpaceGrotesk-Light
+        static let caption = Font.custom("SpaceGrotesk-Light", size: 13)           // Subtle captions
+        static let small = Font.custom("SpaceGrotesk-Light", size: 11)             // Small subtle text
+        static let secondary = Font.custom("SpaceGrotesk-Light", size: 14)         // Secondary information
+        static let metadata = Font.custom("SpaceGrotesk-Light", size: 12)          // Timestamps, metadata
         
         // LEGACY / SPECIAL USE
-        static let ultraLight = Font.custom("SharpGrotesk-Thin", size: 14)         // Ultra-light accent
-        static let medium = Font.custom("SharpGrotesk-Medium", size: 16)           // Medium weight utility
+        static let ultraLight = Font.custom("SpaceGrotesk-Light", size: 14)        // Ultra-light accent (no Thin variant)
+        static let medium = Font.custom("SpaceGrotesk-Medium", size: 16)           // Medium weight utility
         
-        // ITALIC VARIANTS for emphasis
-        static let bodyItalic = Font.custom("SharpGrotesk-BookItalic", size: 16)
-        static let titleItalic = Font.custom("SharpGrotesk-MediumItalic", size: 20)
-        static let secondaryItalic = Font.custom("SharpGrotesk-LightItalic", size: 14)
+        // ITALIC VARIANTS - Space Grotesk doesn't have italics, use regular weights
+        static let bodyItalic = Font.custom("SpaceGrotesk-Regular", size: 16)      // No italic variant
+        static let titleItalic = Font.custom("SpaceGrotesk-Medium", size: 20)      // No italic variant
+        static let secondaryItalic = Font.custom("SpaceGrotesk-Light", size: 14)   // No italic variant
     }
     
     struct Layout {
@@ -1982,10 +1982,14 @@ struct ContentView: View {
             await VectorSearchService.shared.reindexAllNotes(firebaseNotes)
             print("✅ ContentView: Reindexing completed!")
             
+            // Run semantic search debugging test after reindexing
+            print("🧪 ContentView: Running semantic search debug test...")
+            await VectorSearchService.shared.testSemanticSearchDebug()
+            
             // Show success feedback
             await MainActor.run {
                 // Could show a toast or alert here
-                print("💡 ContentView: Reindexing finished - try searching again!")
+                print("💡 ContentView: Reindexing and debugging finished - check console for results!")
             }
         }
     }
@@ -2222,11 +2226,37 @@ struct NavigationNoteEditView: View {
             if attributedString.length > 0 {
                 let firstCharAttributes = attributedString.attributes(at: 0, effectiveRange: nil)
                 if let font = firstCharAttributes[.font] as? UIFont {
-                    print("📖 First character font: \(font.fontName), bold trait: \(font.fontDescriptor.symbolicTraits.contains(.traitBold))")
+                    print("📖 DETAILED RTF LOAD DEBUG:")
+                    print("   - Font name: '\(font.fontName)'")
+                    print("   - Font size: \(font.pointSize)")
+                    print("   - Bold trait: \(font.fontDescriptor.symbolicTraits.contains(.traitBold))")
+                    print("   - Font descriptor: \(font.fontDescriptor)")
+                    
+                    // Check if it's a custom font vs system font
+                    if font.fontName.contains("SharpGrotesk") {
+                        print("   ✅ Custom SharpGrotesk font preserved")
+                    } else {
+                        print("   ❌ Font fallback occurred - custom font lost during RTF conversion")
+                        print("   - Available SharpGrotesk fonts:")
+                        let sharpGroteskFonts = UIFont.familyNames.filter { $0.contains("SharpGrotesk") }
+                        for family in sharpGroteskFonts {
+                            for fontName in UIFont.fontNames(forFamilyName: family) {
+                                print("     * \(fontName)")
+                            }
+                        }
+                    }
+                }
+                
+                // Check all attributes to see what's preserved vs lost
+                print("📖 All attributes at first character:")
+                for (key, value) in firstCharAttributes {
+                    print("   - \(key): \(value)")
                 }
             }
             
-            return attributedString
+            // Fix custom font issues after RTF loading
+            let restoredAttributedString = restoreCustomFonts(in: attributedString)
+            return restoredAttributedString
         } catch {
             print("❌ Failed to convert data to NSAttributedString: \(error)")
             
@@ -2241,6 +2271,62 @@ struct NavigationNoteEditView: View {
             
             return NSAttributedString(string: " ")
         }
+    }
+    
+    // Restore custom fonts after RTF loading (fixes font fallback issues)
+    static func restoreCustomFonts(in attributedString: NSAttributedString) -> NSAttributedString {
+        let mutableString = NSMutableAttributedString(attributedString: attributedString)
+        let range = NSRange(location: 0, length: mutableString.length)
+        
+        // Enumerate through all font attributes
+        mutableString.enumerateAttribute(.font, in: range, options: []) { value, range, _ in
+            guard let font = value as? UIFont else { return }
+            
+            var replacementFont: UIFont? = nil
+            
+            // Check if this is a system font that should be a custom font
+            if !font.fontName.contains("SpaceGrotesk") {
+                let isBold = font.fontDescriptor.symbolicTraits.contains(.traitBold) || font.fontName.contains("Bold")
+                let isItalic = font.fontDescriptor.symbolicTraits.contains(.traitItalic) || font.fontName.contains("Italic")
+                
+                print("📖 Font restoration: Found system font '\(font.fontName)' - bold: \(isBold), italic: \(isItalic)")
+                
+                // Map to appropriate Space Grotesk variant
+                let targetFontName: String
+                if isBold && isItalic {
+                    targetFontName = "SpaceGrotesk-Bold" // Space Grotesk doesn't have italic variants, use bold
+                } else if isBold {
+                    targetFontName = "SpaceGrotesk-Bold"
+                } else if isItalic {
+                    targetFontName = "SpaceGrotesk-Regular" // No italic variant, use regular
+                } else {
+                    targetFontName = "SpaceGrotesk-Regular"
+                }
+                
+                replacementFont = UIFont(name: targetFontName, size: font.pointSize)
+                
+                if let replacementFont = replacementFont {
+                    print("📖 ✅ Restored font: '\(font.fontName)' -> '\(replacementFont.fontName)'")
+                } else {
+                    print("📖 ❌ Failed to restore font: '\(targetFontName)' not available")
+                    
+                    // Debug: List all available fonts containing "SpaceGrotesk"
+                    let availableFonts = UIFont.familyNames.flatMap { familyName in
+                        UIFont.fontNames(forFamilyName: familyName)
+                    }.filter { $0.contains("SpaceGrotesk") }
+                    
+                    print("📖 🔍 Available SpaceGrotesk fonts at runtime: \(availableFonts)")
+                }
+            }
+            
+            // Apply the replacement font if found
+            if let replacementFont = replacementFont {
+                mutableString.addAttribute(.font, value: replacementFont, range: range)
+            }
+        }
+        
+        print("📖 Font restoration complete")
+        return mutableString
     }
     
     // MARK: - Helper Methods
@@ -2968,6 +3054,8 @@ struct SearchBarView: View {
                                     Circle()
                                         .stroke(GentleLightning.Colors.border(isDark: false), lineWidth: 1)
                                 )
+                                .opacity(isExpanded ? 0.0 : 1.0)
+                                .animation(.spring(response: 0.3, dampingFraction: 0.8, blendDuration: 0), value: isExpanded)
                         )
                 }
                 .buttonStyle(PlainButtonStyle())

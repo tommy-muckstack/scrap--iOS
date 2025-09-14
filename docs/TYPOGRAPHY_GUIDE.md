@@ -1,70 +1,70 @@
-# 🔤 SharpGrotesk Typography System
+# 🔤 Space Grotesk Typography System
 
 ## Design Hierarchy Implementation
 
-### 🏆 **Headings / Titles → SharpGrotesk-Medium (sometimes SemiBold for emphasis)**
+### 🏆 **Headings / Titles → SpaceGrotesk-Medium/Bold for emphasis**
 
 ```swift
 // Large hero titles
-.font(GentleLightning.Typography.hero)           // SharpGrotesk-SemiBold, 34pt
+.font(GentleLightning.Typography.hero)           // SpaceGrotesk-Bold, 34pt
 
 // Standard titles/headings  
-.font(GentleLightning.Typography.title)          // SharpGrotesk-Medium, 20pt
+.font(GentleLightning.Typography.title)          // SpaceGrotesk-Medium, 20pt
 
 // Emphasized titles
-.font(GentleLightning.Typography.titleEmphasis)  // SharpGrotesk-SemiBold, 20pt
+.font(GentleLightning.Typography.titleEmphasis)  // SpaceGrotesk-SemiBold, 20pt
 
 // Subtitles
-.font(GentleLightning.Typography.subtitle)       // SharpGrotesk-Medium, 18pt
+.font(GentleLightning.Typography.subtitle)       // SpaceGrotesk-Medium, 18pt
 
 // Section headings
-.font(GentleLightning.Typography.heading)        // SharpGrotesk-Medium, 16pt
+.font(GentleLightning.Typography.heading)        // SpaceGrotesk-Medium, 16pt
 ```
 
-### 📖 **Body Text → SharpGrotesk-Book (regular reading weight)**
+### 📖 **Body Text → SpaceGrotesk-Regular (regular reading weight)**
 
 ```swift
 // Primary body text
-.font(GentleLightning.Typography.body)           // SharpGrotesk-Book, 16pt
+.font(GentleLightning.Typography.body)           // SpaceGrotesk-Regular, 16pt
 
 // Input fields
-.font(GentleLightning.Typography.bodyInput)      // SharpGrotesk-Book, 17pt
+.font(GentleLightning.Typography.bodyInput)      // SpaceGrotesk-Regular, 17pt
 
 // Larger body text
-.font(GentleLightning.Typography.bodyLarge)      // SharpGrotesk-Book, 18pt
+.font(GentleLightning.Typography.bodyLarge)      // SpaceGrotesk-Regular, 18pt
 ```
 
-### 🌫️ **Secondary / Subtle Text → SharpGrotesk-Light**
+### 🌫️ **Secondary / Subtle Text → SpaceGrotesk-Light**
 
 ```swift
 // Subtle captions
-.font(GentleLightning.Typography.caption)        // SharpGrotesk-Light, 13pt
+.font(GentleLightning.Typography.caption)        // SpaceGrotesk-Light, 13pt
 
 // Small subtle text  
-.font(GentleLightning.Typography.small)          // SharpGrotesk-Light, 11pt
+.font(GentleLightning.Typography.small)          // SpaceGrotesk-Light, 11pt
 
 // Secondary information
-.font(GentleLightning.Typography.secondary)      // SharpGrotesk-Light, 14pt
+.font(GentleLightning.Typography.secondary)      // SpaceGrotesk-Light, 14pt
 
 // Timestamps, metadata
-.font(GentleLightning.Typography.metadata)       // SharpGrotesk-Light, 12pt
+.font(GentleLightning.Typography.metadata)       // SpaceGrotesk-Light, 12pt
 ```
 
 ## Current Usage in App
 
 ### 📝 **Note List View (ItemRowSimple)**
-- **Note Title**: `Typography.title` (SharpGrotesk-Medium, 20pt)
+- **Note Title**: `Typography.title` (SpaceGrotesk-Medium, 20pt)
 - **Note Content**: `Typography.body` or `Typography.secondary` (when title exists)
-- **Category Pills**: `Typography.metadata` (SharpGrotesk-Light, 12pt) ← **More subtle now!**
+- **Category Pills**: `Typography.metadata` (SpaceGrotesk-Light, 12pt) ← **More subtle now!**
 
 ### ✏️ **Note Editor View**
-- **Title Field**: `Typography.title` (SharpGrotesk-Medium, 20pt)
-- **Text Content**: `Typography.bodyInput` (SharpGrotesk-Book, 17pt)
+- **Title Field**: `Typography.title` (SpaceGrotesk-Medium, 20pt)
+- **Text Content**: `Typography.bodyInput` (SpaceGrotesk-Regular, 17pt)
 
 ### 🏷️ **Category Management**
-- **Section Headers**: `Typography.heading` (SharpGrotesk-Medium, 16pt)
-- **Category Names**: `Typography.small` (SharpGrotesk-Light, 11pt)
-- **Helper Text**: `Typography.secondary` (SharpGrotesk-Light, 14pt)
+- **Section Headers**: `Typography.heading` (SpaceGrotesk-Medium, 16pt)
+- **Category Names**: `Typography.small` (SpaceGrotesk-Light, 11pt)
+- **Helper Text**: `Typography.secondary` (SpaceGrotesk-Light, 14pt)
 
 ## Typography Best Practices
 
@@ -77,23 +77,23 @@
 ### ❌ **Don't:**
 - Mix different font weights for the same content type
 - Use SemiBold unless you need strong emphasis
-- Use Book weight for subtle/secondary content
+- Use Regular weight for subtle/secondary content (use Light instead)
 
 ## Weight Mapping
 
 | **Purpose** | **Weight** | **Usage** |
 |-------------|------------|-----------|
-| **Hero Titles** | SemiBold | App names, major sections |
-| **Titles/Headings** | Medium | Note titles, section headers |
-| **Body Text** | Book | Main content, input fields |
+| **Hero Titles** | Bold | App names, major sections |
+| **Titles/Headings** | Medium/SemiBold | Note titles, section headers |
+| **Body Text** | Regular | Main content, input fields |
 | **Subtle Text** | Light | Captions, metadata, timestamps |
 
 ## Visual Hierarchy
 
 ```
-🔥 HERO (SemiBold, 34pt)     ← App title, major features
+🔥 HERO (Bold, 34pt)         ← App title, major features
 📋 TITLE (Medium, 20pt)      ← Note titles, main headings  
-📖 BODY (Book, 16-17pt)      ← Main content, readable text
+📖 BODY (Regular, 16-17pt)   ← Main content, readable text
 🌫️ SUBTLE (Light, 11-14pt)   ← Secondary info, metadata
 ```
 
