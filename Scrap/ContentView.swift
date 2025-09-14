@@ -1767,7 +1767,8 @@ struct ContentView: View {
                         if dataManager.items.isEmpty {
                             EmptyStateView()
                                 .padding(.top, 20)
-                        } else {
+                        } else if searchResults.isEmpty {
+                            // Only show notes list when not displaying search results
                             let itemsToDisplay = Array(dataManager.items.prefix(displayedItemsCount))
                             
                             ForEach(itemsToDisplay) { item in
