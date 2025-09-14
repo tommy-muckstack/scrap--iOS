@@ -115,35 +115,36 @@ public class RichTextContext: ObservableObject {
     
     /// Toggle bold formatting
     public func toggleBold() {
-        // Don't base toggle on current context state - let the coordinator determine
-        // what to do based on the actual text selection/formatting
-        print("🔥 RichTextContext: toggleBold() called - sending toggle action")
+        // Immediately toggle UI state for snappy response
+        isBoldActive.toggle()
         formattingJustApplied = true
         actionPublisher.send(.toggleStyle(.bold))
         
-        // Don't toggle the state here - let the coordinator update it based on what actually happened
-        // This prevents the UI state from getting out of sync with the actual text formatting
+        print("🔥 RichTextContext: toggleBold() called - UI updated immediately")
     }
     
     /// Toggle italic formatting
     public func toggleItalic() {
+        // Immediately toggle UI state for snappy response
+        isItalicActive.toggle()
         formattingJustApplied = true
         actionPublisher.send(.toggleStyle(.italic))
-        // Don't toggle the state here - let the coordinator update it
     }
     
     /// Toggle underline formatting
     public func toggleUnderline() {
+        // Immediately toggle UI state for snappy response
+        isUnderlineActive.toggle()
         formattingJustApplied = true
         actionPublisher.send(.toggleStyle(.underline))
-        // Don't toggle the state here - let the coordinator update it
     }
     
     /// Toggle strikethrough formatting
     public func toggleStrikethrough() {
+        // Immediately toggle UI state for snappy response
+        isStrikethroughActive.toggle()
         formattingJustApplied = true
         actionPublisher.send(.toggleStyle(.strikethrough))
-        // Don't toggle the state here - let the coordinator update it
     }
     
     /// Toggle bullet list formatting
@@ -195,82 +196,72 @@ public class RichTextContext: ObservableObject {
     
     /// Update formatting state based on current selection
     internal func updateFormattingState() {
-        // Defer all formatting updates to prevent publishing changes during view updates
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            guard self.selectedRange.length >= 0 && self.attributedString.length > 0 else { return }
-            
-            // If formatting was just applied, don't reset based on cursor position
-            if self.formattingJustApplied {
-                print("🛡️ RichTextContext: Skipping formatting state update - formatting just applied")
-                // Reset the flag after a longer delay to allow typing attributes to be set
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    self.formattingJustApplied = false
-                    print("🔄 RichTextContext: formattingJustApplied flag reset")
-                }
-                self.updateBlockFormatState() // Still update block format state
-                return
+        // Update immediately on main thread for snappy UI response
+        guard self.selectedRange.length >= 0 && self.attributedString.length > 0 else { return }
+        
+        // If formatting was just applied, don't reset based on cursor position
+        if self.formattingJustApplied {
+            // Reset the flag much faster for snappy UI response
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                self.formattingJustApplied = false
             }
-            
-            // For cursor position (no selection), check if we're at the end of formatted text
-            // If so, preserve the formatting intent for new text
-            if self.selectedRange.length == 0 && self.selectedRange.location > 0 {
-                // Check the character just before the cursor to see if it has formatting
-                let prevIndex = self.selectedRange.location - 1
-                if prevIndex < self.attributedString.length {
-                    let prevAttributes = self.attributedString.attributes(
-                        at: prevIndex,
-                        effectiveRange: nil
-                    )
-                    
-                    // If the previous character has bold formatting, maintain it
-                    if let font = prevAttributes[.font] as? UIFont {
-                        let hadBold = font.fontDescriptor.symbolicTraits.contains(.traitBold) || 
-                                     font.fontName.contains("Bold")
-                        if hadBold && !self.isBoldActive {
-                            print("🔄 RichTextContext: Maintaining bold from previous character")
-                            self.isBoldActive = true
-                        }
-                    }
-                    
-                    // Check other formatting attributes
-                    if let underlineStyle = prevAttributes[.underlineStyle] as? Int, underlineStyle != 0 {
-                        if !self.isUnderlineActive {
-                            print("🔄 RichTextContext: Maintaining underline from previous character")
-                            self.isUnderlineActive = true
-                        }
-                    }
-                    
-                    if let strikethroughStyle = prevAttributes[.strikethroughStyle] as? Int, strikethroughStyle != 0 {
-                        if !self.isStrikethroughActive {
-                            print("🔄 RichTextContext: Maintaining strikethrough from previous character")
-                            self.isStrikethroughActive = true
-                        }
-                    }
-                }
-            }
-            
-            // Only read from cursor position if we have a selection or no previous character formatting
-            if self.selectedRange.length > 0 || self.selectedRange.location == 0 {
-                let safeIndex = max(0, min(self.selectedRange.location, self.attributedString.length - 1))
-                guard safeIndex < self.attributedString.length else { return }
-                
-                let attributes = self.attributedString.attributes(
-                    at: safeIndex,
+            self.updateBlockFormatState() // Still update block format state
+            return
+        }
+        
+        // For cursor position (no selection), check if we're at the end of formatted text
+        // If so, preserve the formatting intent for new text
+        if self.selectedRange.length == 0 && self.selectedRange.location > 0 {
+            // Check the character just before the cursor to see if it has formatting
+            let prevIndex = self.selectedRange.location - 1
+            if prevIndex < self.attributedString.length {
+                let prevAttributes = self.attributedString.attributes(
+                    at: prevIndex,
                     effectiveRange: nil
                 )
                 
-                // Update formatting state
-                print("📖 RichTextContext: Reading formatting from cursor position \(safeIndex)")
-                self.updateBoldState(from: attributes)
-                self.updateItalicState(from: attributes)
-                self.updateUnderlineState(from: attributes)
-                self.updateStrikethroughState(from: attributes)
-                print("📖 RichTextContext: Updated state - Bold: \(self.isBoldActive), Italic: \(self.isItalicActive)")
+                // If the previous character has bold formatting, maintain it
+                if let font = prevAttributes[.font] as? UIFont {
+                    let hadBold = font.fontDescriptor.symbolicTraits.contains(.traitBold) || 
+                                 font.fontName.contains("Bold")
+                    if hadBold && !self.isBoldActive {
+                        self.isBoldActive = true
+                    }
+                }
+                
+                // Check other formatting attributes
+                if let underlineStyle = prevAttributes[.underlineStyle] as? Int, underlineStyle != 0 {
+                    if !self.isUnderlineActive {
+                        self.isUnderlineActive = true
+                    }
+                }
+                
+                if let strikethroughStyle = prevAttributes[.strikethroughStyle] as? Int, strikethroughStyle != 0 {
+                    if !self.isStrikethroughActive {
+                        self.isStrikethroughActive = true
+                    }
+                }
             }
-            
-            self.updateBlockFormatState()
         }
+        
+        // Only read from cursor position if we have a selection or no previous character formatting
+        if self.selectedRange.length > 0 || self.selectedRange.location == 0 {
+            let safeIndex = max(0, min(self.selectedRange.location, self.attributedString.length - 1))
+            guard safeIndex < self.attributedString.length else { return }
+            
+            let attributes = self.attributedString.attributes(
+                at: safeIndex,
+                effectiveRange: nil
+            )
+            
+            // Update formatting state immediately for snappy response
+            self.updateBoldState(from: attributes)
+            self.updateItalicState(from: attributes)
+            self.updateUnderlineState(from: attributes)
+            self.updateStrikethroughState(from: attributes)
+        }
+        
+        self.updateBlockFormatState()
     }
     
     private func updateBoldState(from attributes: [NSAttributedString.Key: Any]) {

@@ -2006,7 +2006,9 @@ struct FormattingToolbarView: View {
             HStack {
                 // Core formatting buttons
                 Button(action: { 
-                    context.toggleBold()
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8, blendDuration: 0)) {
+                        context.toggleBold()
+                    }
                 }) {
                     Image(systemName: "bold")
                         .font(.system(size: 16, weight: .medium))
@@ -2015,12 +2017,15 @@ struct FormattingToolbarView: View {
                         .background(context.isBoldActive ? .black : Color.clear)
                         .clipShape(Circle())
                         .clipped()
+                        .animation(.spring(response: 0.2, dampingFraction: 0.7, blendDuration: 0), value: context.isBoldActive)
                 }
                 
                 Spacer()
                 
                 Button(action: { 
-                    context.toggleItalic()
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8, blendDuration: 0)) {
+                        context.toggleItalic()
+                    }
                 }) {
                     Image(systemName: "italic")
                         .font(.system(size: 16, weight: .medium))
@@ -2028,12 +2033,15 @@ struct FormattingToolbarView: View {
                         .frame(width: 32, height: 32)
                         .background(context.isItalicActive ? .black : Color.clear)
                         .clipShape(Circle())
+                        .animation(.spring(response: 0.2, dampingFraction: 0.7, blendDuration: 0), value: context.isItalicActive)
                 }
                 
                 Spacer()
                 
                 Button(action: { 
-                    context.toggleStrikethrough()
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8, blendDuration: 0)) {
+                        context.toggleStrikethrough()
+                    }
                 }) {
                     Image(systemName: "strikethrough")
                         .font(.system(size: 16, weight: .medium))
@@ -2041,13 +2049,16 @@ struct FormattingToolbarView: View {
                         .frame(width: 32, height: 32)
                         .background(context.isStrikethroughActive ? .black : Color.clear)
                         .clipShape(Circle())
+                        .animation(.spring(response: 0.2, dampingFraction: 0.7, blendDuration: 0), value: context.isStrikethroughActive)
                 }
                 
                 Spacer()
                 
                 // Code block button (moved here between strikethrough and list buttons)
                 Button(action: { 
-                    context.toggleCodeBlock()
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8, blendDuration: 0)) {
+                        context.toggleCodeBlock()
+                    }
                 }) {
                     Image(systemName: "chevron.left.forwardslash.chevron.right")
                         .font(.system(size: 14, weight: .medium))
@@ -2055,13 +2066,16 @@ struct FormattingToolbarView: View {
                         .frame(width: 32, height: 32)
                         .background(context.isCodeBlockActive ? .black : Color.clear)
                         .clipShape(Circle())
+                        .animation(.spring(response: 0.2, dampingFraction: 0.7, blendDuration: 0), value: context.isCodeBlockActive)
                 }
                 
                 Spacer()
                 
                 // List buttons
                 Button(action: { 
-                    context.toggleBulletList()
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8, blendDuration: 0)) {
+                        context.toggleBulletList()
+                    }
                 }) {
                     Image(systemName: "list.bullet")
                         .font(.system(size: 16, weight: .medium))
@@ -2069,12 +2083,15 @@ struct FormattingToolbarView: View {
                         .frame(width: 32, height: 32)
                         .background(context.isBulletListActive ? .black : Color.clear)
                         .clipShape(Circle())
+                        .animation(.spring(response: 0.2, dampingFraction: 0.7, blendDuration: 0), value: context.isBulletListActive)
                 }
                 
                 Spacer()
                 
                 Button(action: { 
-                    context.toggleCheckbox()
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8, blendDuration: 0)) {
+                        context.toggleCheckbox()
+                    }
                 }) {
                     Image(systemName: "checklist")
                         .font(.system(size: 16, weight: .medium))
@@ -2082,6 +2099,7 @@ struct FormattingToolbarView: View {
                         .frame(width: 32, height: 32)
                         .background(context.isCheckboxActive ? .black : Color.clear)
                         .clipShape(Circle())
+                        .animation(.spring(response: 0.2, dampingFraction: 0.7, blendDuration: 0), value: context.isCheckboxActive)
                 }
                 
                 Spacer()
