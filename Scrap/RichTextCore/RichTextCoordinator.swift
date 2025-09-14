@@ -225,8 +225,8 @@ public class RichTextCoordinator: NSObject {
             isPreventingContextUpdates = true
             print("🎯 RichTextCoordinator: Applied formatting to selection - preventing context updates")
             
-            // Reset prevention flag after a short delay
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            // Reset prevention flag after sufficient time for user interaction
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                 self.isPreventingContextUpdates = false
                 print("🔓 RichTextCoordinator: Context update prevention reset")
             }

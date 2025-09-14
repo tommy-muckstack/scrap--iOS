@@ -201,8 +201,8 @@ public class RichTextContext: ObservableObject {
         
         // If formatting was just applied, don't reset based on cursor position
         if self.formattingJustApplied {
-            // Reset the flag much faster for snappy UI response
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            // Reset the flag after sufficient time for user interaction
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                 self.formattingJustApplied = false
             }
             self.updateBlockFormatState() // Still update block format state
