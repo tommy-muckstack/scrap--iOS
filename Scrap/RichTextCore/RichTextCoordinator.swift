@@ -732,8 +732,6 @@ public class RichTextCoordinator: NSObject {
     }
     
     private func applyCodeBlockFormat(_ mutableText: NSMutableAttributedString, _ lineRange: NSRange, _ lineText: String) {
-        let trimmedLine = lineText.trimmingCharacters(in: .whitespaces)
-        
         // Check if cursor is currently in a code block
         let cursorPosition = textView.selectedRange.location
         let isInCodeBlock = isPositionInCodeBlock(cursorPosition, in: mutableText)
