@@ -414,11 +414,11 @@ class CategoryService {
     // MARK: - 5-Color Category System
     
     static let availableColors = [
-        ("blue", "#2563EB", "Blue"),
-        ("red", "#DC2626", "Red"), 
-        ("purple", "#7C3AED", "Purple"),
+        ("red", "#DC2626", "Red"),
+        ("yellow", "#EAB308", "Yellow"),
         ("green", "#16A34A", "Green"),
-        ("yellow", "#D97706", "Yellow")
+        ("blue", "#2563EB", "Blue"),
+        ("purple", "#7C3AED", "Purple")
     ]
     
     func getUserCategories() async throws -> [Category] {
