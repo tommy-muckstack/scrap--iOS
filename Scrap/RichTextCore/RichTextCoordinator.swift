@@ -306,7 +306,6 @@ public class RichTextCoordinator: NSObject {
                 self.context.isBoldActive = shouldAddBold
                 // Update typing attributes after context state is updated
                 self.updateTypingAttributes()
-                print("🎨 Bold toggle complete - context state and typing attributes updated for cursor position")
             }
             return // Don't call updateTypingAttributes() again below
         }
@@ -314,7 +313,6 @@ public class RichTextCoordinator: NSObject {
         // For text selections, update typing attributes normally
         // Context state will be updated when updateContextFromTextView() is called
         self.updateTypingAttributes()
-        print("🎨 Bold toggle complete - typing attributes refreshed for selection")
     }
     
     private func toggleItalicInRange(_ mutableText: NSMutableAttributedString, _ range: NSRange) {
@@ -368,14 +366,12 @@ public class RichTextCoordinator: NSObject {
                 self.context.isItalicActive = shouldAddItalic
                 // Update typing attributes after context state is updated
                 self.updateTypingAttributes()
-                print("🎨 Italic toggle complete - context state and typing attributes updated for cursor position")
             }
             return // Don't call updateTypingAttributes() again below
         }
         
         // For text selections, update typing attributes normally
         self.updateTypingAttributes()
-        print("🎨 Italic toggle complete - typing attributes refreshed for selection")
     }
     
     private func toggleUnderlineInRange(_ mutableText: NSMutableAttributedString, _ range: NSRange) {
@@ -408,14 +404,12 @@ public class RichTextCoordinator: NSObject {
                 self.context.isUnderlineActive = shouldAddUnderline
                 // Update typing attributes after context state is updated
                 self.updateTypingAttributes()
-                print("🎨 Underline toggle complete - context state and typing attributes updated for cursor position")
             }
             return // Don't call updateTypingAttributes() again below
         }
         
         // For text selections, update typing attributes normally
         self.updateTypingAttributes()
-        print("🎨 Underline toggle complete - typing attributes refreshed for selection")
     }
     
     private func toggleStrikethroughInRange(_ mutableText: NSMutableAttributedString, _ range: NSRange) {
@@ -448,14 +442,12 @@ public class RichTextCoordinator: NSObject {
                 self.context.isStrikethroughActive = shouldAddStrikethrough
                 // Update typing attributes after context state is updated
                 self.updateTypingAttributes()
-                print("🎨 Strikethrough toggle complete - context state and typing attributes updated for cursor position")
             }
             return // Don't call updateTypingAttributes() again below
         }
         
         // For text selections, update typing attributes normally
         self.updateTypingAttributes()
-        print("🎨 Strikethrough toggle complete - typing attributes refreshed for selection")
     }
     
     // MARK: - Block Format Application
@@ -483,7 +475,6 @@ public class RichTextCoordinator: NSObject {
     
     private func applyBulletFormat(_ mutableText: NSMutableAttributedString, _ lineRange: NSRange, _ lineText: String) {
         let trimmedLine = lineText.trimmingCharacters(in: .whitespaces)
-        print("🔍 RichTextCoordinator: Processing line: '\(trimmedLine)'")
         
         // Don't process lines that are only whitespace/newlines
         if trimmedLine.isEmpty {
@@ -1058,7 +1049,6 @@ public class RichTextCoordinator: NSObject {
         }
         
         textView.typingAttributes = typingAttributes
-        print("🎨 Updated typing attributes - Bold: \(context.isBoldActive), Italic: \(context.isItalicActive)")
     }
     
     private func applyBoldToFont(_ font: UIFont) -> UIFont {

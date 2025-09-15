@@ -386,7 +386,6 @@ class FirebaseDataManager: ObservableObject {
                 documentAttributes: nil
             )
             let plainText = attributedString.string
-            print("💾 updateItemWithRTF: Extracted plain text (\(plainText.count) chars): '\(plainText.prefix(100))...'")
             item.content = plainText
         } catch {
             print("❌ Failed to extract plain text from RTF: \(error)")
@@ -423,7 +422,6 @@ class FirebaseDataManager: ObservableObject {
                     // Test connection first
                     let isConnected = try await VectorSearchService.shared.testConnection()
                     if isConnected {
-                        print("🔍 ChromaDB connection successful, indexing \(firebaseNotes.count) existing notes...")
                         await VectorSearchService.shared.reindexAllNotes(firebaseNotes)
                     } else {
                         print("⚠️ ChromaDB connection failed, vector search will not be available")
@@ -457,10 +455,8 @@ class FirebaseDataManager: ObservableObject {
                     let descriptor = UIFontDescriptor.preferredFontDescriptor(withTextStyle: .body)
                         .withSymbolicTraits([.traitBold])
                     systemFont = UIFont(descriptor: descriptor ?? UIFontDescriptor(), size: size)
-                    print("💾 RTF Save prep: '\(font.fontName)' -> Bold System Font with traits (size: \(size))")
                 } else {
                     systemFont = UIFont.systemFont(ofSize: size)
-                    print("💾 RTF Save prep: '\(font.fontName)' -> Regular System Font (size: \(size))")
                 }
                 
                 mutableString.addAttribute(.font, value: systemFont, range: range)

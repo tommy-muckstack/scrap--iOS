@@ -64,29 +64,22 @@ class ChromaService: ObservableObject {
     @MainActor
     private func initializeCollection() async {
         do {
-            print("🔍 ChromaService: Initializing collection at \(baseURL)")
             
             // Check if collection exists, create if not
             let collections = try await getCollections()
-            print("🔍 ChromaService: Found \(collections.count) collections")
             
             // Debug: Print all collections
             for collection in collections {
-                print("🔍 ChromaService: Collection - ID: \(collection.id ?? "nil"), Name: \(collection.name)")
             }
             
             if let existingCollection = collections.first(where: { $0.name == collectionName }) {
-                print("🔍 ChromaService: Collection '\(collectionName)' already exists")
                 self.collectionId = existingCollection.id
-                print("🔍 ChromaService: Using collection ID: \(existingCollection.id ?? "nil")")
             } else {
-                print("🔍 ChromaService: Creating collection '\(collectionName)'")
                 try await createCollection()
                 // After creating, get the collection to find its ID
                 let updatedCollections = try await getCollections()
                 if let newCollection = updatedCollections.first(where: { $0.name == collectionName }) {
                     self.collectionId = newCollection.id
-                    print("🔍 ChromaService: Created collection with ID: \(newCollection.id ?? "nil")")
                 }
             }
             
@@ -181,10 +174,6 @@ class ChromaService: ObservableObject {
             "documents": document.documents
         ]
         
-        print("🔍 ChromaService: Adding document with ID: \(id)")
-        print("🔍 ChromaService: Content length: \(content.count)")
-        print("🔍 ChromaService: Embedding dimensions: \(embedding.count)")
-        print("🔍 ChromaService: Metadata: \(metadataDict)")
         
         request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
         
@@ -214,7 +203,6 @@ class ChromaService: ObservableObject {
         
         // If collection ID is missing or stale, try to refresh it
         if collectionId == nil {
-            print("🔍 ChromaService: Collection ID is nil, refreshing...")
             await initializeCollection()
         }
         
@@ -252,7 +240,6 @@ class ChromaService: ObservableObject {
         if httpResponse.statusCode == 400 || httpResponse.statusCode == 404 {
             if let errorData = String(data: data, encoding: .utf8),
                errorData.contains("does not exist") {
-                print("🔍 ChromaService: Collection ID is stale, refreshing and retrying...")
                 await initializeCollection()
                 
                 // Retry with new collection ID

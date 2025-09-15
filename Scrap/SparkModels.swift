@@ -57,8 +57,6 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
                 self.rtfData = convertedRTFData
                 
                 self.content = loadedAttributedString.string // Plain text for title bar only
-                print("📖 SparkItem init: Loaded and converted RTF content (\(loadedAttributedString.string.count) chars) back to SpaceGrotesk fonts")
-                print("📖 SparkItem init: RTF data size after conversion: \(convertedRTFData.count) bytes")
             } catch {
                 print("❌ SparkItem init: Failed to load RTF, using Firebase content: \(error)")
                 // Fallback to Firebase content if RTF extraction fails
@@ -84,7 +82,6 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
                     documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
                 )
                 self.rtfData = rtfData
-                print("📖 SparkItem init: Created RTF from plain content (\(firebaseNote.content.count) chars) with trait preservation")
             } catch {
                 print("❌ SparkItem init: Failed to create RTF from plain content: \(error)")
                 self.rtfData = nil
@@ -129,11 +126,9 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
                 } else {
                     systemFont = UIFont.boldSystemFont(ofSize: size) // Fallback to just bold
                 }
-                print("💾 RTF Save prep: '\(font.fontName)' -> Bold+Italic System Font (size: \(size), range: \(range))")
             } else if isBold {
                 // Bold only
                 systemFont = UIFont.boldSystemFont(ofSize: size)
-                print("💾 RTF Save prep: '\(font.fontName)' -> Bold System Font (size: \(size), range: \(range))")
             } else if isItalic {
                 // Italic only
                 if let descriptor = UIFont.systemFont(ofSize: size).fontDescriptor.withSymbolicTraits([.traitItalic]) {
@@ -141,11 +136,9 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
                 } else {
                     systemFont = UIFont.italicSystemFont(ofSize: size) // Fallback
                 }
-                print("💾 RTF Save prep: '\(font.fontName)' -> Italic System Font (size: \(size), range: \(range))")
             } else {
                 // Regular
                 systemFont = UIFont.systemFont(ofSize: size)
-                print("💾 RTF Save prep: '\(font.fontName)' -> Regular System Font (size: \(size), range: \(range))")
             }
             
             mutableString.addAttribute(.font, value: systemFont, range: range)
@@ -181,7 +174,6 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
                 } else {
                     spaceGroteskFont = UIFont.boldSystemFont(ofSize: size) // System fallback
                 }
-                print("📖 RTF Display prep: System font -> SpaceGrotesk Bold+Italic (size: \(size), range: \(range))")
             } else if isBold {
                 // Bold only
                 if let boldFont = UIFont(name: "SpaceGrotesk-Bold", size: size) {
@@ -189,7 +181,6 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
                 } else {
                     spaceGroteskFont = UIFont.boldSystemFont(ofSize: size) // System fallback
                 }
-                print("📖 RTF Display prep: System font -> SpaceGrotesk-Bold (size: \(size), range: \(range))")
             } else if isItalic {
                 // Italic only
                 if let regularFont = UIFont(name: "SpaceGrotesk-Regular", size: size) {
@@ -202,7 +193,6 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
                 } else {
                     spaceGroteskFont = UIFont.italicSystemFont(ofSize: size) // System fallback
                 }
-                print("📖 RTF Display prep: System font -> SpaceGrotesk Italic (size: \(size), range: \(range))")
             } else {
                 // Regular
                 if let regularFont = UIFont(name: "SpaceGrotesk-Regular", size: size) {
@@ -210,7 +200,6 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
                 } else {
                     spaceGroteskFont = UIFont.systemFont(ofSize: size) // System fallback
                 }
-                print("📖 RTF Display prep: System font -> SpaceGrotesk-Regular (size: \(size), range: \(range))")
             }
             
             mutableString.addAttribute(.font, value: spaceGroteskFont, range: range)

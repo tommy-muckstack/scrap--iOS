@@ -321,7 +321,6 @@ class FirebaseManager: ObservableObject {
     
     // MARK: - Notes Operations
     func createNote(content: String, title: String? = nil, categoryIds: [String] = [], isTask: Bool, categories: [String] = [], creationType: String = "text", rtfData: Data? = nil) async throws -> String {
-        print("🔥 FirebaseManager: createNote called with content: '\(content)' type: '\(creationType)'")
         
         guard let userId = user?.uid else {
             print("❌ FirebaseManager: User not authenticated!")
@@ -348,7 +347,6 @@ class FirebaseManager: ObservableObject {
         )
         
         print("📝 FirebaseManager: Created note object: \(note)")
-        print("🎯 FirebaseManager: Attempting to save to Firestore collection 'notes'...")
         
         do {
             let docRef = try db.collection("notes").addDocument(from: note)
@@ -359,10 +357,8 @@ class FirebaseManager: ObservableObject {
             noteWithId.id = docRef.documentID
             
             // Index note for vector search (async, don't block save)
-            print("🔍 FirebaseManager: Starting async indexing task for note \(docRef.documentID)")
             Task {
                 do {
-                    print("🔍 FirebaseManager: Calling VectorSearchService.indexNote...")
                     try await VectorSearchService.shared.indexNote(noteWithId)
                     print("✅ FirebaseManager: Successfully indexed note \(docRef.documentID)")
                 } catch {

@@ -121,7 +121,6 @@ public struct RichTextEditor: UIViewRepresentable {
         let textsAreEqual = uiView.attributedText.isEqual(to: text)
         let stringsAreEqual = uiView.attributedText.string == text.string
         
-        print("🔍 RichTextEditor: updateUIView check - coordinator updating: \(isCoordinatorUpdating), texts equal: \(textsAreEqual), strings equal: \(stringsAreEqual)")
         
         // Only update text if it's actually different AND we're not in the middle of a text view update
         // This prevents overwriting formatting that was just applied by the coordinator
@@ -150,7 +149,6 @@ public struct RichTextEditor: UIViewRepresentable {
                 uiView.selectedRange = NSRange(location: textLength, length: 0)
             }
         } else {
-            print("🚫 RichTextEditor: updateUIView - skipping text update (coordinator updating: \(isCoordinatorUpdating), texts equal: \(textsAreEqual))")
         }
         
         // Update editable state only if needed

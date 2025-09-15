@@ -34,14 +34,11 @@ struct NoteEditor: View {
                     options: [.documentType: NSAttributedString.DocumentType.rtf],
                     documentAttributes: nil
                 )
-                print("📖 NoteEditor: Loaded note with RTF formatting (\(initialText.length) chars)")
-                print("📖 NoteEditor: RTF data size: \(rtfData.count) bytes")
             } catch {
                 print("❌ NoteEditor: Failed to load RTF, using plain text: \(error)")
                 initialText = NSAttributedString(string: item.content)
             }
         } else {
-            print("📖 NoteEditor: No RTF data, using plain text")
             initialText = NSAttributedString(string: item.content)
         }
         
@@ -167,13 +164,6 @@ struct NoteEditor: View {
                 .frame(width: 20, height: 20)
             }
         )
-        .safeAreaInset(edge: .bottom) {
-            if isTextFocused && !isTitleFocused {
-                RichFormattingToolbar(
-                    context: richTextContext
-                )
-            }
-        }
         .confirmationDialog("Note Options", isPresented: $showingOptions) {
             Button("Add Tag") { 
                 showingCategoryManager = true 
@@ -257,7 +247,6 @@ struct NoteEditor: View {
                 documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
             )
             
-            print("💾 NoteEditor: Saving RTF data (\(rtfData.count) bytes) with formatting preserved")
             dataManager.updateItemWithRTF(item, rtfData: rtfData)
         } catch {
             print("❌ NoteEditor: Failed to convert to RTF, falling back to plain text: \(error)")

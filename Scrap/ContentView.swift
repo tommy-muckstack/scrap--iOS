@@ -153,33 +153,27 @@ struct FormattingState {
     mutating func toggleTextFormat(_ format: TextFormat) {
         if activeTextFormats.contains(format) {
             activeTextFormats.remove(format)
-            print("🎨 FormattingState: Removed \(format) format. Active formats: \(activeFormatsDescription)")
         } else {
             activeTextFormats.insert(format)
-            print("🎨 FormattingState: Added \(format) format. Active formats: \(activeFormatsDescription)")
         }
     }
     
     mutating func setBlockFormat(_ format: BlockFormat?) {
         let oldFormat = activeBlockFormat
         activeBlockFormat = format
-        print("🎨 FormattingState: Block format changed from \(oldFormat?.description ?? "none") to \(format?.description ?? "none")")
     }
     
     mutating func toggleBlockFormat(_ format: BlockFormat) {
         if activeBlockFormat == format {
             activeBlockFormat = nil
-            print("🎨 FormattingState: Toggled off \(format.description)")
         } else {
             activeBlockFormat = format
-            print("🎨 FormattingState: Toggled on \(format.description)")
         }
     }
     
     mutating func clearAllFormatting() {
         activeTextFormats.removeAll()
         activeBlockFormat = nil
-        print("🎨 FormattingState: Cleared all formatting")
     }
     
     // Additional utility methods
@@ -592,8 +586,10 @@ class FirebaseDataManager: ObservableObject {
     
     
     func updateItem(_ item: SparkItem, newContent: String) {
-        // Update local item immediately (optimistic)
-        item.content = newContent
+        // Update local item immediately (optimistic) - ensure on main thread
+        DispatchQueue.main.async {
+            item.content = newContent
+        }
         
         // Update Firebase
         if let firebaseId = item.firebaseId {
@@ -617,7 +613,10 @@ class FirebaseDataManager: ObservableObject {
                 options: [.documentType: NSAttributedString.DocumentType.rtf],
                 documentAttributes: nil
             )
-            item.content = attributedString.string
+            // Ensure UI updates happen on main thread
+            DispatchQueue.main.async {
+                item.content = attributedString.string
+            }
         } catch {
             print("❌ Failed to extract plain text from RTF: \(error)")
         }
@@ -1746,8 +1745,6 @@ struct ContentView: View {
         
         ForEach(itemsToDisplay) { item in
             ItemRowSimple(item: item, dataManager: dataManager) {
-                print("🎯 ContentView: Note tap detected - navigating to item.id = '\(item.id)'")
-                print("🎯 ContentView: item.content = '\(item.content)' (length: \(item.content.count))")
                 
                 AnalyticsManager.shared.trackNoteEditOpened(noteId: item.id)
                 
@@ -1821,11 +1818,9 @@ struct ContentView: View {
             // Auto-focus the input field when the app loads
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 isInputFieldFocused = true
-                print("🎯 ContentView: Auto-focused input field on app load - setting focus to true")
                 
                 // Add additional debugging
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    print("🎯 ContentView: Checking focus state after delay - isInputFieldFocused: \(isInputFieldFocused)")
                 }
             }
             
@@ -1837,11 +1832,9 @@ struct ContentView: View {
                 // Only index if we have notes and user is authenticated
                 guard !dataManager.items.isEmpty,
                       Auth.auth().currentUser != nil else {
-                    print("🔍 ContentView: Skipping auto-indexing - no items or not authenticated")
                     return
                 }
                 
-                print("🔍 ContentView: Starting auto-indexing of \(dataManager.items.count) notes...")
                 triggerReindexing()
             }
         }

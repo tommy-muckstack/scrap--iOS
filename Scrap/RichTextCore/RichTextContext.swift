@@ -116,7 +116,6 @@ public class RichTextContext: ObservableObject {
         // based on the actual text selection and current formatting
         actionPublisher.send(.toggleStyle(.bold))
         
-        print("🔥 RichTextContext: toggleBold() called - sending action to coordinator")
     }
     
     /// Toggle italic formatting
@@ -278,7 +277,6 @@ public class RichTextContext: ObservableObject {
         
         // Direct update since we're already in async context from updateFormattingState
         self.isBoldActive = newBoldState
-        print("🎯 RichTextContext: Updated isBoldActive to \(newBoldState)")
     }
     
     private func updateItalicState(from attributes: [NSAttributedString.Key: Any]) {
@@ -291,7 +289,6 @@ public class RichTextContext: ObservableObject {
         
         // Direct update since we're already in async context from updateFormattingState
         self.isItalicActive = newItalicState
-        print("🎯 RichTextContext: Updated isItalicActive to \(newItalicState)")
     }
     
     private func updateUnderlineState(from attributes: [NSAttributedString.Key: Any]) {
@@ -304,7 +301,6 @@ public class RichTextContext: ObservableObject {
         
         // Direct update since we're already in async context from updateFormattingState
         self.isUnderlineActive = newUnderlineState
-        print("🎯 RichTextContext: Updated isUnderlineActive to \(newUnderlineState)")
     }
     
     private func updateStrikethroughState(from attributes: [NSAttributedString.Key: Any]) {
@@ -317,7 +313,6 @@ public class RichTextContext: ObservableObject {
         
         // Direct update since we're already in async context from updateFormattingState
         self.isStrikethroughActive = newStrikethroughState
-        print("🎯 RichTextContext: Updated isStrikethroughActive to \(newStrikethroughState)")
     }
     
     private func updateBlockFormatState() {
@@ -352,7 +347,6 @@ public class RichTextContext: ObservableObject {
         self.isBulletListActive = bulletActive
         self.isCheckboxActive = checkboxActive
         self.isCodeBlockActive = codeBlockActive
-        print("🎯 RichTextContext: Updated block states - bullet: \(bulletActive), checkbox: \(checkboxActive), code: \(codeBlockActive)")
     }
     
     /// Update undo/redo capabilities

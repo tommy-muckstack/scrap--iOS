@@ -17,16 +17,12 @@ class VectorSearchService: ObservableObject {
     
     /// Add or update a note's vector embedding in ChromaDB
     func indexNote(_ note: FirebaseNote) async throws {
-        print("🔍 VectorSearchService: Starting indexNote for note ID: \(note.id ?? "unknown")")
-        print("🔍 VectorSearchService: Note content length: \(note.content.count) chars")
         
         guard let userId = Auth.auth().currentUser?.uid else {
             print("❌ VectorSearchService: User not authenticated - cannot index note")
             throw VectorSearchError.notAuthenticated
         }
         
-        print("🔍 VectorSearchService: User authenticated: \(userId)")
-        print("🔍 VectorSearchService: Indexing note \(note.id ?? "unknown") for vector search...")
         
         do {
             // Combine title and content for better search indexing
@@ -35,9 +31,7 @@ class VectorSearchService: ObservableObject {
                 .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
                 .joined(separator: "\n")
             
-            print("🔍 VectorSearchService: Generating embedding for combined title+content (\(searchableContent.count) chars)...")
             let embedding = try await embeddingService.generateEmbedding(for: searchableContent)
-            print("🔍 VectorSearchService: Generated embedding with \(embedding.count) dimensions")
             
             // Create metadata for ChromaDB
             let metadata = ChromaMetadata(
@@ -47,10 +41,8 @@ class VectorSearchService: ObservableObject {
                 categories: note.categoryIds ?? [],
                 createdAt: ISO8601DateFormatter().string(from: note.createdAt)
             )
-            print("🔍 VectorSearchService: Created metadata for ChromaDB")
             
             // Store in ChromaDB with note ID as the vector ID
-            print("🔍 VectorSearchService: Adding document to ChromaDB...")
             try await chromaService.addDocument(
                 id: note.id ?? UUID().uuidString,
                 content: searchableContent,
@@ -93,20 +85,14 @@ class VectorSearchService: ObservableObject {
         }
         
         do {
-            print("🔍 VectorSearchService: Performing semantic search for: '\(query)'")
-            print("🔍 VectorSearchService: ChromaDB connected: \(chromaService.isConnected)")
             
             // Generate embedding for the search query
-            print("🔍 VectorSearchService: Generating embedding for query: '\(query)'...")
             let queryEmbedding = try await embeddingService.generateEmbedding(for: query)
-            print("🔍 VectorSearchService: Generated embedding with \(queryEmbedding.count) dimensions")
             
             // Debug: Show a few embedding values for diagnostic purposes
             if queryEmbedding.count >= 5 {
-                print("🔍 VectorSearchService: First 5 embedding values: \(Array(queryEmbedding.prefix(5)))")
             }
             
-            print("🔍 VectorSearchService: Searching for user: \(userId)")
             
             // Build filter for categories if specified
             var filter: [String: Any]? = nil
@@ -123,7 +109,6 @@ class VectorSearchService: ObservableObject {
             )
             
             // Debug: Log raw ChromaDB response
-            print("🔍 VectorSearchService: Raw ChromaDB response:")
             print("   - IDs count: \(results.ids.count > 0 ? results.ids[0].count : 0)")
             print("   - Documents count: \(results.documents.count > 0 ? results.documents[0].count : 0)")
             print("   - Distances count: \(results.distances.count > 0 ? results.distances[0].count : 0)")
@@ -229,15 +214,12 @@ class VectorSearchService: ObservableObject {
     
     /// Test ChromaDB connectivity
     func testConnection() async throws -> Bool {
-        print("🔍 VectorSearchService: Testing ChromaDB connection...")
         let isHealthy = try await chromaService.healthCheck()
-        print("🔍 VectorSearchService: ChromaDB health check result: \(isHealthy)")
         return isHealthy
     }
     
     /// Re-index all existing notes (useful for backfilling)
     func reindexAllNotes(_ notes: [FirebaseNote]) async {
-        print("🔍 VectorSearchService: Re-indexing \(notes.count) existing notes...")
         
         for note in notes {
             do {
@@ -302,7 +284,6 @@ class VectorSearchService: ObservableObject {
     private func convertToSearchResults(_ chromaResults: ChromaQueryResult) -> [SearchResult] {
         var results: [SearchResult] = []
         
-        print("🔍 VectorSearchService: Converting \(chromaResults.ids[0].count) raw results to SearchResults")
         
         for i in 0..<chromaResults.ids[0].count {
             let id = chromaResults.ids[0][i]
@@ -311,7 +292,6 @@ class VectorSearchService: ObservableObject {
             let metadata = chromaResults.metadatas[0][i]
             
             // Convert distance to similarity score (0-1, higher is better)
-            print("🔍 VectorSearchService: Result \(i):")
             print("   - ID: \(id)")
             print("   - Content preview: \(String(content.prefix(60)))...")
             print("   - Raw distance: \(distance)")
@@ -350,7 +330,6 @@ class VectorSearchService: ObservableObject {
         // Sort by similarity (highest first) for better user experience
         results.sort { $0.similarity > $1.similarity }
         
-        print("🔍 VectorSearchService: Final results summary:")
         print("   - Total results before filtering: \(results.count)")
         if let bestMatch = results.first {
             print("   - Best match similarity: \(Int(bestMatch.similarity * 100))%")
@@ -365,10 +344,8 @@ class VectorSearchService: ObservableObject {
         let filteredResults = results.filter { $0.similarity >= minimumSimilarityThreshold }
         
         if filteredResults.count != results.count {
-            print("🔍 VectorSearchService: Filtered out \(results.count - filteredResults.count) results below \(Int(minimumSimilarityThreshold * 100))% similarity threshold")
         }
         
-        print("🔍 VectorSearchService: Final filtered results: \(filteredResults.count)")
         
         return filteredResults
     }
