@@ -63,7 +63,7 @@ class RichTextInputAccessoryView: UIView {
 extension UITextView {
     
     private struct AssociatedKeys {
-        static var richTextInputAccessory = "richTextInputAccessory"
+        static var richTextInputAccessory: UInt8 = 0
     }
     
     /// Set up rich text input accessory view
