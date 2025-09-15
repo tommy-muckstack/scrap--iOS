@@ -17,6 +17,9 @@ struct NoteEditor: View {
     @State private var showingCategoryManager = false
     @State private var userCategories: [Category] = []
     @State private var isLoadingCategories = false
+    @State private var isContentLoaded = false
+    @State private var showingSkeleton = true
+    @State private var autoSaveTimer: Timer?
     
     init(item: SparkItem, dataManager: FirebaseDataManager) {
         self.item = item
@@ -48,104 +51,127 @@ struct NoteEditor: View {
     }
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Title field
-            ZStack(alignment: .topLeading) {
-                // Placeholder text
-                if editedTitle.isEmpty {
-                    Text("Title (optional)")
-                        .font(GentleLightning.Typography.title)
-                        .foregroundColor(GentleLightning.Colors.textSecondary.opacity(0.6))
-                        .padding(.horizontal, 16)
-                        .padding(.top, 16 + 8) // Match TextEditor padding + text offset
-                        .allowsHitTesting(false)
-                }
-                
-                // Multiline text editor for title
-                TextEditor(text: $editedTitle)
-                    .font(GentleLightning.Typography.title)
-                    .foregroundColor(GentleLightning.Colors.textPrimary)
-                    .scrollContentBackground(.hidden)
-                    .background(Color.clear)
+        Group {
+            if showingSkeleton {
+                // Skeletal loading state
+                NoteEditorSkeleton()
+                    .transition(.opacity)
+            } else {
+                // Main content
+                VStack(spacing: 0) {
+                    // Title field
+                    ZStack(alignment: .topLeading) {
+                        // Placeholder text
+                        if editedTitle.isEmpty {
+                            Text("Title (optional)")
+                                .font(GentleLightning.Typography.title)
+                                .foregroundColor(GentleLightning.Colors.textSecondary.opacity(0.6))
+                                .padding(.horizontal, 16)
+                                .padding(.top, 16 + 8) // Match TextEditor padding + text offset
+                                .allowsHitTesting(false)
+                        }
+                        
+                        // Multiline text editor for title
+                        TextEditor(text: $editedTitle)
+                            .font(GentleLightning.Typography.title)
+                            .foregroundColor(GentleLightning.Colors.textPrimary)
+                            .scrollContentBackground(.hidden)
+                            .background(Color.clear)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 16)
+                            .padding(.bottom, 16)
+                            .frame(minHeight: 60, maxHeight: 120) // Accommodate ~3 lines at 28pt font
+                            .focused($isTitleFocused)
+                            .onChange(of: editedTitle) { newTitle in
+                                // Debounce title updates for better performance
+                                autoSaveTimer?.invalidate()
+                                autoSaveTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { _ in
+                                    updateTitle(newTitle)
+                                }
+                            }
+                    }
+                    
+                    // Rich Text editor
+                    RichTextEditor.forNotes(
+                        text: $editedText,
+                        context: richTextContext,
+                        showingFormatting: .constant(true)
+                    )
                     .padding(.horizontal, 16)
-                    .padding(.top, 16)
-                    .padding(.bottom, 16)
-                    .frame(minHeight: 60, maxHeight: 120) // Accommodate ~3 lines at 28pt font
-                    .focused($isTitleFocused)
-                    .onChange(of: editedTitle) { updateTitle($0) }
-            }
-            
-            // Rich Text editor
-            RichTextEditor.forNotes(
-                text: $editedText,
-                context: richTextContext,
-                showingFormatting: .constant(true)
-            )
-            .padding(.horizontal, 16)
-            .focused($isTextFocused)
-            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
-                // Save when app goes to background
-                updateContent(editedText)
-            }
-            
-            Divider()
-            
-            // Simple tags display
-            if !selectedCategories.isEmpty {
-                HStack {
-                    Text("Tags:")
-                        .font(GentleLightning.Typography.caption)
-                        .foregroundColor(GentleLightning.Colors.textSecondary)
+                    .focused($isTextFocused)
+                    .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+                        // Save when app goes to background
+                        updateContent(editedText)
+                    }
                     
-                    // Simple text list of tag names
-                    Text(userCategories.filter { category in
-                        selectedCategories.contains(category.firebaseId ?? category.id)
-                    }.map { $0.name }.joined(separator: ", "))
-                        .font(GentleLightning.Typography.caption)
-                        .foregroundColor(GentleLightning.Colors.textPrimary)
+                    Divider()
                     
-                    Spacer()
+                    // Simple tags display
+                    if !selectedCategories.isEmpty {
+                        HStack {
+                            Text("Tags:")
+                                .font(GentleLightning.Typography.caption)
+                                .foregroundColor(GentleLightning.Colors.textSecondary)
+                            
+                            // Simple text list of tag names
+                            Text(userCategories.filter { category in
+                                selectedCategories.contains(category.firebaseId ?? category.id)
+                            }.map { $0.name }.joined(separator: ", "))
+                                .font(GentleLightning.Typography.caption)
+                                .foregroundColor(GentleLightning.Colors.textPrimary)
+                            
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                    }
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
+                .transition(.opacity)
             }
         }
         // .navigationTitle("Edit Note")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button(action: { dismiss() }) {
-                    Image(systemName: GentleLightning.Icons.navigationBack)
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(.black)
+        .navigationBarItems(
+            leading: Button(action: { 
+                // Provide immediate feedback and dismiss
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    showingSkeleton = false
                 }
-            }
-            
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: { showingOptions = true }) {
-                    VStack(spacing: 2) {
-                        Circle()
-                            .fill(Color.black)
-                            .frame(width: 3, height: 3)
-                        Circle()
-                            .fill(Color.black)
-                            .frame(width: 3, height: 3)
-                        Circle()
-                            .fill(Color.black)
-                            .frame(width: 3, height: 3)
+                
+                // Save content quickly before dismiss
+                DispatchQueue.global(qos: .userInitiated).async {
+                    updateContent(editedText)
+                    
+                    DispatchQueue.main.async {
+                        dismiss()
                     }
-                    .frame(width: 20, height: 20)
                 }
+            }) {
+                Image(systemName: GentleLightning.Icons.navigationBack)
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundColor(.black)
+            },
+            trailing: Button(action: { showingOptions = true }) {
+                VStack(spacing: 2) {
+                    Circle()
+                        .fill(Color.black)
+                        .frame(width: 3, height: 3)
+                    Circle()
+                        .fill(Color.black)
+                        .frame(width: 3, height: 3)
+                    Circle()
+                        .fill(Color.black)
+                        .frame(width: 3, height: 3)
+                }
+                .frame(width: 20, height: 20)
             }
-            
-            // Formatting toolbar above keyboard - only show when editing body text, not title
-            ToolbarItemGroup(placement: .keyboard) {
-                if isTextFocused && !isTitleFocused {
-                    RichFormattingToolbar(
-                        context: richTextContext
-                    )
-                }
+        )
+        .safeAreaInset(edge: .bottom) {
+            if isTextFocused && !isTitleFocused {
+                RichFormattingToolbar(
+                    context: richTextContext
+                )
             }
         }
         .confirmationDialog("Note Options", isPresented: $showingOptions) {
@@ -173,16 +199,37 @@ struct NoteEditor: View {
         }
         .dismissKeyboardOnDrag()
         .onAppear {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                withAnimation(GentleLightning.Animation.swoosh) {
-                    isTextFocused = true
+            // Start with immediate basic setup
+            loadCategories()
+            
+            // Initialize rich text context with content after a brief delay to allow skeleton to show
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                // Set up the rich text context with the loaded content
+                richTextContext.setAttributedString(editedText)
+                
+                // Hide skeleton with animation after content is ready
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    showingSkeleton = false
+                }
+                
+                // Focus the text field after skeleton is hidden
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    withAnimation(GentleLightning.Animation.swoosh) {
+                        isTextFocused = true
+                    }
                 }
             }
-            loadCategories()
         }
         .onDisappear {
-            // Save when navigating away
-            updateContent(editedText)
+            // Clean up timer and save
+            autoSaveTimer?.invalidate()
+            autoSaveTimer = nil
+            
+            // Optimize dismissal by deferring save to background
+            DispatchQueue.global(qos: .userInitiated).async {
+                // Save when navigating away
+                updateContent(editedText)
+            }
         }
     }
     
@@ -683,6 +730,89 @@ struct CreateTagInlineView: View {
             .disabled(categoryName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || selectedColorKey.isEmpty)
             .padding(.horizontal, 20)
             .padding(.bottom, 20)
+        }
+    }
+}
+
+// MARK: - Note Editor Skeleton Loading View
+struct NoteEditorSkeleton: View {
+    @State private var animateShimmer = false
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Title skeleton
+            VStack(alignment: .leading, spacing: 8) {
+                SkeletonLine(width: 0.4, height: 24)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 24)
+                
+                SkeletonLine(width: 0.25, height: 24)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 16)
+            }
+            
+            // Content skeleton
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(0..<8, id: \.self) { index in
+                    SkeletonLine(
+                        width: index == 3 ? 0.6 : (index == 7 ? 0.3 : 0.9),
+                        height: 18
+                    )
+                    .padding(.horizontal, 16)
+                }
+            }
+            .padding(.vertical, 20)
+            
+            Spacer()
+        }
+        .background(Color(UIColor.systemBackground))
+    }
+}
+
+// MARK: - Skeleton Line Component
+struct SkeletonLine: View {
+    let width: CGFloat
+    let height: CGFloat
+    @State private var animateShimmer = false
+    
+    var body: some View {
+        GeometryReader { geometry in
+            RoundedRectangle(cornerRadius: 4)
+                .fill(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color.gray.opacity(0.2),
+                            Color.gray.opacity(0.1),
+                            Color.gray.opacity(0.2)
+                        ]),
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .mask(
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(
+                            LinearGradient(
+                                gradient: Gradient(stops: [
+                                    .init(color: .clear, location: animateShimmer ? 0.8 : -0.3),
+                                    .init(color: .white, location: animateShimmer ? 0.9 : -0.2),
+                                    .init(color: .clear, location: animateShimmer ? 1.0 : -0.1)
+                                ]),
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                )
+                .frame(width: geometry.size.width * width, height: height)
+        }
+        .frame(height: height)
+        .onAppear {
+            withAnimation(
+                Animation.linear(duration: 1.5)
+                    .repeatForever(autoreverses: false)
+            ) {
+                animateShimmer = true
+            }
         }
     }
 }

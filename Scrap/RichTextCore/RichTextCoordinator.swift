@@ -300,14 +300,21 @@ public class RichTextCoordinator: NSObject {
                 }
             }
         } else {
-            // For cursor position, just update typing attributes
-            // No need to modify existing text
+            // For cursor position, immediately update context state to reflect the intended formatting
+            // This ensures that updateTypingAttributes() has the correct state to work with
+            DispatchQueue.main.async {
+                self.context.isBoldActive = shouldAddBold
+                // Update typing attributes after context state is updated
+                self.updateTypingAttributes()
+                print("🎨 Bold toggle complete - context state and typing attributes updated for cursor position")
+            }
+            return // Don't call updateTypingAttributes() again below
         }
         
-        // Update typing attributes immediately for cursor positions
-        // Context state is already updated for snappy UI response
+        // For text selections, update typing attributes normally
+        // Context state will be updated when updateContextFromTextView() is called
         self.updateTypingAttributes()
-        print("🎨 Bold toggle complete - typing attributes refreshed")
+        print("🎨 Bold toggle complete - typing attributes refreshed for selection")
     }
     
     private func toggleItalicInRange(_ mutableText: NSMutableAttributedString, _ range: NSRange) {
@@ -355,12 +362,20 @@ public class RichTextCoordinator: NSObject {
                     mutableText.addAttribute(.font, value: newFont, range: subRange)
                 }
             }
+        } else {
+            // For cursor position, immediately update context state to reflect the intended formatting
+            DispatchQueue.main.async {
+                self.context.isItalicActive = shouldAddItalic
+                // Update typing attributes after context state is updated
+                self.updateTypingAttributes()
+                print("🎨 Italic toggle complete - context state and typing attributes updated for cursor position")
+            }
+            return // Don't call updateTypingAttributes() again below
         }
         
-        // Update typing attributes immediately
-        // Context state is already updated for snappy UI response
+        // For text selections, update typing attributes normally
         self.updateTypingAttributes()
-        print("🎨 Italic toggle complete - typing attributes refreshed")
+        print("🎨 Italic toggle complete - typing attributes refreshed for selection")
     }
     
     private func toggleUnderlineInRange(_ mutableText: NSMutableAttributedString, _ range: NSRange) {
@@ -387,12 +402,20 @@ public class RichTextCoordinator: NSObject {
                 let newStyle = shouldAddUnderline ? NSUnderlineStyle.single.rawValue : 0
                 mutableText.addAttribute(.underlineStyle, value: newStyle, range: subRange)
             }
+        } else {
+            // For cursor position, immediately update context state to reflect the intended formatting
+            DispatchQueue.main.async {
+                self.context.isUnderlineActive = shouldAddUnderline
+                // Update typing attributes after context state is updated
+                self.updateTypingAttributes()
+                print("🎨 Underline toggle complete - context state and typing attributes updated for cursor position")
+            }
+            return // Don't call updateTypingAttributes() again below
         }
         
-        // Update typing attributes immediately
-        // Context state is already updated for snappy UI response
+        // For text selections, update typing attributes normally
         self.updateTypingAttributes()
-        print("🎨 Underline toggle complete - typing attributes refreshed")
+        print("🎨 Underline toggle complete - typing attributes refreshed for selection")
     }
     
     private func toggleStrikethroughInRange(_ mutableText: NSMutableAttributedString, _ range: NSRange) {
@@ -419,12 +442,20 @@ public class RichTextCoordinator: NSObject {
                 let newStyle = shouldAddStrikethrough ? NSUnderlineStyle.single.rawValue : 0
                 mutableText.addAttribute(.strikethroughStyle, value: newStyle, range: subRange)
             }
+        } else {
+            // For cursor position, immediately update context state to reflect the intended formatting
+            DispatchQueue.main.async {
+                self.context.isStrikethroughActive = shouldAddStrikethrough
+                // Update typing attributes after context state is updated
+                self.updateTypingAttributes()
+                print("🎨 Strikethrough toggle complete - context state and typing attributes updated for cursor position")
+            }
+            return // Don't call updateTypingAttributes() again below
         }
         
-        // Update typing attributes immediately
-        // Context state is already updated for snappy UI response
+        // For text selections, update typing attributes normally
         self.updateTypingAttributes()
-        print("🎨 Strikethrough toggle complete - typing attributes refreshed")
+        print("🎨 Strikethrough toggle complete - typing attributes refreshed for selection")
     }
     
     // MARK: - Block Format Application

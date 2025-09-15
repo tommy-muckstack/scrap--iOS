@@ -1132,11 +1132,25 @@ struct ItemRowSimple: View {
     let dataManager: FirebaseDataManager
     let onTap: () -> Void
     
+    // Cache expensive computations
+    private var displayTitle: String {
+        item.title.isEmpty ? String(item.content.prefix(50)) : item.title
+    }
+    
+    private var previewText: String {
+        item.title.isEmpty ? "" : String(item.content.prefix(100))
+    }
+    
     var body: some View {
-        Button(action: onTap) {
+        Button(action: {
+            // Use DispatchQueue to ensure smooth navigation
+            DispatchQueue.main.async {
+                onTap()
+            }
+        }) {
             VStack(alignment: .leading, spacing: 2) {
                 // Title - use content as title if no title exists
-                Text(item.title.isEmpty ? item.content : item.title)
+                Text(displayTitle)
                     .font(GentleLightning.Typography.body)
                     .foregroundColor(GentleLightning.Colors.textPrimary)
                     .lineLimit(1)
@@ -1144,8 +1158,8 @@ struct ItemRowSimple: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 
                 // Preview text - only show if title exists
-                if !item.title.isEmpty && !item.content.isEmpty {
-                    Text(item.content)
+                if !previewText.isEmpty {
+                    Text(previewText)
                         .font(GentleLightning.Typography.secondary)
                         .foregroundColor(GentleLightning.Colors.textSecondary)
                         .lineLimit(1)
@@ -1540,9 +1554,16 @@ struct ContentView: View {
                 LazyVStack(spacing: 12) {
                     ForEach(Array(dataManager.items.prefix(displayedItemsCount).enumerated()), id: \.element.id) { index, item in
                         ItemRowSimple(item: item, dataManager: dataManager) {
-                            navigationPath.append(item)
+                            // Optimize navigation with immediate feedback
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                navigationPath.append(item)
+                            }
                         }
                         .padding(.horizontal, GentleLightning.Layout.Padding.xl)
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .trailing).combined(with: .opacity),
+                            removal: .move(edge: .leading).combined(with: .opacity)
+                        ))
                         .onAppear {
                             // Load more items when approaching the end
                             if index == displayedItemsCount - 3 {

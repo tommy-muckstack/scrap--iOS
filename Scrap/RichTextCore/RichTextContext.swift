@@ -186,8 +186,10 @@ public class RichTextContext: ObservableObject {
     
     /// Update formatting state based on current selection
     internal func updateFormattingState() {
-        // Update immediately on main thread for snappy UI response
-        guard self.selectedRange.length >= 0 && self.attributedString.length > 0 else { return }
+        // Defer to avoid SwiftUI update conflicts
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            guard self.selectedRange.length >= 0 && self.attributedString.length > 0 else { return }
         
         // For cursor position (no selection), check if we're at the end of formatted text
         // If so, preserve the formatting intent for new text
@@ -259,7 +261,8 @@ public class RichTextContext: ObservableObject {
             self.updateStrikethroughState(from: attributes)
         }
         
-        self.updateBlockFormatState()
+            self.updateBlockFormatState()
+        }
     }
     
     private func updateBoldState(from attributes: [NSAttributedString.Key: Any]) {
@@ -273,16 +276,9 @@ public class RichTextContext: ObservableObject {
             newBoldState = false
         }
         
-        // Update immediately on main thread if already on main thread, otherwise async
-        if Thread.isMainThread {
-            self.isBoldActive = newBoldState
-            print("🎯 RichTextContext: Updated isBoldActive to \(newBoldState) (immediate)")
-        } else {
-            DispatchQueue.main.async {
-                self.isBoldActive = newBoldState
-                print("🎯 RichTextContext: Updated isBoldActive to \(newBoldState) (async)")
-            }
-        }
+        // Direct update since we're already in async context from updateFormattingState
+        self.isBoldActive = newBoldState
+        print("🎯 RichTextContext: Updated isBoldActive to \(newBoldState)")
     }
     
     private func updateItalicState(from attributes: [NSAttributedString.Key: Any]) {
@@ -293,16 +289,9 @@ public class RichTextContext: ObservableObject {
             newItalicState = false
         }
         
-        // Update immediately on main thread if already on main thread, otherwise async
-        if Thread.isMainThread {
-            self.isItalicActive = newItalicState
-            print("🎯 RichTextContext: Updated isItalicActive to \(newItalicState) (immediate)")
-        } else {
-            DispatchQueue.main.async {
-                self.isItalicActive = newItalicState
-                print("🎯 RichTextContext: Updated isItalicActive to \(newItalicState) (async)")
-            }
-        }
+        // Direct update since we're already in async context from updateFormattingState
+        self.isItalicActive = newItalicState
+        print("🎯 RichTextContext: Updated isItalicActive to \(newItalicState)")
     }
     
     private func updateUnderlineState(from attributes: [NSAttributedString.Key: Any]) {
@@ -313,16 +302,9 @@ public class RichTextContext: ObservableObject {
             newUnderlineState = false
         }
         
-        // Update immediately on main thread if already on main thread, otherwise async
-        if Thread.isMainThread {
-            self.isUnderlineActive = newUnderlineState
-            print("🎯 RichTextContext: Updated isUnderlineActive to \(newUnderlineState) (immediate)")
-        } else {
-            DispatchQueue.main.async {
-                self.isUnderlineActive = newUnderlineState
-                print("🎯 RichTextContext: Updated isUnderlineActive to \(newUnderlineState) (async)")
-            }
-        }
+        // Direct update since we're already in async context from updateFormattingState
+        self.isUnderlineActive = newUnderlineState
+        print("🎯 RichTextContext: Updated isUnderlineActive to \(newUnderlineState)")
     }
     
     private func updateStrikethroughState(from attributes: [NSAttributedString.Key: Any]) {
@@ -333,27 +315,18 @@ public class RichTextContext: ObservableObject {
             newStrikethroughState = false
         }
         
-        // Update immediately on main thread if already on main thread, otherwise async
-        if Thread.isMainThread {
-            self.isStrikethroughActive = newStrikethroughState
-            print("🎯 RichTextContext: Updated isStrikethroughActive to \(newStrikethroughState) (immediate)")
-        } else {
-            DispatchQueue.main.async {
-                self.isStrikethroughActive = newStrikethroughState
-                print("🎯 RichTextContext: Updated isStrikethroughActive to \(newStrikethroughState) (async)")
-            }
-        }
+        // Direct update since we're already in async context from updateFormattingState
+        self.isStrikethroughActive = newStrikethroughState
+        print("🎯 RichTextContext: Updated isStrikethroughActive to \(newStrikethroughState)")
     }
     
     private func updateBlockFormatState() {
         // Check if current line has bullet, checkbox, or code block formatting
         let currentText = attributedString.string
         guard selectedRange.location < currentText.count else {
-            DispatchQueue.main.async {
-                self.isBulletListActive = false
-                self.isCheckboxActive = false
-                self.isCodeBlockActive = false
-            }
+            self.isBulletListActive = false
+            self.isCheckboxActive = false
+            self.isCodeBlockActive = false
             return
         }
         
@@ -375,43 +348,27 @@ public class RichTextContext: ObservableObject {
             codeBlockActive = false
         }
         
-        // Update immediately on main thread if already on main thread, otherwise async
-        if Thread.isMainThread {
-            self.isBulletListActive = bulletActive
-            self.isCheckboxActive = checkboxActive
-            self.isCodeBlockActive = codeBlockActive
-            print("🎯 RichTextContext: Updated block states - bullet: \(bulletActive), checkbox: \(checkboxActive), code: \(codeBlockActive) (immediate)")
-        } else {
-            DispatchQueue.main.async {
-                self.isBulletListActive = bulletActive
-                self.isCheckboxActive = checkboxActive
-                self.isCodeBlockActive = codeBlockActive
-                print("🎯 RichTextContext: Updated block states - bullet: \(bulletActive), checkbox: \(checkboxActive), code: \(codeBlockActive) (async)")
-            }
-        }
+        // Direct update since we're already in async context from updateFormattingState
+        self.isBulletListActive = bulletActive
+        self.isCheckboxActive = checkboxActive
+        self.isCodeBlockActive = codeBlockActive
+        print("🎯 RichTextContext: Updated block states - bullet: \(bulletActive), checkbox: \(checkboxActive), code: \(codeBlockActive)")
     }
     
     /// Update undo/redo capabilities
     internal func updateUndoRedoState(canUndo: Bool, canRedo: Bool) {
-        if Thread.isMainThread {
+        // Always defer to next run loop to avoid SwiftUI update conflicts
+        DispatchQueue.main.async {
             self.canUndo = canUndo
             self.canRedo = canRedo
-        } else {
-            DispatchQueue.main.async {
-                self.canUndo = canUndo
-                self.canRedo = canRedo
-            }
         }
     }
     
     /// Update copy capability
     internal func updateCopyState(_ canCopy: Bool) {
-        if Thread.isMainThread {
+        // Always defer to next run loop to avoid SwiftUI update conflicts
+        DispatchQueue.main.async {
             self.canCopy = canCopy
-        } else {
-            DispatchQueue.main.async {
-                self.canCopy = canCopy
-            }
         }
     }
 }
