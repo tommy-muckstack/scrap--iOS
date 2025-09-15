@@ -49,6 +49,7 @@
 		RC7762BA2291946641555033DE /* RichTextCore/RichTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = RC6691F824B3D8177B68116C03 /* RichTextCore/RichTextEditor.swift */; };
 		RC7A674C6B95C322B02410EC74 /* RichTextCore/RichTextCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = RCE4FD307E47D569B669CE633A /* RichTextCore/RichTextCoordinator.swift */; };
 		RCB7600E0A0B026201786F2131 /* RichTextCore/RichTextContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = RCCABB85C9FF0BBEE223B3A7B5 /* RichTextCore/RichTextContext.swift */; };
+		IA3B9BABEBD65C49F838AA4143 /* RichTextCore/RichTextInputAccessoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = IA0053424B563D671E01D14B43 /* RichTextCore/RichTextInputAccessoryView.swift */; };
 		RTB79366E98E99 /* RichTextTransformer.swift in Sources */ = {isa = PBXBuildFile; fileRef = RT6C1C6BFA551F /* RichTextTransformer.swift */; };
 		SM746984E3905E9248F740 /* SparkModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = SM988B63B7218D59C335B7 /* SparkModels.swift */; };
 		SS7CB67F2F072D9CA9AE6D /* SparkServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = SS42E11169D5C6456E0538 /* SparkServices.swift */; };
@@ -110,6 +111,7 @@
 		FF304E8B2E6FA2000054DD44 /* ChromaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChromaService.swift; sourceTree = "<group>"; };
 		RC6691F824B3D8177B68116C03 /* RichTextCore/RichTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/RichTextEditor.swift; sourceTree = "<group>"; };
 		RCCABB85C9FF0BBEE223B3A7B5 /* RichTextCore/RichTextContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/RichTextContext.swift; sourceTree = "<group>"; };
+		IA0053424B563D671E01D14B43 /* RichTextCore/RichTextInputAccessoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/RichTextInputAccessoryView.swift; sourceTree = "<group>"; };
 		RCE4FD307E47D569B669CE633A /* RichTextCore/RichTextCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/RichTextCoordinator.swift; sourceTree = "<group>"; };
 		RT6C1C6BFA551F /* RichTextTransformer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextTransformer.swift; sourceTree = "<group>"; };
 		SM988B63B7218D59C335B7 /* SparkModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparkModels.swift; sourceTree = "<group>"; };
@@ -194,6 +196,7 @@
 				NE5DDCCFCC62BAA7EE7261D21F /* NoteEditor.swift */,
 				VSBB8F96838EAF9CAB96FC412B /* VectorSearchService.swift */,
 				RCCABB85C9FF0BBEE223B3A7B5 /* RichTextCore/RichTextContext.swift */,
+				IA0053424B563D671E01D14B43 /* RichTextCore/RichTextInputAccessoryView.swift */,
 				RCE4FD307E47D569B669CE633A /* RichTextCore/RichTextCoordinator.swift */,
 				RC6691F824B3D8177B68116C03 /* RichTextCore/RichTextEditor.swift */,
 				TMC622226271474267E1D8B017 /* ThemeManager.swift */,
@@ -392,6 +395,7 @@
 				NEC114F946C8D24C74D23822B8 /* NoteEditor.swift in Sources */,
 				VSB265A2C19F0013D2789802D2 /* VectorSearchService.swift in Sources */,
 				RCB7600E0A0B026201786F2131 /* RichTextCore/RichTextContext.swift in Sources */,
+				IA3B9BABEBD65C49F838AA4143 /* RichTextCore/RichTextInputAccessoryView.swift in Sources */,
 				RC7A674C6B95C322B02410EC74 /* RichTextCore/RichTextCoordinator.swift in Sources */,
 				RC7762BA2291946641555033DE /* RichTextCore/RichTextEditor.swift in Sources */,
 				TMF4A47D87D17E986129EC9426 /* ThemeManager.swift in Sources */,

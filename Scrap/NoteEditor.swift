@@ -44,7 +44,8 @@ struct NoteEditor: View {
             // Rich Text editor
             RichTextEditor.forNotes(
                 text: $editedText,
-                context: richTextContext
+                context: richTextContext,
+                showingFormatting: $showingFormatting
             )
             .padding(.horizontal, 16)
             .focused($isTextFocused)
@@ -109,10 +110,6 @@ struct NoteEditor: View {
                     context: richTextContext,
                     showingFormatting: $showingFormatting
                 )
-                .transition(.asymmetric(
-                    insertion: .move(edge: .bottom).combined(with: .opacity),
-                    removal: .move(edge: .bottom).combined(with: .opacity)
-                ))
             }
         }
         .confirmationDialog("Note Options", isPresented: $showingOptions) {

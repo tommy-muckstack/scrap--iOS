@@ -33,16 +33,19 @@ public struct RichTextEditor: UIViewRepresentable {
     @Binding private var text: NSAttributedString
     @ObservedObject private var context: RichTextContext
     private let configuration: (UITextView) -> Void
+    @Binding private var showingFormatting: Bool
     
     // MARK: - Initialization
     
     public init(
         text: Binding<NSAttributedString>,
         context: RichTextContext,
+        showingFormatting: Binding<Bool> = .constant(false),
         configuration: @escaping (UITextView) -> Void = { _ in }
     ) {
         self._text = text
         self.context = context
+        self._showingFormatting = showingFormatting
         self.configuration = configuration
     }
     
@@ -99,6 +102,12 @@ public struct RichTextEditor: UIViewRepresentable {
         
         // Apply custom configuration
         configuration(textView)
+        
+        // Set up input accessory view for formatting toolbar
+        textView.setupRichTextInputAccessory(
+            context: self.context,
+            showingFormatting: $showingFormatting
+        )
         
         return textView
     }
@@ -162,9 +171,10 @@ public struct RichTextEditor: UIViewRepresentable {
     /// Create a rich text editor optimized for notes
     public static func forNotes(
         text: Binding<NSAttributedString>,
-        context: RichTextContext
+        context: RichTextContext,
+        showingFormatting: Binding<Bool> = .constant(false)
     ) -> Self {
-        RichTextEditor(text: text, context: context) { textView in
+        RichTextEditor(text: text, context: context, showingFormatting: showingFormatting) { textView in
             // Optimize for note-taking
             textView.autocorrectionType = .yes
             textView.autocapitalizationType = .sentences
