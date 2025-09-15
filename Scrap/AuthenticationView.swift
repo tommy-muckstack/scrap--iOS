@@ -282,7 +282,7 @@ struct AuthenticationView: View {
                     // Welcome text below logo (left aligned)
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Scrap")
-                            .font(GentleLightning.Typography.hero)
+                            .font(.custom("SpaceGrotesk-Bold", size: 48))
                             .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .lineLimit(1)
@@ -441,6 +441,16 @@ struct AuthenticationView: View {
                 .padding(.bottom, 24)
             }
         }
+        .gesture(
+            DragGesture()
+                .onEnded { value in
+                    // Dismiss keyboard when user drags down (mainly for EmailAuthView sheet)
+                    if value.translation.height > 50 && value.velocity.height > 0 {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                        print("🔽 AuthenticationView: Dismissed keyboard via pull-down gesture")
+                    }
+                }
+        )
         .sheet(isPresented: $showingEmailEntry) {
             EmailAuthView()
         }
@@ -561,7 +571,7 @@ struct EmailAuthView: View {
                                 )
                             
                             Text(getHeaderTitle())
-                                .font(GentleLightning.Typography.hero)
+                                .font(.custom("SpaceGrotesk-Bold", size: 48))
                                 .foregroundColor(GentleLightning.Colors.textPrimary)
                                 .animation(.easeInOut(duration: 0.3), value: showingPasswordFields)
                             
@@ -696,6 +706,19 @@ struct EmailAuthView: View {
                         Spacer(minLength: 40)
                     }
                 }
+                .gesture(
+                    DragGesture()
+                        .onEnded { value in
+                            // Dismiss keyboard when user drags down
+                            if value.translation.height > 50 && value.velocity.height > 0 {
+                                isEmailFocused = false
+                                isPasswordFocused = false
+                                isConfirmPasswordFocused = false
+                                isFullNameFocused = false
+                                print("🔽 EmailAuthView: Dismissed keyboard via pull-down gesture")
+                            }
+                        }
+                )
             }
             .navigationTitle("Email Sign In")
             .navigationBarTitleDisplayMode(.inline)

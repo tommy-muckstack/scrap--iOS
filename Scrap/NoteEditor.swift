@@ -25,22 +25,8 @@ struct NoteEditor: View {
         self.item = item
         self.dataManager = dataManager
         
-        // Initialize with RTF data if available, otherwise use plain text
-        let initialText: NSAttributedString
-        if let rtfData = item.rtfData {
-            do {
-                initialText = try NSAttributedString(
-                    data: rtfData,
-                    options: [.documentType: NSAttributedString.DocumentType.rtf],
-                    documentAttributes: nil
-                )
-            } catch {
-                print("❌ NoteEditor: Failed to load RTF, using plain text: \(error)")
-                initialText = NSAttributedString(string: item.content)
-            }
-        } else {
-            initialText = NSAttributedString(string: item.content)
-        }
+        // Initialize with plain text first for fast display, load RTF asynchronously
+        let initialText = NSAttributedString(string: item.content)
         
         self._editedText = State(initialValue: initialText)
         self._editedTitle = State(initialValue: item.title)
@@ -48,7 +34,7 @@ struct NoteEditor: View {
     }
     
     var body: some View {
-        Group {
+        ZStack {
             if showingSkeleton {
                 // Skeletal loading state
                 NoteEditorSkeleton()
@@ -80,9 +66,9 @@ struct NoteEditor: View {
                             .frame(minHeight: 60, maxHeight: 120) // Accommodate ~3 lines at 28pt font
                             .focused($isTitleFocused)
                             .onChange(of: editedTitle) { newTitle in
-                                // Debounce title updates for better performance
+                                // Debounce title updates for better performance  
                                 autoSaveTimer?.invalidate()
-                                autoSaveTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { _ in
+                                autoSaveTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { _ in
                                     updateTitle(newTitle)
                                 }
                             }
@@ -124,6 +110,17 @@ struct NoteEditor: View {
                     }
                 }
                 .transition(.opacity)
+                .gesture(
+                    DragGesture()
+                        .onEnded { value in
+                            // Dismiss keyboard when user drags down
+                            if value.translation.height > 50 && value.velocity.height > 0 {
+                                isTextFocused = false
+                                isTitleFocused = false
+                                print("🔽 NoteEditor: Dismissed keyboard via pull-down gesture")
+                            }
+                        }
+                )
             }
         }
         // .navigationTitle("Edit Note")
@@ -189,25 +186,47 @@ struct NoteEditor: View {
         }
         .dismissKeyboardOnDrag()
         .onAppear {
-            // Start with immediate basic setup
-            loadCategories()
+            // Start with immediate basic setup (defer categories to reduce lag)
+            Task {
+                try? await Task.sleep(nanoseconds: 500_000_000) // 500ms delay
+                loadCategories()
+            }
             
-            // Initialize rich text context with content after a brief delay to allow skeleton to show
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                // Set up the rich text context with the loaded content
-                richTextContext.setAttributedString(editedText)
+            // Show skeleton for visible duration, then load content
+            Task { @MainActor in
+                // Show skeleton for longer to be visible
+                try? await Task.sleep(nanoseconds: 200_000_000) // 200ms
                 
-                // Hide skeleton with animation after content is ready
-                withAnimation(.easeInOut(duration: 0.2)) {
+                // Load RTF data synchronously but after skeleton delay
+                var finalText = editedText
+                if let rtfData = item.rtfData {
+                    do {
+                        finalText = try NSAttributedString(
+                            data: rtfData,
+                            options: [.documentType: NSAttributedString.DocumentType.rtf],
+                            documentAttributes: nil
+                        )
+                    } catch {
+                        print("❌ NoteEditor: Failed to load RTF, using plain text: \(error)")
+                        finalText = NSAttributedString(string: item.content)
+                    }
+                }
+                
+                // Update with the properly loaded text
+                editedText = finalText
+                
+                // Delay setting rich text context to reduce coordinator updates
+                try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
+                richTextContext.setAttributedString(finalText)
+                
+                // Hide skeleton with smooth animation
+                withAnimation(.easeOut(duration: 0.3)) {
                     showingSkeleton = false
                 }
                 
-                // Focus the text field after skeleton is hidden
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    withAnimation(GentleLightning.Animation.swoosh) {
-                        isTextFocused = true
-                    }
-                }
+                // Focus after content is fully loaded
+                try? await Task.sleep(nanoseconds: 200_000_000) // 200ms
+                isTextFocused = true
             }
         }
         .onDisappear {

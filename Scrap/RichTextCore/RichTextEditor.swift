@@ -119,14 +119,11 @@ public struct RichTextEditor: UIViewRepresentable {
         // Enhanced checking to prevent race conditions
         let isCoordinatorUpdating = coordinator.isUpdatingFromTextView
         let textsAreEqual = uiView.attributedText.isEqual(to: text)
-        let stringsAreEqual = uiView.attributedText.string == text.string
         
         
         // Only update text if it's actually different AND we're not in the middle of a text view update
         // This prevents overwriting formatting that was just applied by the coordinator
         if !isCoordinatorUpdating && !textsAreEqual {
-            print("🔄 RichTextEditor: updateUIView - text is different, updating...")
-            print("📝 Current text length: \(uiView.attributedText.length), new text length: \(text.length)")
             
             let selectedRange = uiView.selectedRange
             uiView.attributedText = text

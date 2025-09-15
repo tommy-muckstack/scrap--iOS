@@ -94,19 +94,21 @@ struct MainApp: View {
     @StateObject private var voiceRecorder = VoiceRecorder()
     @State private var navigationPath = NavigationPath()
     @State private var inputText = ""
+    @FocusState private var isInputFocused: Bool
     
     var body: some View {
         NavigationStack(path: $navigationPath) {
             VStack(spacing: 20) {
                 // Header
                 Text("Scrap")
-                    .font(GentleLightning.Typography.hero)
+                    .font(.custom("SpaceGrotesk-Bold", size: 48))
                     .foregroundColor(GentleLightning.Colors.textPrimary)
                 
                 // Input field
                 InputField(
                     text: $inputText,
                     voiceRecorder: voiceRecorder,
+                    isFocused: $isInputFocused,
                     onSave: { text in
                         dataManager.createItem(from: text, creationType: "text")
                         inputText = ""
@@ -128,6 +130,16 @@ struct MainApp: View {
                 
                 Spacer()
             }
+            .gesture(
+                DragGesture()
+                    .onEnded { value in
+                        // Dismiss keyboard when user drags down
+                        if value.translation.height > 50 && value.velocity.height > 0 {
+                            isInputFocused = false
+                            print("🔽 MainApp: Dismissed keyboard via pull-down gesture")
+                        }
+                    }
+            )
             .padding(.top, 20)
             .background(GentleLightning.Colors.background)
             .navigationDestination(for: SparkItem.self) { item in
@@ -158,6 +170,7 @@ struct EmptyState: View {
 struct InputField: View {
     @Binding var text: String
     @ObservedObject var voiceRecorder: VoiceRecorder
+    @Binding var isFocused: Bool
     let onSave: (String) -> Void
     let onVoiceNote: (String) -> Void
     
@@ -170,6 +183,7 @@ struct InputField: View {
                 .padding(.horizontal, 16)
                 .background(Color.gray.opacity(0.1))
                 .cornerRadius(20)
+                .focused($isFocused)
                 .onSubmit {
                     if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         onSave(text)

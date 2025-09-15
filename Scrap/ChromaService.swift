@@ -69,7 +69,7 @@ class ChromaService: ObservableObject {
             let collections = try await getCollections()
             
             // Debug: Print all collections
-            for collection in collections {
+            for _ in collections {
             }
             
             if let existingCollection = collections.first(where: { $0.name == collectionName }) {

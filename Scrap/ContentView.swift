@@ -159,7 +159,6 @@ struct FormattingState {
     }
     
     mutating func setBlockFormat(_ format: BlockFormat?) {
-        let oldFormat = activeBlockFormat
         activeBlockFormat = format
     }
     
@@ -1131,6 +1130,8 @@ struct ItemRowSimple: View {
     let dataManager: FirebaseDataManager
     let onTap: () -> Void
     
+    @State private var isNavigating = false
+    
     // Cache expensive computations
     private var displayTitle: String {
         item.title.isEmpty ? String(item.content.prefix(50)) : item.title
@@ -1142,9 +1143,15 @@ struct ItemRowSimple: View {
     
     var body: some View {
         Button(action: {
-            // Use DispatchQueue to ensure smooth navigation
-            DispatchQueue.main.async {
+            // Provide immediate visual feedback
+            withAnimation(.easeInOut(duration: 0.1)) {
+                isNavigating = true
+            }
+            
+            // Navigate after brief delay for smooth feedback
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                 onTap()
+                isNavigating = false
             }
         }) {
             VStack(alignment: .leading, spacing: 2) {
@@ -1171,8 +1178,9 @@ struct ItemRowSimple: View {
             .padding(.vertical, 12) // Reduced vertical padding
             .background(
                 RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.medium)
-                    .fill(GentleLightning.Colors.surface)
+                    .fill(isNavigating ? GentleLightning.Colors.surface.opacity(0.7) : GentleLightning.Colors.surface)
             )
+            .scaleEffect(isNavigating ? 0.98 : 1.0)
         }
         .buttonStyle(PlainButtonStyle())
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -1338,7 +1346,7 @@ struct AccountDrawerView: View {
                     // App info
                     VStack(spacing: 8) {
                         Text("Scrap")
-                            .font(.custom("SharpGrotesk-Bold-Regular", size: 24))
+                            .font(.custom("SpaceGrotesk-Bold", size: 24))
                             .foregroundColor(GentleLightning.Colors.textBlack)
                         
                         Text("Version \(appVersion) (\(buildNumber))")
@@ -1451,7 +1459,7 @@ struct ContentView: View {
             Spacer()
             
             Text("Scrap")
-                .font(.custom("SharpGrotesk-Bold-Regular", size: 48))
+                .font(.custom("SpaceGrotesk-Bold", size: 48))
                 .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
             
             Spacer()
@@ -1745,6 +1753,8 @@ struct ContentView: View {
         
         ForEach(itemsToDisplay) { item in
             ItemRowSimple(item: item, dataManager: dataManager) {
+                // Prevent rapid multiple navigations
+                guard navigationPath.isEmpty || navigationPath.count == 0 else { return }
                 
                 AnalyticsManager.shared.trackNoteEditOpened(noteId: item.id)
                 
@@ -1753,11 +1763,8 @@ struct ContentView: View {
                 
                 print("✅ ContentView: Navigation pushed for item.id = '\(item.id)'")
             }
-            .transition(.asymmetric(
-                insertion: .move(edge: .top).combined(with: .opacity).combined(with: .scale(scale: 0.8)),
-                removal: .move(edge: .leading).combined(with: .opacity)
-            ))
-            .animation(GentleLightning.Animation.elastic, value: item.id)
+            .transition(.opacity)
+            .animation(.easeInOut(duration: 0.15), value: item.id)
             .onAppear {
                 // Load more items when reaching the last item
                 if item.id == dataManager.items.last?.id && displayedItemsCount < dataManager.items.count {
@@ -1797,6 +1804,7 @@ struct ContentView: View {
             }
             .navigationDestination(for: SparkItem.self) { item in
                 NoteEditor(item: item, dataManager: dataManager)
+                    .navigationBarHidden(false)
                     .onAppear {
                         print("✅ Navigation NoteEditor: Successfully opened note with id = '\(item.id)'")
                         print("✅ Navigation NoteEditor: Note content = '\(item.content.count))")

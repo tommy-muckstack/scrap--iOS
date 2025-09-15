@@ -113,7 +113,7 @@ struct RootView: View {
                             .frame(width: 120, height: 120)
                         
                         Text("Scrap")
-                            .font(GentleLightning.Typography.hero)
+                            .font(.custom("SpaceGrotesk-Bold", size: 48))
                             .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
                     }
                 }
