@@ -36,18 +36,29 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
         // Always preserve RTF data - content should maintain formatting
         if let base64RTF = firebaseNote.rtfContent,
            let rtfData = Data(base64Encoded: base64RTF) {
-            self.rtfData = rtfData
             
             // For content display, extract plain text only for title bar purposes
             // The actual rich content will be handled by the RTF editor
             do {
-                let attributedString = try NSAttributedString(
+                let loadedAttributedString = try NSAttributedString(
                     data: rtfData,
                     options: [.documentType: NSAttributedString.DocumentType.rtf],
                     documentAttributes: nil
                 )
-                self.content = attributedString.string // Plain text for title bar only
-                print("📖 SparkItem init: Loaded RTF content (\(attributedString.string.count) chars) - RTF preserved for editing: '\(attributedString.string.prefix(50))...'")
+                
+                // Convert system fonts back to SpaceGrotesk fonts while preserving formatting
+                let convertedAttributedString = SparkItem.prepareForDisplay(loadedAttributedString)
+                
+                // Re-generate RTF data with SpaceGrotesk fonts for proper display
+                let convertedRTFData = try convertedAttributedString.data(
+                    from: NSRange(location: 0, length: convertedAttributedString.length),
+                    documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
+                )
+                self.rtfData = convertedRTFData
+                
+                self.content = loadedAttributedString.string // Plain text for title bar only
+                print("📖 SparkItem init: Loaded and converted RTF content (\(loadedAttributedString.string.count) chars) back to SpaceGrotesk fonts")
+                print("📖 SparkItem init: RTF data size after conversion: \(convertedRTFData.count) bytes")
             } catch {
                 print("❌ SparkItem init: Failed to load RTF, using Firebase content: \(error)")
                 // Fallback to Firebase content if RTF extraction fails
@@ -96,7 +107,7 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
     
     // MARK: - RTF Font Trait Preservation
     
-    // Prepare attributed string for RTF saving by converting to system fonts with preserved traits
+    // Prepare attributed string for RTF saving by ensuring system fonts with proper traits
     static func prepareForRTFSave(_ attributedString: NSAttributedString) -> NSAttributedString {
         let mutableString = NSMutableAttributedString(attributedString: attributedString)
         let range = NSRange(location: 0, length: mutableString.length)
@@ -104,26 +115,105 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
         mutableString.enumerateAttribute(.font, in: range, options: []) { value, range, _ in
             guard let font = value as? UIFont else { return }
             
-            // Only convert custom fonts (SpaceGrotesk) to system fonts
-            if font.fontName.contains("SpaceGrotesk") {
-                let isBold = font.fontName.contains("Bold")
-                let size = font.pointSize
-                
-                // Convert to system font while preserving traits using font descriptors
-                var systemFont: UIFont
-                if isBold {
-                    // Create system font with explicit bold traits for better RTF preservation
-                    let descriptor = UIFontDescriptor.preferredFontDescriptor(withTextStyle: .body)
-                        .withSymbolicTraits([.traitBold])
-                    systemFont = UIFont(descriptor: descriptor ?? UIFontDescriptor(), size: size)
-                    print("💾 RTF Save prep (SparkItem): '\(font.fontName)' -> Bold System Font with traits (size: \(size))")
+            let size = font.pointSize
+            let isBold = font.fontName.contains("Bold") || font.fontDescriptor.symbolicTraits.contains(.traitBold)
+            let isItalic = font.fontDescriptor.symbolicTraits.contains(.traitItalic)
+            
+            // Create system font with proper traits for RTF compatibility
+            var systemFont: UIFont
+            
+            if isBold && isItalic {
+                // Bold + Italic
+                if let descriptor = UIFont.systemFont(ofSize: size).fontDescriptor.withSymbolicTraits([.traitBold, .traitItalic]) {
+                    systemFont = UIFont(descriptor: descriptor, size: size)
                 } else {
-                    systemFont = UIFont.systemFont(ofSize: size)
-                    print("💾 RTF Save prep (SparkItem): '\(font.fontName)' -> Regular System Font (size: \(size))")
+                    systemFont = UIFont.boldSystemFont(ofSize: size) // Fallback to just bold
                 }
-                
-                mutableString.addAttribute(.font, value: systemFont, range: range)
+                print("💾 RTF Save prep: '\(font.fontName)' -> Bold+Italic System Font (size: \(size), range: \(range))")
+            } else if isBold {
+                // Bold only
+                systemFont = UIFont.boldSystemFont(ofSize: size)
+                print("💾 RTF Save prep: '\(font.fontName)' -> Bold System Font (size: \(size), range: \(range))")
+            } else if isItalic {
+                // Italic only
+                if let descriptor = UIFont.systemFont(ofSize: size).fontDescriptor.withSymbolicTraits([.traitItalic]) {
+                    systemFont = UIFont(descriptor: descriptor, size: size)
+                } else {
+                    systemFont = UIFont.italicSystemFont(ofSize: size) // Fallback
+                }
+                print("💾 RTF Save prep: '\(font.fontName)' -> Italic System Font (size: \(size), range: \(range))")
+            } else {
+                // Regular
+                systemFont = UIFont.systemFont(ofSize: size)
+                print("💾 RTF Save prep: '\(font.fontName)' -> Regular System Font (size: \(size), range: \(range))")
             }
+            
+            mutableString.addAttribute(.font, value: systemFont, range: range)
+        }
+        
+        return mutableString
+    }
+    
+    // Convert system fonts back to SpaceGrotesk fonts while preserving formatting traits
+    static func prepareForDisplay(_ attributedString: NSAttributedString) -> NSAttributedString {
+        let mutableString = NSMutableAttributedString(attributedString: attributedString)
+        let range = NSRange(location: 0, length: mutableString.length)
+        
+        mutableString.enumerateAttribute(.font, in: range, options: []) { value, range, _ in
+            guard let font = value as? UIFont else { return }
+            
+            let size = font.pointSize
+            let isBold = font.fontDescriptor.symbolicTraits.contains(.traitBold)
+            let isItalic = font.fontDescriptor.symbolicTraits.contains(.traitItalic)
+            
+            // Convert system fonts back to SpaceGrotesk fonts
+            var spaceGroteskFont: UIFont
+            
+            if isBold && isItalic {
+                // Bold + Italic (if available, fallback to just bold)
+                if let boldItalicFont = UIFont(name: "SpaceGrotesk-Bold", size: size) {
+                    // Apply italic trait to the bold font
+                    if let descriptor = boldItalicFont.fontDescriptor.withSymbolicTraits([.traitItalic]) {
+                        spaceGroteskFont = UIFont(descriptor: descriptor, size: size)
+                    } else {
+                        spaceGroteskFont = boldItalicFont // Fallback to just bold
+                    }
+                } else {
+                    spaceGroteskFont = UIFont.boldSystemFont(ofSize: size) // System fallback
+                }
+                print("📖 RTF Display prep: System font -> SpaceGrotesk Bold+Italic (size: \(size), range: \(range))")
+            } else if isBold {
+                // Bold only
+                if let boldFont = UIFont(name: "SpaceGrotesk-Bold", size: size) {
+                    spaceGroteskFont = boldFont
+                } else {
+                    spaceGroteskFont = UIFont.boldSystemFont(ofSize: size) // System fallback
+                }
+                print("📖 RTF Display prep: System font -> SpaceGrotesk-Bold (size: \(size), range: \(range))")
+            } else if isItalic {
+                // Italic only
+                if let regularFont = UIFont(name: "SpaceGrotesk-Regular", size: size) {
+                    // Apply italic trait to regular font
+                    if let descriptor = regularFont.fontDescriptor.withSymbolicTraits([.traitItalic]) {
+                        spaceGroteskFont = UIFont(descriptor: descriptor, size: size)
+                    } else {
+                        spaceGroteskFont = regularFont // Fallback to regular
+                    }
+                } else {
+                    spaceGroteskFont = UIFont.italicSystemFont(ofSize: size) // System fallback
+                }
+                print("📖 RTF Display prep: System font -> SpaceGrotesk Italic (size: \(size), range: \(range))")
+            } else {
+                // Regular
+                if let regularFont = UIFont(name: "SpaceGrotesk-Regular", size: size) {
+                    spaceGroteskFont = regularFont
+                } else {
+                    spaceGroteskFont = UIFont.systemFont(ofSize: size) // System fallback
+                }
+                print("📖 RTF Display prep: System font -> SpaceGrotesk-Regular (size: \(size), range: \(range))")
+            }
+            
+            mutableString.addAttribute(.font, value: spaceGroteskFont, range: range)
         }
         
         return mutableString
@@ -234,5 +324,26 @@ extension Color {
             blue: Double(b) / 255,
             opacity: Double(a) / 255
         )
+    }
+}
+
+// MARK: - Keyboard Dismissal Extension
+extension View {
+    /// Adds a drag gesture to dismiss the keyboard when pulling down
+    func dismissKeyboardOnDrag() -> some View {
+        self.gesture(
+            DragGesture()
+                .onChanged { value in
+                    // Only dismiss keyboard if dragging downward (positive height translation)
+                    if value.translation.height > 30 {
+                        hideKeyboard()
+                    }
+                }
+        )
+    }
+    
+    /// Hides the keyboard by ending editing
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 }

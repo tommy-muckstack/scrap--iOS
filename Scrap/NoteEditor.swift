@@ -11,9 +11,9 @@ struct NoteEditor: View {
     @State private var selectedCategories: [String]
     @StateObject private var richTextContext = RichTextContext()
     @FocusState private var isTextFocused: Bool
+    @FocusState private var isTitleFocused: Bool
     @State private var showingOptions = false
     @State private var showingDelete = false
-    @State private var showingFormatting = false
     @State private var showingCategoryManager = false
     @State private var userCategories: [Category] = []
     @State private var isLoadingCategories = false
@@ -21,7 +21,28 @@ struct NoteEditor: View {
     init(item: SparkItem, dataManager: FirebaseDataManager) {
         self.item = item
         self.dataManager = dataManager
-        self._editedText = State(initialValue: NSAttributedString(string: item.content))
+        
+        // Initialize with RTF data if available, otherwise use plain text
+        let initialText: NSAttributedString
+        if let rtfData = item.rtfData {
+            do {
+                initialText = try NSAttributedString(
+                    data: rtfData,
+                    options: [.documentType: NSAttributedString.DocumentType.rtf],
+                    documentAttributes: nil
+                )
+                print("📖 NoteEditor: Loaded note with RTF formatting (\(initialText.length) chars)")
+                print("📖 NoteEditor: RTF data size: \(rtfData.count) bytes")
+            } catch {
+                print("❌ NoteEditor: Failed to load RTF, using plain text: \(error)")
+                initialText = NSAttributedString(string: item.content)
+            }
+        } else {
+            print("📖 NoteEditor: No RTF data, using plain text")
+            initialText = NSAttributedString(string: item.content)
+        }
+        
+        self._editedText = State(initialValue: initialText)
         self._editedTitle = State(initialValue: item.title)
         self._selectedCategories = State(initialValue: item.categoryIds)
     }
@@ -29,28 +50,42 @@ struct NoteEditor: View {
     var body: some View {
         VStack(spacing: 0) {
             // Title field
-            TextField("Title (optional)", text: $editedTitle)
-                .font(GentleLightning.Typography.title)
-                .foregroundColor(GentleLightning.Colors.textPrimary)
-                .textFieldStyle(PlainTextFieldStyle())
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
-                .onChange(of: editedTitle) { updateTitle($0) }
-            
-            Divider()
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
+            ZStack(alignment: .topLeading) {
+                // Placeholder text
+                if editedTitle.isEmpty {
+                    Text("Title (optional)")
+                        .font(GentleLightning.Typography.title)
+                        .foregroundColor(GentleLightning.Colors.textSecondary.opacity(0.6))
+                        .padding(.horizontal, 16)
+                        .padding(.top, 16 + 8) // Match TextEditor padding + text offset
+                        .allowsHitTesting(false)
+                }
+                
+                // Multiline text editor for title
+                TextEditor(text: $editedTitle)
+                    .font(GentleLightning.Typography.title)
+                    .foregroundColor(GentleLightning.Colors.textPrimary)
+                    .scrollContentBackground(.hidden)
+                    .background(Color.clear)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+                    .padding(.bottom, 16)
+                    .frame(minHeight: 60, maxHeight: 120) // Accommodate ~3 lines at 28pt font
+                    .focused($isTitleFocused)
+                    .onChange(of: editedTitle) { updateTitle($0) }
+            }
             
             // Rich Text editor
             RichTextEditor.forNotes(
                 text: $editedText,
                 context: richTextContext,
-                showingFormatting: $showingFormatting
+                showingFormatting: .constant(true)
             )
             .padding(.horizontal, 16)
             .focused($isTextFocused)
-            .onChange(of: editedText) { newValue in
-                updateContent(newValue.string)
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+                // Save when app goes to background
+                updateContent(editedText)
             }
             
             Divider()
@@ -104,12 +139,13 @@ struct NoteEditor: View {
                 }
             }
             
-            // Formatting toolbar above keyboard
+            // Formatting toolbar above keyboard - only show when editing body text, not title
             ToolbarItemGroup(placement: .keyboard) {
-                RichFormattingToolbar(
-                    context: richTextContext,
-                    showingFormatting: $showingFormatting
-                )
+                if isTextFocused && !isTitleFocused {
+                    RichFormattingToolbar(
+                        context: richTextContext
+                    )
+                }
             }
         }
         .confirmationDialog("Note Options", isPresented: $showingOptions) {
@@ -125,9 +161,6 @@ struct NoteEditor: View {
             Button("Delete", role: .destructive) { deleteNote() }
             Button("Cancel", role: .cancel) { }
         }
-        .sheet(isPresented: $showingFormatting) {
-            RichFormattingSheet(context: richTextContext)
-        }
         .sheet(isPresented: $showingCategoryManager) {
             CategoryManagerView(
                 item: item, 
@@ -138,6 +171,7 @@ struct NoteEditor: View {
                 }
             )
         }
+        .dismissKeyboardOnDrag()
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 withAnimation(GentleLightning.Animation.swoosh) {
@@ -145,6 +179,10 @@ struct NoteEditor: View {
                 }
             }
             loadCategories()
+        }
+        .onDisappear {
+            // Save when navigating away
+            updateContent(editedText)
         }
     }
     
@@ -159,11 +197,25 @@ struct NoteEditor: View {
         }
     }
     
-    private func updateContent(_ newContent: String) {
-        let trimmed = newContent.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+    private func updateContent(_ attributedText: NSAttributedString) {
+        let plainText = attributedText.string.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !plainText.isEmpty else { return }
         
-        dataManager.updateItem(item, newContent: trimmed)
+        // Convert the attributed string to RTF data to preserve formatting
+        do {
+            // Use trait preservation method for better RTF compatibility
+            let rtfCompatibleString = SparkItem.prepareForRTFSave(attributedText)
+            let rtfData = try rtfCompatibleString.data(
+                from: NSRange(location: 0, length: rtfCompatibleString.length),
+                documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
+            )
+            
+            print("💾 NoteEditor: Saving RTF data (\(rtfData.count) bytes) with formatting preserved")
+            dataManager.updateItemWithRTF(item, rtfData: rtfData)
+        } catch {
+            print("❌ NoteEditor: Failed to convert to RTF, falling back to plain text: \(error)")
+            dataManager.updateItem(item, newContent: plainText)
+        }
     }
     
     private func updateCategories(_ categoryIds: [String]) {
@@ -216,80 +268,109 @@ struct NoteEditor: View {
 // MARK: - Rich Formatting Toolbar
 struct RichFormattingToolbar: View {
     @ObservedObject var context: RichTextContext
-    @Binding var showingFormatting: Bool
     
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 0) {
             // Bold button
             Button(action: { context.toggleBold() }) {
                 Text("B")
                     .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(context.isBoldActive ? .blue : .primary)
-                    .frame(width: 40, height: 32)
-                    .background(context.isBoldActive ? Color.blue.opacity(0.1) : Color.clear)
-                    .cornerRadius(6)
+                    .foregroundColor(context.isBoldActive ? .white : .primary)
+                    .frame(maxWidth: .infinity, minHeight: 32)
+                    .background(
+                        context.isBoldActive 
+                            ? Color.black
+                            : Color.clear
+                    )
+                    .cornerRadius(8)
             }
+            .animation(.easeInOut(duration: 0.1), value: context.isBoldActive)
             
             // Italic button
             Button(action: { context.toggleItalic() }) {
                 Text("I")
                     .font(.system(size: 16, weight: .medium))
                     .italic()
-                    .foregroundColor(context.isItalicActive ? .blue : .primary)
-                    .frame(width: 40, height: 32)
-                    .background(context.isItalicActive ? Color.blue.opacity(0.1) : Color.clear)
-                    .cornerRadius(6)
+                    .foregroundColor(context.isItalicActive ? .white : .primary)
+                    .frame(maxWidth: .infinity, minHeight: 32)
+                    .background(
+                        context.isItalicActive 
+                            ? Color.black
+                            : Color.clear
+                    )
+                    .cornerRadius(8)
             }
+            .animation(.easeInOut(duration: 0.1), value: context.isItalicActive)
             
             // Strikethrough button
             Button(action: { context.toggleStrikethrough() }) {
                 Text("S")
                     .font(.system(size: 16, weight: .medium))
                     .strikethrough()
-                    .foregroundColor(context.isStrikethroughActive ? .blue : .primary)
-                    .frame(width: 40, height: 32)
-                    .background(context.isStrikethroughActive ? Color.blue.opacity(0.1) : Color.clear)
-                    .cornerRadius(6)
+                    .foregroundColor(context.isStrikethroughActive ? .white : .primary)
+                    .frame(maxWidth: .infinity, minHeight: 32)
+                    .background(
+                        context.isStrikethroughActive 
+                            ? Color.black
+                            : Color.clear
+                    )
+                    .cornerRadius(8)
             }
+            .animation(.easeInOut(duration: 0.1), value: context.isStrikethroughActive)
             
             // Code button
             Button(action: { context.toggleCodeBlock() }) {
                 Text("</>")
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(context.isCodeBlockActive ? .blue : .primary)
-                    .frame(width: 40, height: 32)
-                    .background(context.isCodeBlockActive ? Color.blue.opacity(0.1) : Color.clear)
-                    .cornerRadius(6)
+                    .foregroundColor(context.isCodeBlockActive ? .white : .primary)
+                    .frame(maxWidth: .infinity, minHeight: 32)
+                    .background(
+                        context.isCodeBlockActive 
+                            ? Color.black
+                            : Color.clear
+                    )
+                    .cornerRadius(8)
             }
+            .animation(.easeInOut(duration: 0.1), value: context.isCodeBlockActive)
             
             // List button
             Button(action: { context.toggleBulletList() }) {
                 Image(systemName: GentleLightning.Icons.formatList)
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(context.isBulletListActive ? .blue : .primary)
-                    .frame(width: 40, height: 32)
-                    .background(context.isBulletListActive ? Color.blue.opacity(0.1) : Color.clear)
-                    .cornerRadius(6)
+                    .foregroundColor(context.isBulletListActive ? .white : .primary)
+                    .frame(maxWidth: .infinity, minHeight: 32)
+                    .background(
+                        context.isBulletListActive 
+                            ? Color.black
+                            : Color.clear
+                    )
+                    .cornerRadius(8)
             }
+            .animation(.easeInOut(duration: 0.1), value: context.isBulletListActive)
             
             // Checkbox button
             Button(action: { context.toggleCheckbox() }) {
                 Image(systemName: GentleLightning.Icons.formatChecklist)
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(context.isCheckboxActive ? .blue : .primary)
-                    .frame(width: 40, height: 32)
-                    .background(context.isCheckboxActive ? Color.blue.opacity(0.1) : Color.clear)
-                    .cornerRadius(6)
+                    .foregroundColor(context.isCheckboxActive ? .white : .primary)
+                    .frame(maxWidth: .infinity, minHeight: 32)
+                    .background(
+                        context.isCheckboxActive 
+                            ? Color.black
+                            : Color.clear
+                    )
+                    .cornerRadius(8)
             }
+            .animation(.easeInOut(duration: 0.1), value: context.isCheckboxActive)
             
-            Spacer()
-            
-            // More formats button (chevron down)
-            Button(action: { showingFormatting.toggle() }) {
+            // Dismiss keyboard button (chevron down)
+            Button(action: { 
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }) {
                 Image(systemName: "chevron.down")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.primary)
-                    .frame(width: 40, height: 32)
+                    .frame(maxWidth: .infinity, minHeight: 32)
                     .background(Color.clear)
             }
         }
@@ -300,87 +381,10 @@ struct RichFormattingToolbar: View {
                 .fill(Color(UIColor.systemBackground))
                 .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: -1)
         )
-        .sheet(isPresented: $showingFormatting) {
-            RichFormattingSheet(context: context)
-        }
     }
 }
 
-// MARK: - Rich Formatting Sheet
-struct RichFormattingSheet: View {
-    @ObservedObject var context: RichTextContext
-    @Environment(\.dismiss) private var dismiss
-    
-    var body: some View {
-        NavigationView {
-            VStack(spacing: 20) {
-                Text("Text Formatting")
-                    .font(GentleLightning.Typography.title)
-                    .foregroundColor(GentleLightning.Colors.textPrimary)
-                    .padding(.top, 20)
-                
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 16) {
-                    RichFormatButton(title: "Bold", symbol: GentleLightning.Icons.formatBold, action: { context.toggleBold() }, isActive: context.isBoldActive)
-                    RichFormatButton(title: "Italic", symbol: GentleLightning.Icons.formatItalic, action: { context.toggleItalic() }, isActive: context.isItalicActive)
-                    RichFormatButton(title: "Underline", symbol: "underline", action: { context.toggleUnderline() }, isActive: context.isUnderlineActive)
-                    RichFormatButton(title: "Strikethrough", symbol: GentleLightning.Icons.formatStrikethrough, action: { context.toggleStrikethrough() }, isActive: context.isStrikethroughActive)
-                    RichFormatButton(title: "Code Block", symbol: GentleLightning.Icons.formatCode, action: { context.toggleCodeBlock() }, isActive: context.isCodeBlockActive)
-                    RichFormatButton(title: "Bullet List", symbol: GentleLightning.Icons.formatList, action: { context.toggleBulletList() }, isActive: context.isBulletListActive)
-                    RichFormatButton(title: "Checkbox", symbol: GentleLightning.Icons.formatChecklist, action: { context.toggleCheckbox() }, isActive: context.isCheckboxActive)
-                    RichFormatButton(title: "Indent In", symbol: "increase.indent", action: { context.indentIn() }, isActive: false)
-                    RichFormatButton(title: "Indent Out", symbol: "decrease.indent", action: { context.indentOut() }, isActive: false)
-                    RichFormatButton(title: "Undo", symbol: "arrow.uturn.left", action: { context.undo() }, isActive: false)
-                    RichFormatButton(title: "Redo", symbol: "arrow.uturn.right", action: { context.redo() }, isActive: false)
-                }
-                .padding(.horizontal, 20)
-                
-                Spacer()
-            }
-            .navigationTitle("Formatting")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") { dismiss() }
-                        .foregroundColor(GentleLightning.Colors.accentNeutral)
-                }
-            }
-        }
-        .presentationDetents([.medium, .large])
-    }
-}
 
-// MARK: - Rich Format Button
-struct RichFormatButton: View {
-    let title: String
-    let symbol: String
-    let action: () -> Void
-    let isActive: Bool
-    
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 8) {
-                Image(systemName: symbol)
-                    .font(.system(size: 24))
-                    .foregroundColor(isActive ? .blue : GentleLightning.Colors.accentNeutral)
-                
-                Text(title)
-                    .font(GentleLightning.Typography.caption)
-                    .foregroundColor(isActive ? .blue : GentleLightning.Colors.textSecondary)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 80)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(isActive ? Color.blue.opacity(0.1) : GentleLightning.Colors.surface)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(isActive ? Color.blue : GentleLightning.Colors.textSecondary.opacity(0.2), lineWidth: isActive ? 2 : 1)
-                    )
-            )
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-}
 
 // MARK: - Category Manager View
 struct CategoryManagerView: View {
@@ -442,24 +446,6 @@ struct CategoryManagerView: View {
                                 .font(GentleLightning.Typography.secondary)
                                 .foregroundColor(GentleLightning.Colors.textSecondary)
                                 .multilineTextAlignment(.center)
-                            
-                            // Create First Tag Button
-                            Button(action: { 
-                                loadAvailableColors()
-                                showingCreateForm = true 
-                            }) {
-                                HStack {
-                                    Image(systemName: GentleLightning.Icons.add)
-                                        .font(.system(size: 18))
-                                    Text("Create New Tag")
-                                        .font(GentleLightning.Typography.body)
-                                }
-                                .foregroundColor(.white)
-                                .padding(.vertical, 12)
-                                .padding(.horizontal, 20)
-                                .background(GentleLightning.Colors.accentNeutral)
-                                .cornerRadius(12)
-                            }
                         }
                         .padding(40)
                     } else {
@@ -510,7 +496,7 @@ struct CategoryManagerView: View {
                     Text(errorMessage)
                 }
             }
-            .navigationTitle(showingCreateForm ? "New Tag" : "Tags")
+            .navigationTitle(showingCreateForm ? "" : "Tags")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -520,6 +506,7 @@ struct CategoryManagerView: View {
                 }
             }
         }
+        .dismissKeyboardOnDrag()
     }
     
     private func toggleCategory(_ category: Category) {
@@ -539,12 +526,15 @@ struct CategoryManagerView: View {
             do {
                 let colors = try await CategoryService.shared.getAvailableColors()
                 await MainActor.run {
-                    availableColors = colors
-                    selectedColorKey = colors.first?.key ?? ""
+                    availableColors = colors.isEmpty ? CategoryService.availableColors : colors
+                    selectedColorKey = availableColors.first?.key ?? ""
                 }
             } catch {
+                // Fallback to all available colors if there's an error
                 await MainActor.run {
-                    errorMessage = "Failed to load available colors: \(error.localizedDescription)"
+                    availableColors = CategoryService.availableColors
+                    selectedColorKey = availableColors.first?.key ?? ""
+                    print("Warning: Using fallback colors due to error: \(error)")
                 }
             }
         }
@@ -646,63 +636,31 @@ struct CreateTagInlineView: View {
             .padding(.horizontal, 20)
             .padding(.top, 10)
             
-            // Header
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Create Tag")
-                    .font(GentleLightning.Typography.title)
-                    .foregroundColor(GentleLightning.Colors.textPrimary)
-                
-                Text("Choose a name and color for your new tag")
-                    .font(GentleLightning.Typography.secondary)
-                    .foregroundColor(GentleLightning.Colors.textSecondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 20)
-            
             // Tag Name Input
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Tag Name")
-                    .font(GentleLightning.Typography.body)
-                    .foregroundColor(GentleLightning.Colors.textPrimary)
-                
-                TextField("Enter tag name", text: $categoryName)
-                    .font(GentleLightning.Typography.bodyInput)
-                    .padding(.vertical, 12)
-                    .padding(.horizontal, 16)
-                    .background(Color.gray.opacity(0.1))
-                    .cornerRadius(8)
-            }
-            .padding(.horizontal, 20)
+            TextField("Tag Name", text: $categoryName)
+                .font(GentleLightning.Typography.bodyInput)
+                .padding(.vertical, 12)
+                .padding(.horizontal, 16)
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(8)
+                .padding(.horizontal, 20)
             
             // Color Selection
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Choose Color")
-                    .font(GentleLightning.Typography.body)
-                    .foregroundColor(GentleLightning.Colors.textPrimary)
-                    .padding(.horizontal, 20)
-                
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 5), spacing: 12) {
-                    ForEach(availableColors, id: \.key) { colorInfo in
-                        Button(action: { selectedColorKey = colorInfo.key }) {
-                            VStack(spacing: 8) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 5), spacing: 12) {
+                ForEach(availableColors, id: \.key) { colorInfo in
+                    Button(action: { selectedColorKey = colorInfo.key }) {
+                        Circle()
+                            .fill(Color(hex: colorInfo.hex) ?? Color.gray)
+                            .frame(width: 40, height: 40)
+                            .overlay(
                                 Circle()
-                                    .fill(Color(hex: colorInfo.hex) ?? Color.gray)
-                                    .frame(width: 40, height: 40)
-                                    .overlay(
-                                        Circle()
-                                            .stroke(GentleLightning.Colors.accentNeutral, lineWidth: selectedColorKey == colorInfo.key ? 3 : 0)
-                                    )
-                                
-                                Text(colorInfo.name)
-                                    .font(GentleLightning.Typography.caption)
-                                    .foregroundColor(GentleLightning.Colors.textPrimary)
-                            }
-                        }
-                        .buttonStyle(PlainButtonStyle())
+                                    .stroke(GentleLightning.Colors.accentNeutral, lineWidth: selectedColorKey == colorInfo.key ? 3 : 0)
+                            )
                     }
+                    .buttonStyle(PlainButtonStyle())
                 }
-                .padding(.horizontal, 20)
             }
+            .padding(.horizontal, 20)
             
             Spacer()
             

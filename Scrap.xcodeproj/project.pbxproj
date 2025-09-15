@@ -281,6 +281,17 @@
 				BBEF41F52E744FA10079202D /* PBXTargetDependency */,
 			);
 			name = Scrap;
+			packageProductDependencies = (
+				BB304E772E6F72970054DD40 /* AmplitudeSwift */,
+				BB304E772E6F72970054DD42 /* AmplitudeSwiftSessionReplayPlugin */,
+				BB304E7C2E6F9EEA0054DD40 /* FirebaseAuth */,
+				BB304E7E2E6F9EEA0054DD40 /* FirebaseCore */,
+				BB304E802E6F9EEA0054DD40 /* FirebaseFirestore */,
+				BB304E822E6F9F0A0054DD40 /* FirebaseFunctions */,
+				BB304E842E6F9F0A0054DD40 /* FirebaseStorage */,
+				BB304E882E6FA8650054DD40 /* GoogleSignIn */,
+				BB304E8A2E6FA8650054DD40 /* GoogleSignInSwift */,
+			);
 			productName = Scrap;
 			productReference = 1D1A2B262B1234567890ABCC /* Scrap.app */;
 			productType = "com.apple.product-type.application";

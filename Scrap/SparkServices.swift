@@ -435,11 +435,18 @@ class CategoryService {
     }
     
     func getAvailableColors() async throws -> [(key: String, hex: String, name: String)] {
-        let existingCategories = try await loadCategories()
-        let usedColors = Set(existingCategories.map { $0.color })
-        
-        return CategoryService.availableColors.filter { colorInfo in
-            !usedColors.contains(colorInfo.1)
+        do {
+            let existingCategories = try await loadCategories()
+            let usedColors = Set(existingCategories.map { $0.color })
+            
+            return CategoryService.availableColors.filter { colorInfo in
+                !usedColors.contains(colorInfo.1)
+            }
+        } catch {
+            // If we can't load existing categories (authentication issue, etc.),
+            // return all available colors as a fallback
+            print("Warning: Failed to load existing categories, returning all colors: \(error)")
+            return CategoryService.availableColors
         }
     }
     

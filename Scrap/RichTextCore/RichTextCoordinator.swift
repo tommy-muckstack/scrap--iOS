@@ -32,13 +32,10 @@ public class RichTextCoordinator: NSObject {
     
     /// Prevents infinite loops during text synchronization
     private var isUpdatingFromContext = false
-    private var isUpdatingFromTextView = false
+    public private(set) var isUpdatingFromTextView = false
     
     /// Prevents re-entrant calls during newline insertion
     private var isHandlingNewlineInsertion = false
-    
-    /// Prevents context updates from overriding recently applied selection formatting
-    private var isPreventingContextUpdates = false
     
     // MARK: - Initialization
     
@@ -216,24 +213,18 @@ public class RichTextCoordinator: NSObject {
         textView.attributedText = mutableText
         textView.selectedRange = selectedRange
         
-        // Update binding first to sync the attributed text
+        // Update binding to sync the attributed text with the formatted content
         updateBindingFromTextView()
         
-        // For text selection, prevent context updates for a short period
-        // This prevents the formatting from being immediately overridden
-        if selectedRange.length > 0 {
-            isPreventingContextUpdates = true
-            print("🎯 RichTextCoordinator: Applied formatting to selection - preventing context updates")
-            
-            // Reset prevention flag after sufficient time for user interaction
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                self.isPreventingContextUpdates = false
-                print("🔓 RichTextCoordinator: Context update prevention reset")
-            }
-        }
+        // Update context state to reflect the new formatting state
+        updateContextFromTextView()
         
-        // NOTE: updateTypingAttributes() is now called after context state is updated 
-        // in each individual toggle method to ensure proper timing
+        // For text selection, we no longer need to prevent context updates
+        // The formatting should persist in the text itself
+        print("🎯 RichTextCoordinator: Applied formatting to selection - text should persist")
+        
+        // Update typing attributes for future typing
+        updateTypingAttributes()
     }
     
     private func toggleBoldInRange(_ mutableText: NSMutableAttributedString, _ range: NSRange) {
@@ -255,9 +246,12 @@ public class RichTextCoordinator: NSObject {
             // If any text is bold, remove bold from all; otherwise add bold to all
             shouldAddBold = !hasBoldText
         } else {
-            // For cursor position (no selection), use the context state
-            // This ensures the button state matches what will happen
-            shouldAddBold = !context.isBoldActive
+            // For cursor position (no selection), check the current typing attributes
+            // to determine if bold should be added or removed
+            let currentFont = textView.typingAttributes[.font] as? UIFont ?? UIFont.systemFont(ofSize: 16)
+            let isBoldInTypingAttributes = currentFont.fontDescriptor.symbolicTraits.contains(.traitBold) || 
+                                         currentFont.fontName.contains("Bold")
+            shouldAddBold = !isBoldInTypingAttributes
         }
         
         print("🎯 RichTextCoordinator: Bold toggle - shouldAddBold: \(shouldAddBold), range: \(range)")
@@ -330,8 +324,10 @@ public class RichTextCoordinator: NSObject {
             }
             shouldAddItalic = !hasItalicText
         } else {
-            // For cursor position, use the context state
-            shouldAddItalic = !context.isItalicActive
+            // For cursor position, check the current typing attributes
+            let currentFont = textView.typingAttributes[.font] as? UIFont ?? UIFont.systemFont(ofSize: 16)
+            let isItalicInTypingAttributes = currentFont.fontDescriptor.symbolicTraits.contains(.traitItalic)
+            shouldAddItalic = !isItalicInTypingAttributes
         }
         
         if range.length > 0 {
@@ -380,8 +376,9 @@ public class RichTextCoordinator: NSObject {
             }
             shouldAddUnderline = !hasUnderline
         } else {
-            // For cursor position, use context state
-            shouldAddUnderline = !context.isUnderlineActive
+            // For cursor position, check the current typing attributes
+            let currentUnderlineStyle = textView.typingAttributes[.underlineStyle] as? Int ?? 0
+            shouldAddUnderline = currentUnderlineStyle == 0
         }
         
         if range.length > 0 {
@@ -411,8 +408,9 @@ public class RichTextCoordinator: NSObject {
             }
             shouldAddStrikethrough = !hasStrikethrough
         } else {
-            // For cursor position, use context state
-            shouldAddStrikethrough = !context.isStrikethroughActive
+            // For cursor position, check the current typing attributes
+            let currentStrikethroughStyle = textView.typingAttributes[.strikethroughStyle] as? Int ?? 0
+            shouldAddStrikethrough = currentStrikethroughStyle == 0
         }
         
         if range.length > 0 {
@@ -944,17 +942,31 @@ public class RichTextCoordinator: NSObject {
     private func updateBindingFromTextView() {
         guard !isUpdatingFromContext else { return }
         
+        // Set flag to prevent updateUIView from overwriting our changes
+        isUpdatingFromTextView = true
+        
         // Only update binding if the text actually changed to prevent loops
         if !textBinding.wrappedValue.isEqual(to: textView.attributedText) {
+            print("💾 RichTextCoordinator: Updating binding with formatted text (length: \(textView.attributedText.length))")
             textBinding.wrappedValue = textView.attributedText
+        }
+        
+        // Reset flag after a longer delay to ensure SwiftUI has fully processed the binding update
+        // This prevents the race condition where updateUIView is called before the flag is reset
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.isUpdatingFromTextView = false
+            print("🏁 RichTextCoordinator: Reset isUpdatingFromTextView flag after binding update")
         }
     }
     
     private func updateContextFromTextView() {
         guard !isUpdatingFromContext else { return }
         
-        isUpdatingFromTextView = true
-        defer { isUpdatingFromTextView = false }
+        // Don't override the isUpdatingFromTextView flag if it's already set by binding update
+        let wasAlreadyUpdating = isUpdatingFromTextView
+        if !wasAlreadyUpdating {
+            isUpdatingFromTextView = true
+        }
         
         // Update context state without triggering actions
         context.attributedString = textView.attributedText
@@ -972,6 +984,14 @@ public class RichTextCoordinator: NSObject {
         
         // Update formatting state
         context.updateFormattingState()
+        
+        // Only reset the flag if we set it (not if binding update set it)
+        if !wasAlreadyUpdating {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                self.isUpdatingFromTextView = false
+                print("🏁 RichTextCoordinator: Reset isUpdatingFromTextView flag after context update")
+            }
+        }
     }
     
     private func updateTypingAttributes() {
@@ -1050,12 +1070,6 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
     public func textViewDidChangeSelection(_ textView: UITextView) {
         // Skip updates if we're currently handling newline insertion to avoid race conditions
         guard !isHandlingNewlineInsertion else { return }
-        
-        // Skip context updates if we just applied formatting to prevent overriding
-        if isPreventingContextUpdates {
-            print("🛡️ RichTextCoordinator: Skipping context update - formatting protection active")
-            return
-        }
         
         updateContextFromTextView()
         updateTypingAttributes()

@@ -113,8 +113,22 @@ public struct RichTextEditor: UIViewRepresentable {
     }
     
     public func updateUIView(_ uiView: UITextView, context: Context) {
-        // Only update text if it's actually different to avoid cursor jumps
-        if !uiView.attributedText.isEqual(to: text) {
+        // Get the coordinator to check if it's currently updating from the text view
+        let coordinator = context.coordinator
+        
+        // Enhanced checking to prevent race conditions
+        let isCoordinatorUpdating = coordinator.isUpdatingFromTextView
+        let textsAreEqual = uiView.attributedText.isEqual(to: text)
+        let stringsAreEqual = uiView.attributedText.string == text.string
+        
+        print("🔍 RichTextEditor: updateUIView check - coordinator updating: \(isCoordinatorUpdating), texts equal: \(textsAreEqual), strings equal: \(stringsAreEqual)")
+        
+        // Only update text if it's actually different AND we're not in the middle of a text view update
+        // This prevents overwriting formatting that was just applied by the coordinator
+        if !isCoordinatorUpdating && !textsAreEqual {
+            print("🔄 RichTextEditor: updateUIView - text is different, updating...")
+            print("📝 Current text length: \(uiView.attributedText.length), new text length: \(text.length)")
+            
             let selectedRange = uiView.selectedRange
             uiView.attributedText = text
             
@@ -135,6 +149,8 @@ public struct RichTextEditor: UIViewRepresentable {
                 // Fallback to cursor at end of text
                 uiView.selectedRange = NSRange(location: textLength, length: 0)
             }
+        } else {
+            print("🚫 RichTextEditor: updateUIView - skipping text update (coordinator updating: \(isCoordinatorUpdating), texts equal: \(textsAreEqual))")
         }
         
         // Update editable state only if needed

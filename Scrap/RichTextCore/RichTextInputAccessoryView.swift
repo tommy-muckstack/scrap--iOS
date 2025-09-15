@@ -7,16 +7,15 @@
 
 import UIKit
 import SwiftUI
+import ObjectiveC
 
 /// A UIKit toolbar that serves as the keyboard input accessory view
 class RichTextInputAccessoryView: UIView {
     
     private let context: RichTextContext
-    private let showingFormatting: Binding<Bool>
     
-    init(context: RichTextContext, showingFormatting: Binding<Bool>) {
+    init(context: RichTextContext) {
         self.context = context
-        self.showingFormatting = showingFormatting
         super.init(frame: CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width, height: 44))
         setupView()
     }
@@ -36,12 +35,11 @@ class RichTextInputAccessoryView: UIView {
         
         // Create SwiftUI toolbar and embed it
         let toolbar = RichFormattingToolbar(
-            context: context,
-            showingFormatting: showingFormatting
+            context: context
         )
         
         let hostingController = UIHostingController(rootView: toolbar)
-        hostingController.view.backgroundColor = .clear
+        hostingController.view.backgroundColor = UIColor.clear
         hostingController.view.translatesAutoresizingMaskIntoConstraints = false
         
         addSubview(hostingController.view)
@@ -68,22 +66,35 @@ extension UITextView {
     
     /// Set up rich text input accessory view
     func setupRichTextInputAccessory(context: RichTextContext, showingFormatting: Binding<Bool>) {
-        let accessoryView = RichTextInputAccessoryView(
-            context: context,
-            showingFormatting: showingFormatting
-        )
+        // Only create and set the input accessory view if formatting should be shown
+        if showingFormatting.wrappedValue {
+            let accessoryView = RichTextInputAccessoryView(
+                context: context
+            )
+            
+            self.inputAccessoryView = accessoryView
+            
+            // Store reference
+            objc_setAssociatedObject(
+                self,
+                &AssociatedKeys.richTextInputAccessory,
+                accessoryView,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+        } else {
+            // Hide the input accessory view when formatting is disabled
+            self.inputAccessoryView = nil
+            
+            // Clear stored reference
+            objc_setAssociatedObject(
+                self,
+                &AssociatedKeys.richTextInputAccessory,
+                nil,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+        }
         
-        self.inputAccessoryView = accessoryView
-        
-        // Store reference
-        objc_setAssociatedObject(
-            self,
-            &AssociatedKeys.richTextInputAccessory,
-            accessoryView,
-            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
-        )
-        
-        // Ensure the accessory view is shown
+        // Ensure the accessory view state is updated
         self.reloadInputViews()
     }
 }

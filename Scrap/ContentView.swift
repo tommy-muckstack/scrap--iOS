@@ -288,14 +288,14 @@ struct GentleLightning {
     struct Typography {
         // HEADINGS / TITLES → SpaceGrotesk-SemiBold/Bold for emphasis
         static let hero = Font.custom("SpaceGrotesk-Bold", size: 34)               // Large hero titles
-        static let title = Font.custom("SpaceGrotesk-Medium", size: 20)            // Standard titles/headings
-        static let titleEmphasis = Font.custom("SpaceGrotesk-SemiBold", size: 20)  // Emphasized titles
+        static let title = Font.custom("SpaceGrotesk-Medium", size: 28)            // Standard titles/headings
+        static let titleEmphasis = Font.custom("SpaceGrotesk-SemiBold", size: 28)  // Emphasized titles
         static let subtitle = Font.custom("SpaceGrotesk-Medium", size: 18)         // Subtitles
         static let heading = Font.custom("SpaceGrotesk-Medium", size: 16)          // Section headings
         
         // BODY TEXT → SpaceGrotesk-Regular (regular reading weight)
         static let body = Font.custom("SpaceGrotesk-Regular", size: 16)            // Primary body text
-        static let bodyInput = Font.custom("SpaceGrotesk-Regular", size: 19)       // Input fields
+        static let bodyInput = Font.custom("SpaceGrotesk-Regular", size: 16)       // Input fields
         static let bodyLarge = Font.custom("SpaceGrotesk-Regular", size: 18)       // Larger body text
         
         // SECONDARY / SUBTLE TEXT → SpaceGrotesk-Light
@@ -733,7 +733,8 @@ struct InputField: View {
                         
                         RichTextEditor.forNotes(
                             text: $attributedText,
-                            context: richTextContext
+                            context: richTextContext,
+                            showingFormatting: .constant(false)
                         )
                         .disabled(isRecording)
                         .frame(minHeight: 40, maxHeight: max(40, min(textHeight, 120)), alignment: .topLeading)
@@ -1599,6 +1600,7 @@ struct ContentView: View {
                 .background(GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
             }
             .ignoresSafeArea(.keyboard, edges: .bottom)
+            .dismissKeyboardOnDrag()
         }
     }
     

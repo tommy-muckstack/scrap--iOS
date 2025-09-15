@@ -31,9 +31,6 @@ public class RichTextContext: ObservableObject {
     /// The currently selected range
     public internal(set) var selectedRange = NSRange()
     
-    /// Tracks if formatting was just applied to prevent it from being reset
-    private var formattingJustApplied = false
-    
     // MARK: - Editor State
     
     /// Whether the rich text editor is editable
@@ -46,7 +43,7 @@ public class RichTextContext: ObservableObject {
     @Published public var fontName = "SpaceGrotesk-Regular"
     
     /// The current font size
-    @Published public var fontSize: CGFloat = 17
+    @Published public var fontSize: CGFloat = 16
     
     // MARK: - Formatting State
     
@@ -115,35 +112,28 @@ public class RichTextContext: ObservableObject {
     
     /// Toggle bold formatting
     public func toggleBold() {
-        // Immediately toggle UI state for snappy response
-        isBoldActive.toggle()
-        formattingJustApplied = true
+        // Don't immediately toggle UI state - let the coordinator determine the correct action
+        // based on the actual text selection and current formatting
         actionPublisher.send(.toggleStyle(.bold))
         
-        print("🔥 RichTextContext: toggleBold() called - UI updated immediately")
+        print("🔥 RichTextContext: toggleBold() called - sending action to coordinator")
     }
     
     /// Toggle italic formatting
     public func toggleItalic() {
-        // Immediately toggle UI state for snappy response
-        isItalicActive.toggle()
-        formattingJustApplied = true
+        // Don't immediately toggle UI state - let the coordinator determine the correct action
         actionPublisher.send(.toggleStyle(.italic))
     }
     
     /// Toggle underline formatting
     public func toggleUnderline() {
-        // Immediately toggle UI state for snappy response
-        isUnderlineActive.toggle()
-        formattingJustApplied = true
+        // Don't immediately toggle UI state - let the coordinator determine the correct action
         actionPublisher.send(.toggleStyle(.underline))
     }
     
     /// Toggle strikethrough formatting
     public func toggleStrikethrough() {
-        // Immediately toggle UI state for snappy response
-        isStrikethroughActive.toggle()
-        formattingJustApplied = true
+        // Don't immediately toggle UI state - let the coordinator determine the correct action
         actionPublisher.send(.toggleStyle(.strikethrough))
     }
     
@@ -199,16 +189,6 @@ public class RichTextContext: ObservableObject {
         // Update immediately on main thread for snappy UI response
         guard self.selectedRange.length >= 0 && self.attributedString.length > 0 else { return }
         
-        // If formatting was just applied, don't reset based on cursor position
-        if self.formattingJustApplied {
-            // Reset the flag after sufficient time for user interaction
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                self.formattingJustApplied = false
-            }
-            self.updateBlockFormatState() // Still update block format state
-            return
-        }
-        
         // For cursor position (no selection), check if we're at the end of formatted text
         // If so, preserve the formatting intent for new text
         if self.selectedRange.length == 0 && self.selectedRange.location > 0 {
@@ -220,13 +200,17 @@ public class RichTextContext: ObservableObject {
                     effectiveRange: nil
                 )
                 
-                // If the previous character has bold formatting, maintain it
+                // If the previous character has bold formatting, maintain it for typing
                 if let font = prevAttributes[.font] as? UIFont {
                     let hadBold = font.fontDescriptor.symbolicTraits.contains(.traitBold) || 
                                  font.fontName.contains("Bold")
                     if hadBold && !self.isBoldActive {
-                        DispatchQueue.main.async {
+                        if Thread.isMainThread {
                             self.isBoldActive = true
+                        } else {
+                            DispatchQueue.main.async {
+                                self.isBoldActive = true
+                            }
                         }
                     }
                 }
@@ -234,16 +218,24 @@ public class RichTextContext: ObservableObject {
                 // Check other formatting attributes
                 if let underlineStyle = prevAttributes[.underlineStyle] as? Int, underlineStyle != 0 {
                     if !self.isUnderlineActive {
-                        DispatchQueue.main.async {
+                        if Thread.isMainThread {
                             self.isUnderlineActive = true
+                        } else {
+                            DispatchQueue.main.async {
+                                self.isUnderlineActive = true
+                            }
                         }
                     }
                 }
                 
                 if let strikethroughStyle = prevAttributes[.strikethroughStyle] as? Int, strikethroughStyle != 0 {
                     if !self.isStrikethroughActive {
-                        DispatchQueue.main.async {
+                        if Thread.isMainThread {
                             self.isStrikethroughActive = true
+                        } else {
+                            DispatchQueue.main.async {
+                                self.isStrikethroughActive = true
+                            }
                         }
                     }
                 }
@@ -281,8 +273,15 @@ public class RichTextContext: ObservableObject {
             newBoldState = false
         }
         
-        DispatchQueue.main.async {
+        // Update immediately on main thread if already on main thread, otherwise async
+        if Thread.isMainThread {
             self.isBoldActive = newBoldState
+            print("🎯 RichTextContext: Updated isBoldActive to \(newBoldState) (immediate)")
+        } else {
+            DispatchQueue.main.async {
+                self.isBoldActive = newBoldState
+                print("🎯 RichTextContext: Updated isBoldActive to \(newBoldState) (async)")
+            }
         }
     }
     
@@ -294,8 +293,15 @@ public class RichTextContext: ObservableObject {
             newItalicState = false
         }
         
-        DispatchQueue.main.async {
+        // Update immediately on main thread if already on main thread, otherwise async
+        if Thread.isMainThread {
             self.isItalicActive = newItalicState
+            print("🎯 RichTextContext: Updated isItalicActive to \(newItalicState) (immediate)")
+        } else {
+            DispatchQueue.main.async {
+                self.isItalicActive = newItalicState
+                print("🎯 RichTextContext: Updated isItalicActive to \(newItalicState) (async)")
+            }
         }
     }
     
@@ -307,8 +313,15 @@ public class RichTextContext: ObservableObject {
             newUnderlineState = false
         }
         
-        DispatchQueue.main.async {
+        // Update immediately on main thread if already on main thread, otherwise async
+        if Thread.isMainThread {
             self.isUnderlineActive = newUnderlineState
+            print("🎯 RichTextContext: Updated isUnderlineActive to \(newUnderlineState) (immediate)")
+        } else {
+            DispatchQueue.main.async {
+                self.isUnderlineActive = newUnderlineState
+                print("🎯 RichTextContext: Updated isUnderlineActive to \(newUnderlineState) (async)")
+            }
         }
     }
     
@@ -320,8 +333,15 @@ public class RichTextContext: ObservableObject {
             newStrikethroughState = false
         }
         
-        DispatchQueue.main.async {
+        // Update immediately on main thread if already on main thread, otherwise async
+        if Thread.isMainThread {
             self.isStrikethroughActive = newStrikethroughState
+            print("🎯 RichTextContext: Updated isStrikethroughActive to \(newStrikethroughState) (immediate)")
+        } else {
+            DispatchQueue.main.async {
+                self.isStrikethroughActive = newStrikethroughState
+                print("🎯 RichTextContext: Updated isStrikethroughActive to \(newStrikethroughState) (async)")
+            }
         }
     }
     
@@ -355,25 +375,43 @@ public class RichTextContext: ObservableObject {
             codeBlockActive = false
         }
         
-        DispatchQueue.main.async {
+        // Update immediately on main thread if already on main thread, otherwise async
+        if Thread.isMainThread {
             self.isBulletListActive = bulletActive
             self.isCheckboxActive = checkboxActive
             self.isCodeBlockActive = codeBlockActive
+            print("🎯 RichTextContext: Updated block states - bullet: \(bulletActive), checkbox: \(checkboxActive), code: \(codeBlockActive) (immediate)")
+        } else {
+            DispatchQueue.main.async {
+                self.isBulletListActive = bulletActive
+                self.isCheckboxActive = checkboxActive
+                self.isCodeBlockActive = codeBlockActive
+                print("🎯 RichTextContext: Updated block states - bullet: \(bulletActive), checkbox: \(checkboxActive), code: \(codeBlockActive) (async)")
+            }
         }
     }
     
     /// Update undo/redo capabilities
     internal func updateUndoRedoState(canUndo: Bool, canRedo: Bool) {
-        DispatchQueue.main.async {
+        if Thread.isMainThread {
             self.canUndo = canUndo
             self.canRedo = canRedo
+        } else {
+            DispatchQueue.main.async {
+                self.canUndo = canUndo
+                self.canRedo = canRedo
+            }
         }
     }
     
     /// Update copy capability
     internal func updateCopyState(_ canCopy: Bool) {
-        DispatchQueue.main.async {
+        if Thread.isMainThread {
             self.canCopy = canCopy
+        } else {
+            DispatchQueue.main.async {
+                self.canCopy = canCopy
+            }
         }
     }
 }
