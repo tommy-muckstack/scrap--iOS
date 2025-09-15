@@ -334,18 +334,33 @@ public class RichTextContext: ObservableObject {
         let bulletActive = trimmedLine.hasPrefix("•")
         let checkboxActive = trimmedLine.hasPrefix("○") || trimmedLine.hasPrefix("●")
         
-        // Check for code block formatting by looking at font attributes instead of text markers
+        // Check for code block formatting by looking at font attributes and surrounding context
         let codeBlockActive: Bool
-        if selectedRange.location < attributedString.length && selectedRange.location >= 0 {
-            let attributes = attributedString.attributes(at: max(0, min(selectedRange.location, attributedString.length - 1)), effectiveRange: nil)
-            codeBlockActive = (attributes[.font] as? UIFont)?.fontName.contains("Monaco") == true
+        if attributedString.length > 0 {
+            let detectedCodeBlock = isPositionInCodeBlock(selectedRange.location)
+            
+            // If we're currently in code block mode and the detection confirms we're still in a code block,
+            // don't change the state to avoid button flickering
+            if self.isCodeBlockActive && detectedCodeBlock {
+                codeBlockActive = true
+                print("🔒 RichTextContext: Keeping code block state active (preventing flicker)")
+            } else {
+                codeBlockActive = detectedCodeBlock
+                print("🔍 RichTextContext: updateBlockFormatState - position: \(selectedRange.location), isCodeBlockActive: \(codeBlockActive)")
+            }
         } else {
             codeBlockActive = false
+            print("🔍 RichTextContext: updateBlockFormatState - empty text, isCodeBlockActive: false")
         }
         
         // Direct update since we're already in async context from updateFormattingState
         self.isBulletListActive = bulletActive
         self.isCheckboxActive = checkboxActive
+        
+        // Add logging to track code block state changes
+        if self.isCodeBlockActive != codeBlockActive {
+            print("🔄 RichTextContext: Code block state changing from \(self.isCodeBlockActive) to \(codeBlockActive)")
+        }
         self.isCodeBlockActive = codeBlockActive
     }
     
@@ -364,6 +379,93 @@ public class RichTextContext: ObservableObject {
         DispatchQueue.main.async {
             self.canCopy = canCopy
         }
+    }
+    
+    // MARK: - Code Block Detection
+    
+    /// Check if the given position is within a code block with more robust detection
+    private func isPositionInCodeBlock(_ position: Int) -> Bool {
+        guard position >= 0 && attributedString.length > 0 else { 
+            print("🔍 isPositionInCodeBlock: Invalid position \(position) or empty text (length: \(attributedString.length))")
+            return false 
+        }
+        
+        // If position is at the end of text, check the previous character
+        let checkPosition = min(position, attributedString.length - 1)
+        print("🔍 isPositionInCodeBlock: Checking position \(position), adjusted to \(checkPosition)")
+        
+        // First check the exact position
+        if checkPosition < attributedString.length {
+            let attributes = attributedString.attributes(at: checkPosition, effectiveRange: nil)
+            
+            // Check if position has monospaced font (indicates code block)
+            if let font = attributes[.font] as? UIFont {
+                let hasMonaco = font.fontName.contains("Monaco")
+                let hasMonospaceTrait = font.fontDescriptor.symbolicTraits.contains(.traitMonoSpace)
+                let hasSystemMonospace = font.fontName.contains("SFMono") || font.fontName.contains("Menlo") || font.fontName.contains("Courier")
+                let hasAppleSystemMonospace = font.fontName.contains(".AppleSystemUIFontMonospaced")
+                let fontDescriptor = font.fontDescriptor
+                print("🔍 isPositionInCodeBlock: Font at \(checkPosition):")
+                print("   - Font name: \(font.fontName)")
+                print("   - Font family: \(font.familyName)")
+                print("   - Symbolic traits: \(fontDescriptor.symbolicTraits.rawValue)")
+                print("   - hasMonaco: \(hasMonaco)")
+                print("   - hasMonospaceTrait: \(hasMonospaceTrait)")
+                print("   - hasSystemMonospace: \(hasSystemMonospace)")
+                print("   - hasAppleSystemMonospace: \(hasAppleSystemMonospace)")
+                
+                if hasMonaco || hasMonospaceTrait || hasSystemMonospace || hasAppleSystemMonospace {
+                    print("✅ isPositionInCodeBlock: Found monospaced font -> TRUE")
+                    return true
+                }
+            }
+            
+            // Also check for grey background color (indicates code block)
+            if let backgroundColor = attributes[.backgroundColor] as? UIColor {
+                let isCodeBackground = backgroundColor == UIColor.systemGray6
+                print("🔍 isPositionInCodeBlock: Background at \(checkPosition): \(backgroundColor), isCodeBackground: \(isCodeBackground)")
+                if isCodeBackground {
+                    print("✅ isPositionInCodeBlock: Found code background -> TRUE")
+                    return true
+                }
+            } else {
+                print("🔍 isPositionInCodeBlock: No background color at \(checkPosition)")
+            }
+        }
+        
+        // If cursor is at the end of text or position 0, also check neighboring positions
+        // Check a small range around the position to catch edge cases
+        let rangeStart = max(0, position - 2)
+        let rangeEnd = min(attributedString.length - 1, position + 1)
+        
+        for pos in rangeStart...rangeEnd {
+            if pos < attributedString.length {
+                let attributes = attributedString.attributes(at: pos, effectiveRange: nil)
+                
+                if let font = attributes[.font] as? UIFont {
+                    let hasMonaco = font.fontName.contains("Monaco")
+                    let hasMonospaceTrait = font.fontDescriptor.symbolicTraits.contains(.traitMonoSpace)
+                    let hasSystemMonospace = font.fontName.contains("SFMono") || font.fontName.contains("Menlo") || font.fontName.contains("Courier")
+                    let hasAppleSystemMonospace = font.fontName.contains(".AppleSystemUIFontMonospaced")
+                    
+                    if hasMonaco || hasMonospaceTrait || hasSystemMonospace || hasAppleSystemMonospace {
+                        print("✅ isPositionInCodeBlock: Found monospaced font in nearby position \(pos) -> TRUE")
+                        return true
+                    }
+                }
+                
+                if let backgroundColor = attributes[.backgroundColor] as? UIColor {
+                    let isCodeBackground = backgroundColor == UIColor.systemGray6
+                    if isCodeBackground {
+                        print("✅ isPositionInCodeBlock: Found code background in nearby position \(pos) -> TRUE")
+                        return true
+                    }
+                }
+            }
+        }
+        
+        print("❌ isPositionInCodeBlock: No code block detected -> FALSE")
+        return false
     }
 }
 

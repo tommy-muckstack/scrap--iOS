@@ -759,14 +759,16 @@ public class RichTextCoordinator: NSObject {
     }
     
     private func applyCodeBlockFormat(_ mutableText: NSMutableAttributedString, _ lineRange: NSRange, _ lineText: String) {
-        // Check if cursor is currently in a code block
+        // Check if cursor is currently in a code block using the same reliable detection method
         let cursorPosition = textView.selectedRange.location
-        let isInCodeBlock = isPositionInCodeBlock(cursorPosition, in: mutableText)
+        let isInCodeBlock = checkIfPositionIsInCodeBlock(cursorPosition)
+        
+        print("🔍 applyCodeBlockFormat: cursor at \(cursorPosition), isInCodeBlock: \(isInCodeBlock), context.isCodeBlockActive: \(context.isCodeBlockActive)")
         
         if isInCodeBlock {
-            // Turn OFF code formatting - move cursor to line below the code block
-            removeCodeBlockAndMoveCursor(at: cursorPosition, in: mutableText)
-            print("🔸 RichTextCoordinator: Removing code block, moving cursor below")
+            // Turn OFF code formatting - exit code block and move cursor below
+            exitCodeBlockAndMoveCursor(at: cursorPosition, in: mutableText)
+            print("🔸 RichTextCoordinator: Exiting code block, moving cursor below")
         } else {
             // Turn ON code formatting - create new code block with cursor inside
             createCodeBlockAndMoveCursor(at: cursorPosition, in: mutableText)
@@ -790,14 +792,23 @@ public class RichTextCoordinator: NSObject {
         
         let attributes = attributedText.attributes(at: position, effectiveRange: nil)
         
-        // Check if position has Monaco font (indicates code block)
+        // Check if position has monospaced font (indicates code block)
         if let font = attributes[.font] as? UIFont {
-            return font.fontName.contains("Monaco")
+            let hasMonaco = font.fontName.contains("Monaco")
+            let hasMonospaceTrait = font.fontDescriptor.symbolicTraits.contains(.traitMonoSpace)
+            let hasSystemMonospace = font.fontName.contains("SFMono") || font.fontName.contains("Menlo") || font.fontName.contains("Courier")
+            let hasAppleSystemMonospace = font.fontName.contains(".AppleSystemUIFontMonospaced")
+            
+            if hasMonaco || hasMonospaceTrait || hasSystemMonospace || hasAppleSystemMonospace {
+                return true
+            }
         }
         
         // Also check for grey background color (indicates code block)
         if let backgroundColor = attributes[.backgroundColor] as? UIColor {
-            return backgroundColor == UIColor.systemGray6
+            if backgroundColor == UIColor.systemGray6 {
+                return true
+            }
         }
         
         return false
@@ -805,58 +816,90 @@ public class RichTextCoordinator: NSObject {
     
     /// Create a new code block and position cursor inside it
     private func createCodeBlockAndMoveCursor(at position: Int, in mutableText: NSMutableAttributedString) {
-        // Create code block text with space for cursor
-        let codeBlockText = "\n \n"
+        // Create code block text - start directly with spaces, no leading newline
+        let codeBlockText = "    "  // Just padding spaces, no newlines
         
         // Insert the code block at current position
         let insertRange = NSRange(location: position, length: 0)
         mutableText.replaceCharacters(in: insertRange, with: codeBlockText)
         
-        // Apply Monaco font and grey background to the entire code block
+        // Apply code block formatting to the entire block
         let codeBlockRange = NSRange(location: position, length: codeBlockText.count)
         
-        // Set Monaco font
-        if let monacoFont = UIFont(name: "Monaco", size: 14) {
-            mutableText.addAttribute(.font, value: monacoFont, range: codeBlockRange)
-        } else {
-            // Fallback to monospaced system font
-            let monospacedFont = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
-            mutableText.addAttribute(.font, value: monospacedFont, range: codeBlockRange)
-        }
+        // Set monospaced font for code blocks
+        let monospacedFont = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+        print("🔧 createCodeBlockAndMoveCursor: Applied monospaced font:")
+        print("   - Font name: \(monospacedFont.fontName)")
+        print("   - Font family: \(monospacedFont.familyName)")
+        print("   - Symbolic traits: \(monospacedFont.fontDescriptor.symbolicTraits.rawValue)")
+        print("   - Has monospace trait: \(monospacedFont.fontDescriptor.symbolicTraits.contains(.traitMonoSpace))")
+        mutableText.addAttribute(.font, value: monospacedFont, range: codeBlockRange)
         
-        // Set grey background
+        // Set grey background for the full width effect
         mutableText.addAttribute(.backgroundColor, value: UIColor.systemGray6, range: codeBlockRange)
         
-        // Set text color to ensure readability
-        mutableText.addAttribute(.foregroundColor, value: UIColor.label, range: codeBlockRange)
+        // Set green text color for code
+        mutableText.addAttribute(.foregroundColor, value: UIColor.systemGreen, range: codeBlockRange)
         
-        // Position cursor inside the code block (after the first newline, at the space)
-        let cursorPosition = position + 1
+        // Add paragraph style for better spacing and appearance
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.lineSpacing = 2
+        paragraphStyle.paragraphSpacing = 4
+        paragraphStyle.firstLineHeadIndent = 16  // Left padding
+        paragraphStyle.headIndent = 16           // Left padding for wrapped lines
+        paragraphStyle.tailIndent = -16         // Right padding (negative value)
+        mutableText.addAttribute(.paragraphStyle, value: paragraphStyle, range: codeBlockRange)
+        
+        // Position cursor at the end of the code block (after the spaces)
+        let cursorPosition = position + codeBlockText.count
         textView.selectedRange = NSRange(location: cursorPosition, length: 0)
         
-        print("📦 Created code block at position \(position), cursor at \(cursorPosition)")
+        print("📦 Created code block with padding at position \(position), cursor at \(cursorPosition)")
     }
     
-    /// Remove code block formatting and move cursor to line below
-    private func removeCodeBlockAndMoveCursor(at position: Int, in mutableText: NSMutableAttributedString) {
-        // Find the range of the current code block
+    /// Exit code block and move cursor to line below
+    private func exitCodeBlockAndMoveCursor(at position: Int, in mutableText: NSMutableAttributedString) {
+        // Find the range of the current code block more aggressively to catch all remnants
         var codeBlockStart = position
         var codeBlockEnd = position
         
-        // Find start of code block (look backwards for first non-Monaco character)
+        // Expand search range to catch more remnants
+        let searchBackward = min(position, 50) // Look back up to 50 characters
+        let searchForward = min(mutableText.length - position, 50) // Look forward up to 50 characters
+        
+        // Find start of code block (look backwards for first non-code-block character)
+        codeBlockStart = max(0, position - searchBackward)
+        while codeBlockStart < position {
+            let attributes = mutableText.attributes(at: codeBlockStart, effectiveRange: nil)
+            if isAttributesInCodeBlock(attributes) {
+                break
+            }
+            codeBlockStart += 1
+        }
+        
+        // Find end of code block (look forwards for first non-code-block character)
+        codeBlockEnd = min(mutableText.length, position + searchForward)
+        while codeBlockEnd > position {
+            let attributes = mutableText.attributes(at: codeBlockEnd - 1, effectiveRange: nil)
+            if isAttributesInCodeBlock(attributes) {
+                break
+            }
+            codeBlockEnd -= 1
+        }
+        
+        // Expand the range to include any adjacent monospaced text
         while codeBlockStart > 0 {
             let prevAttributes = mutableText.attributes(at: codeBlockStart - 1, effectiveRange: nil)
-            if let font = prevAttributes[.font] as? UIFont, font.fontName.contains("Monaco") {
+            if isAttributesInCodeBlock(prevAttributes) {
                 codeBlockStart -= 1
             } else {
                 break
             }
         }
         
-        // Find end of code block (look forwards for first non-Monaco character)
         while codeBlockEnd < mutableText.length {
             let attributes = mutableText.attributes(at: codeBlockEnd, effectiveRange: nil)
-            if let font = attributes[.font] as? UIFont, font.fontName.contains("Monaco") {
+            if isAttributesInCodeBlock(attributes) {
                 codeBlockEnd += 1
             } else {
                 break
@@ -864,31 +907,114 @@ public class RichTextCoordinator: NSObject {
         }
         
         let codeBlockRange = NSRange(location: codeBlockStart, length: codeBlockEnd - codeBlockStart)
+        print("🔄 exitCodeBlockAndMoveCursor: Found code block at range \(codeBlockRange)")
         
-        // Get the text content without formatting
-        let codeBlockText = mutableText.attributedSubstring(from: codeBlockRange).string
-        let cleanedText = codeBlockText.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        // Replace code block with clean text
-        let replacementText = cleanedText.isEmpty ? "" : cleanedText + "\n"
-        mutableText.replaceCharacters(in: codeBlockRange, with: replacementText)
-        
-        // Apply normal formatting to the replacement text
-        let replacementRange = NSRange(location: codeBlockStart, length: replacementText.count)
-        if replacementRange.length > 0 {
-            // Remove code block formatting
-            mutableText.removeAttribute(.backgroundColor, range: replacementRange)
+        // Remove code block formatting and replace with normal text formatting
+        if codeBlockRange.length > 0 {
+            // Get the plain text content
+            let codeBlockText = mutableText.attributedSubstring(from: codeBlockRange).string
             
-            // Apply normal font
+            // Create new attributed string with normal formatting
             let normalFont = UIFont(name: context.fontName, size: context.fontSize) ?? UIFont.systemFont(ofSize: context.fontSize)
-            mutableText.addAttribute(.font, value: normalFont, range: replacementRange)
+            let normalAttributes: [NSAttributedString.Key: Any] = [
+                .font: normalFont,
+                .foregroundColor: UIColor.label,
+                .backgroundColor: UIColor.clear,
+                .paragraphStyle: NSParagraphStyle.default // Clear any paragraph formatting
+            ]
+            
+            let normalText = NSAttributedString(string: codeBlockText, attributes: normalAttributes)
+            mutableText.replaceCharacters(in: codeBlockRange, with: normalText)
+            
+            print("✅ exitCodeBlockAndMoveCursor: Removed code block formatting from range \(codeBlockRange)")
         }
         
-        // Position cursor at the end of the replacement text (on new line below)
-        let newCursorPosition = codeBlockStart + replacementText.count
+        // Position cursor at the end of the now-normal text
+        let newCursorPosition = codeBlockStart + codeBlockRange.length
+        
+        // Add a newline with normal formatting after the text to ensure clean transition
+        let newlineString = NSAttributedString(string: "\n", attributes: [
+            .font: UIFont(name: context.fontName, size: context.fontSize) ?? UIFont.systemFont(ofSize: context.fontSize),
+            .foregroundColor: UIColor.label,
+            .backgroundColor: UIColor.clear,
+            .paragraphStyle: NSParagraphStyle.default
+        ])
+        mutableText.insert(newlineString, at: newCursorPosition)
+        
+        // Position cursor after the newline
+        let finalCursorPosition = newCursorPosition + 1
+        textView.selectedRange = NSRange(location: finalCursorPosition, length: 0)
+        
+        // Force update of typing attributes to normal before updating context
+        let normalTypingAttributes: [NSAttributedString.Key: Any] = [
+            .font: UIFont(name: context.fontName, size: context.fontSize) ?? UIFont.systemFont(ofSize: context.fontSize),
+            .foregroundColor: UIColor.label,
+            .backgroundColor: UIColor.clear,
+            .paragraphStyle: NSParagraphStyle.default
+        ]
+        textView.typingAttributes = normalTypingAttributes
+        
+        // Update context to reflect that we're no longer in a code block
+        DispatchQueue.main.async {
+            self.context.isCodeBlockActive = false
+        }
+        
+        print("✅ exitCodeBlockAndMoveCursor: Cursor moved to position \(finalCursorPosition), code block mode disabled, added clean newline")
+        
+        print("🗑️ Exited code block, cursor moved to position \(finalCursorPosition)")
+    }
+    
+    /// Helper method to check if attributes indicate code block
+    private func isAttributesInCodeBlock(_ attributes: [NSAttributedString.Key: Any]) -> Bool {
+        // Check font
+        if let font = attributes[.font] as? UIFont {
+            let hasMonaco = font.fontName.contains("Monaco")
+            let hasMonospaceTrait = font.fontDescriptor.symbolicTraits.contains(.traitMonoSpace)
+            let hasSystemMonospace = font.fontName.contains("SFMono") || font.fontName.contains("Menlo") || font.fontName.contains("Courier")
+            let hasAppleSystemMonospace = font.fontName.contains(".AppleSystemUIFontMonospaced")
+            
+            if hasMonaco || hasMonospaceTrait || hasSystemMonospace || hasAppleSystemMonospace {
+                return true
+            }
+        }
+        
+        // Check background color
+        if let backgroundColor = attributes[.backgroundColor] as? UIColor {
+            if backgroundColor == UIColor.systemGray6 {
+                return true
+            }
+        }
+        
+        return false
+    }
+    
+    /// Exit code block on Enter key while preserving existing code block formatting
+    private func exitCodeBlockOnEnterKey(at position: Int, in mutableText: NSMutableAttributedString) {
+        // Insert a newline with normal formatting at the current position
+        let normalFont = UIFont(name: context.fontName, size: context.fontSize) ?? UIFont.systemFont(ofSize: context.fontSize)
+        let normalAttributes: [NSAttributedString.Key: Any] = [
+            .font: normalFont,
+            .foregroundColor: UIColor.label,
+            .backgroundColor: UIColor.clear,
+            .paragraphStyle: NSParagraphStyle.default
+        ]
+        
+        let newlineString = NSAttributedString(string: "\n", attributes: normalAttributes)
+        mutableText.insert(newlineString, at: position)
+        
+        // Position cursor after the newline
+        let newCursorPosition = position + 1
         textView.selectedRange = NSRange(location: newCursorPosition, length: 0)
         
-        print("🗑️ Removed code block, cursor moved to position \(newCursorPosition)")
+        // Force update typing attributes to normal formatting for future typing
+        textView.typingAttributes = normalAttributes
+        
+        // Update context to indicate code mode is now off for future typing
+        DispatchQueue.main.async {
+            self.context.isCodeBlockActive = false
+        }
+        
+        print("✅ exitCodeBlockOnEnterKey: Added newline at position \(position), cursor moved to \(newCursorPosition), code mode disabled for future typing")
     }
     
     // MARK: - Indentation
@@ -977,7 +1103,7 @@ public class RichTextCoordinator: NSObject {
         // This prevents the race condition where updateUIView is called before the flag is reset
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             self.isUpdatingFromTextView = false
-            print("🏁 RichTextCoordinator: Reset isUpdatingFromTextView flag after binding update")
+            // Binding update complete
         }
     }
     
@@ -1004,15 +1130,93 @@ public class RichTextCoordinator: NSObject {
         // Update copy state
         context.updateCopyState(textView.selectedRange.length > 0)
         
-        // Update formatting state
-        context.updateFormattingState()
+        // Update formatting state but protect code block state from flickering
+        updateFormattingStateWithCodeBlockProtection()
         
         // Only reset the flag if we set it (not if binding update set it)
         if !wasAlreadyUpdating {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 self.isUpdatingFromTextView = false
-                print("🏁 RichTextCoordinator: Reset isUpdatingFromTextView flag after context update")
+                // Context update complete
             }
+        }
+    }
+    
+    /// Update formatting state while protecting code block state from flickering
+    private func updateFormattingStateWithCodeBlockProtection() {
+        // Check if we're actually in a code block by examining the text attributes
+        let cursorPosition = textView.selectedRange.location
+        let isActuallyInCodeBlock = checkIfPositionIsInCodeBlock(cursorPosition)
+        
+        print("🔍 updateFormattingStateWithCodeBlockProtection: cursor at \(cursorPosition), isActuallyInCodeBlock: \(isActuallyInCodeBlock), context.isCodeBlockActive: \(context.isCodeBlockActive)")
+        
+        // If we're currently showing code block as active AND we detect we're actually in a code block,
+        // preserve the active state to prevent flickering
+        if context.isCodeBlockActive && isActuallyInCodeBlock {
+            print("🔒 updateFormattingStateWithCodeBlockProtection: Preserving code block active state to prevent flicker")
+            
+            // Update other formatting states but preserve code block state
+            updateNonCodeBlockFormattingState()
+            return
+        }
+        
+        // Otherwise, use the standard formatting state update
+        context.updateFormattingState()
+    }
+    
+    /// Update formatting state for everything except code block (to preserve code block state)
+    private func updateNonCodeBlockFormattingState() {
+        // This is a simplified version of updateFormattingState that skips code block detection
+        // but still updates bold, italic, etc.
+        
+        guard textView.selectedRange.length >= 0 && textView.attributedText.length > 0 else { return }
+        
+        let safeIndex = max(0, min(textView.selectedRange.location, textView.attributedText.length - 1))
+        guard safeIndex < textView.attributedText.length else { return }
+        
+        let attributes = textView.attributedText.attributes(at: safeIndex, effectiveRange: nil)
+        
+        // Update formatting state on main thread to avoid SwiftUI conflicts
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            // Update bold state
+            if let font = attributes[.font] as? UIFont {
+                let hasTraitBold = font.fontDescriptor.symbolicTraits.contains(.traitBold)
+                let hasBoldName = font.fontName.contains("Bold") || font.fontName.contains("SemiBold") || font.fontName.contains("Heavy")
+                self.context.isBoldActive = hasTraitBold || hasBoldName
+                
+                // Update italic state
+                self.context.isItalicActive = font.fontDescriptor.symbolicTraits.contains(.traitItalic)
+            } else {
+                self.context.isBoldActive = false
+                self.context.isItalicActive = false
+            }
+            
+            // Update underline state
+            if let underlineStyle = attributes[.underlineStyle] as? Int {
+                self.context.isUnderlineActive = underlineStyle != 0
+            } else {
+                self.context.isUnderlineActive = false
+            }
+            
+            // Update strikethrough state
+            if let strikethroughStyle = attributes[.strikethroughStyle] as? Int {
+                self.context.isStrikethroughActive = strikethroughStyle != 0
+            } else {
+                self.context.isStrikethroughActive = false
+            }
+            
+            // Update list states (these are safe to update normally)
+            let currentText = self.textView.attributedText.string
+            let lineRange = (currentText as NSString).lineRange(for: self.textView.selectedRange)
+            let lineText = (currentText as NSString).substring(with: lineRange)
+            let trimmedLine = lineText.trimmingCharacters(in: .whitespaces)
+            
+            self.context.isBulletListActive = trimmedLine.hasPrefix("•")
+            self.context.isCheckboxActive = trimmedLine.hasPrefix("○") || trimmedLine.hasPrefix("●")
+            
+            print("🔄 updateNonCodeBlockFormattingState: Updated other states, preserved code block active state")
         }
     }
     
@@ -1020,31 +1224,85 @@ public class RichTextCoordinator: NSObject {
         // Build typing attributes based on current context state and selection
         var typingAttributes = textView.typingAttributes
         
-        // Get base font
-        let baseFont = UIFont(name: context.fontName, size: context.fontSize) ?? UIFont.systemFont(ofSize: context.fontSize)
+        print("🔧 updateTypingAttributes: Starting - context.isCodeBlockActive: \(context.isCodeBlockActive)")
         
-        // Apply formatting based on current context state
-        var font = baseFont
-        if context.isBoldActive {
-            font = applyBoldToFont(font)
-        }
-        if context.isItalicActive {
-            font = applyItalicToFont(font)
+        // Check if we're ACTUALLY in a code block by examining the text attributes at cursor position
+        let cursorPosition = textView.selectedRange.location
+        let isActuallyInCodeBlock = checkIfPositionIsInCodeBlock(cursorPosition)
+        
+        print("🔍 updateTypingAttributes: Cursor at \(cursorPosition), isActuallyInCodeBlock: \(isActuallyInCodeBlock)")
+        
+        // Check if we're in a code block first - this overrides other font formatting
+        // Use ACTUAL code block detection, not just context state
+        var font: UIFont
+        if isActuallyInCodeBlock || context.isCodeBlockActive {
+            // Use monospaced font for code blocks (Monaco equivalent on iOS)
+            font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+            print("✅ updateTypingAttributes: Using monospaced system font for code block:")
+            print("   - Font name: \(font.fontName)")
+            print("   - Font family: \(font.familyName)")
+            print("   - Symbolic traits: \(font.fontDescriptor.symbolicTraits.rawValue)")
+            print("   - Has monospace trait: \(font.fontDescriptor.symbolicTraits.contains(.traitMonoSpace))")
+            
+            // Apply code block styling
+            typingAttributes[.backgroundColor] = UIColor.systemGray6
+            typingAttributes[.foregroundColor] = UIColor.systemGreen  // Green text color for code
+            
+            // Apply paragraph style for full-width background with padding
+            let paragraphStyle = NSMutableParagraphStyle()
+            paragraphStyle.lineSpacing = 2
+            paragraphStyle.paragraphSpacing = 4
+            paragraphStyle.firstLineHeadIndent = 16  // Left padding
+            paragraphStyle.headIndent = 16           // Left padding for wrapped lines
+            paragraphStyle.tailIndent = -16         // Right padding (negative value)
+            typingAttributes[.paragraphStyle] = paragraphStyle
+            
+            // Force context to stay in code block mode if we detect we're actually in one
+            if isActuallyInCodeBlock && !context.isCodeBlockActive {
+                print("🔧 updateTypingAttributes: Forcing context.isCodeBlockActive = true based on text attributes")
+                DispatchQueue.main.async {
+                    self.context.isCodeBlockActive = true
+                }
+            }
+        } else {
+            // Get base font for regular text
+            let baseFont = UIFont(name: context.fontName, size: context.fontSize) ?? UIFont.systemFont(ofSize: context.fontSize)
+            
+            // Apply formatting based on current context state
+            font = baseFont
+            if context.isBoldActive {
+                font = applyBoldToFont(font)
+            }
+            if context.isItalicActive {
+                font = applyItalicToFont(font)
+            }
+            
+            // Remove background color and paragraph style for normal text
+            typingAttributes.removeValue(forKey: .backgroundColor)
+            typingAttributes.removeValue(forKey: .paragraphStyle)
+            
+            // Set normal text color (only for non-code-block text)
+            typingAttributes[.foregroundColor] = UIColor.label
         }
         
         typingAttributes[.font] = font
-        typingAttributes[.foregroundColor] = UIColor.label
         
-        // Apply other formatting
-        if context.isUnderlineActive {
-            typingAttributes[.underlineStyle] = NSUnderlineStyle.single.rawValue
+        // Apply other formatting (only if not in code block)
+        if !context.isCodeBlockActive {
+            if context.isUnderlineActive {
+                typingAttributes[.underlineStyle] = NSUnderlineStyle.single.rawValue
+            } else {
+                typingAttributes.removeValue(forKey: .underlineStyle)
+            }
+            
+            if context.isStrikethroughActive {
+                typingAttributes[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
+            } else {
+                typingAttributes.removeValue(forKey: .strikethroughStyle)
+            }
         } else {
+            // Remove underline and strikethrough in code blocks
             typingAttributes.removeValue(forKey: .underlineStyle)
-        }
-        
-        if context.isStrikethroughActive {
-            typingAttributes[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
-        } else {
             typingAttributes.removeValue(forKey: .strikethroughStyle)
         }
         
@@ -1092,6 +1350,7 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         // Skip updates if we're currently handling newline insertion to avoid race conditions
         guard !isHandlingNewlineInsertion else { return }
         
+        print("📍 textViewDidChangeSelection: Selection changed to \(textView.selectedRange)")
         updateContextFromTextView()
         updateTypingAttributes()
     }
@@ -1130,9 +1389,45 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
             return handleSingleCharacterBackspace(textView, range)
         }
         
-        // Handle automatic bullet/checkbox conversion
+        // Handle space key in code blocks - maintain code formatting
         if text == " " {
-            return handleAutomaticFormatting(textView, range)
+            // Check if we're in a code block
+            let isInCodeBlock = isPositionInCodeBlock(range.location, in: NSMutableAttributedString(attributedString: textView.attributedText))
+            
+            if isInCodeBlock {
+                // We're in a code block - allow the space but ensure typing attributes maintain code formatting
+                updateTypingAttributes()
+                return true
+            } else {
+                // Not in code block - handle automatic bullet/checkbox conversion
+                return handleAutomaticFormatting(textView, range)
+            }
+        }
+        
+        // For any other text input in code blocks, ensure typing attributes are maintained
+        if !text.isEmpty && range.length == 0 {
+            let isInCodeBlock = isPositionInCodeBlock(range.location, in: NSMutableAttributedString(attributedString: textView.attributedText))
+            if isInCodeBlock {
+                // Ensure code block formatting is applied to new text
+                print("🔧 shouldChangeTextIn: Detected typing in code block at position \(range.location)")
+                
+                // Apply code block attributes directly to the new text
+                let monospacedFont = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+                let codeAttributes: [NSAttributedString.Key: Any] = [
+                    .font: monospacedFont,
+                    .backgroundColor: UIColor.systemGray6,
+                    .foregroundColor: UIColor.systemGreen
+                ]
+                
+                // Update typing attributes immediately
+                textView.typingAttributes = codeAttributes
+                print("✅ shouldChangeTextIn: Applied code block typing attributes")
+                
+                // Also ensure context knows we're in a code block
+                DispatchQueue.main.async {
+                    self.context.isCodeBlockActive = true
+                }
+            }
         }
         
         return true
@@ -1255,6 +1550,31 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         let lineRange = (currentText as NSString).lineRange(for: range)
         let lineText = (currentText as NSString).substring(with: lineRange)
         let trimmedLine = lineText.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // Check if we're currently in a code block and auto-exit on enter
+        let cursorPosition = range.location
+        if checkIfPositionIsInCodeBlock(cursorPosition) {
+            isHandlingNewlineInsertion = true
+            let mutableText = NSMutableAttributedString(attributedString: textView.attributedText)
+            
+            // Exit the code block and move cursor to a new line with normal formatting (preserving existing code block)
+            exitCodeBlockOnEnterKey(at: cursorPosition, in: mutableText)
+            
+            // Apply the updated text
+            textView.attributedText = mutableText
+            
+            // Update binding and context after the change
+            updateBindingFromTextView()
+            updateContextFromTextView()
+            
+            // Reset flag after a brief delay
+            DispatchQueue.main.async {
+                self.isHandlingNewlineInsertion = false
+            }
+            
+            print("🔚 handleNewlineInsertion: Auto-exited code block on enter key")
+            return false
+        }
         
         // Continue bullet lists
         if trimmedLine.hasPrefix("• ") {
@@ -1825,6 +2145,57 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
     }
     
     // MARK: - Code Block Helper Methods
+    
+    /// Check if the given position is actually in a code block by examining text attributes
+    /// This is more reliable than relying on context state during typing
+    private func checkIfPositionIsInCodeBlock(_ position: Int) -> Bool {
+        guard let attributedText = textView.attributedText,
+              position >= 0 && position <= attributedText.length else { 
+            return false 
+        }
+        
+        // If position is at the end of text, check the previous character
+        let checkPosition = position == attributedText.length ? max(0, position - 1) : position
+        
+        // If we have no text or are at position 0 of empty text, not in code block
+        guard checkPosition < attributedText.length && attributedText.length > 0 else { 
+            return false 
+        }
+        
+        // Check a small range around the position (similar to RichTextContext but more focused)
+        let rangeStart = max(0, checkPosition - 1)
+        let rangeEnd = min(attributedText.length - 1, checkPosition + 1)
+        
+        for pos in rangeStart...rangeEnd {
+            if pos < attributedText.length {
+                let attributes = attributedText.attributes(at: pos, effectiveRange: nil)
+                
+                // Check for monospaced font (most reliable indicator)
+                if let font = attributes[.font] as? UIFont {
+                    let hasMonaco = font.fontName.contains("Monaco")
+                    let hasMonospaceTrait = font.fontDescriptor.symbolicTraits.contains(.traitMonoSpace)
+                    let hasSystemMonospace = font.fontName.contains("SFMono") || font.fontName.contains("Menlo") || font.fontName.contains("Courier")
+                    let hasAppleSystemMonospace = font.fontName.contains(".AppleSystemUIFontMonospaced")
+                    
+                    if hasMonaco || hasMonospaceTrait || hasSystemMonospace || hasAppleSystemMonospace {
+                        print("✅ checkIfPositionIsInCodeBlock: Found monospaced font '\(font.fontName)' at position \(pos)")
+                        return true
+                    }
+                }
+                
+                // Also check for grey background color
+                if let backgroundColor = attributes[.backgroundColor] as? UIColor {
+                    if backgroundColor == UIColor.systemGray6 {
+                        print("✅ checkIfPositionIsInCodeBlock: Found code background at position \(pos)")
+                        return true
+                    }
+                }
+            }
+        }
+        
+        print("❌ checkIfPositionIsInCodeBlock: No code block detected at position \(position)")
+        return false
+    }
     
 }
 
