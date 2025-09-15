@@ -6,9 +6,10 @@ struct NoteEditor: View {
     let dataManager: FirebaseDataManager
     @Environment(\.dismiss) private var dismiss
     
-    @State private var editedText: String
+    @State private var editedText: NSAttributedString
     @State private var editedTitle: String
     @State private var selectedCategories: [String]
+    @StateObject private var richTextContext = RichTextContext()
     @FocusState private var isTextFocused: Bool
     @State private var showingOptions = false
     @State private var showingDelete = false
@@ -20,7 +21,7 @@ struct NoteEditor: View {
     init(item: SparkItem, dataManager: FirebaseDataManager) {
         self.item = item
         self.dataManager = dataManager
-        self._editedText = State(initialValue: item.content)
+        self._editedText = State(initialValue: NSAttributedString(string: item.content))
         self._editedTitle = State(initialValue: item.title)
         self._selectedCategories = State(initialValue: item.categoryIds)
     }
@@ -40,59 +41,15 @@ struct NoteEditor: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
             
-            // Content editor with inline formatting button
-            VStack(alignment: .leading, spacing: 0) {
-                // Inline formatting button at start of content area
-                HStack {
-                    Button(action: { showingFormatting.toggle() }) {
-                        HStack(spacing: 2) {
-                            Text("B")
-                                .font(.system(size: 14, weight: .bold))
-                            Text("7")
-                                .font(.system(size: 12))
-                                .underline()
-                            Text("U")
-                                .font(.system(size: 14))
-                                .underline()
-                        }
-                        .foregroundColor(GentleLightning.Colors.accentNeutral)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(GentleLightning.Colors.surface)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .stroke(GentleLightning.Colors.textSecondary.opacity(0.2), lineWidth: 1)
-                                )
-                        )
-                    }
-                    Spacer()
-                }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 8)
-                
-                // Text editor
-                TextEditor(text: $editedText)
-                    .font(GentleLightning.Typography.bodyInput)
-                    .foregroundColor(GentleLightning.Colors.textPrimary)
-                    .padding(.horizontal, 16)
-                    .focused($isTextFocused)
-                    .onChange(of: editedText) { updateContent($0) }
-            }
-            .toolbar {
-                ToolbarItemGroup(placement: .keyboard) {
-                    if isTextFocused {
-                        FormattingToolbar(
-                            text: $editedText,
-                            showingFormatting: $showingFormatting
-                        )
-                        .transition(.asymmetric(
-                            insertion: .move(edge: .bottom).combined(with: .opacity).animation(GentleLightning.Animation.swoosh),
-                            removal: .move(edge: .bottom).combined(with: .opacity).animation(GentleLightning.Animation.gentle)
-                        ))
-                    }
-                }
+            // Rich Text editor
+            RichTextEditor.forNotes(
+                text: $editedText,
+                context: richTextContext
+            )
+            .padding(.horizontal, 16)
+            .focused($isTextFocused)
+            .onChange(of: editedText) { newValue in
+                updateContent(newValue.string)
             }
             
             Divider()
@@ -119,10 +76,43 @@ struct NoteEditor: View {
         }
         // .navigationTitle("Edit Note")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button(action: { dismiss() }) {
+                    Image(systemName: GentleLightning.Icons.navigationBack)
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(.black)
+                }
+            }
+            
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button("Options") { showingOptions = true }
-                    .font(.system(size: 14))
+                Button(action: { showingOptions = true }) {
+                    VStack(spacing: 2) {
+                        Circle()
+                            .fill(Color.black)
+                            .frame(width: 3, height: 3)
+                        Circle()
+                            .fill(Color.black)
+                            .frame(width: 3, height: 3)
+                        Circle()
+                            .fill(Color.black)
+                            .frame(width: 3, height: 3)
+                    }
+                    .frame(width: 20, height: 20)
+                }
+            }
+            
+            // Formatting toolbar above keyboard
+            ToolbarItemGroup(placement: .keyboard) {
+                RichFormattingToolbar(
+                    context: richTextContext,
+                    showingFormatting: $showingFormatting
+                )
+                .transition(.asymmetric(
+                    insertion: .move(edge: .bottom).combined(with: .opacity),
+                    removal: .move(edge: .bottom).combined(with: .opacity)
+                ))
             }
         }
         .confirmationDialog("Note Options", isPresented: $showingOptions) {
@@ -139,7 +129,7 @@ struct NoteEditor: View {
             Button("Cancel", role: .cancel) { }
         }
         .sheet(isPresented: $showingFormatting) {
-            FormattingSheet(text: $editedText)
+            RichFormattingSheet(context: richTextContext)
         }
         .sheet(isPresented: $showingCategoryManager) {
             CategoryManagerView(
@@ -226,57 +216,102 @@ struct NoteEditor: View {
     }
 }
 
-// MARK: - Formatting Toolbar
-struct FormattingToolbar: View {
-    @Binding var text: String
+// MARK: - Rich Formatting Toolbar
+struct RichFormattingToolbar: View {
+    @ObservedObject var context: RichTextContext
     @Binding var showingFormatting: Bool
     
     var body: some View {
-        HStack(spacing: 16) {
-            // Format button (like B7U in your screenshot)
-            Button(action: { showingFormatting.toggle() }) {
-                HStack(spacing: 2) {
-                    Text("B")
-                        .font(.system(size: 16, weight: .bold))
-                    Text("7")
-                        .font(.system(size: 14))
-                        .underline()
-                    Text("U")
-                        .font(.system(size: 16))
-                        .underline()
-                }
-                .foregroundColor(GentleLightning.Colors.accentNeutral)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(GentleLightning.Colors.surface)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .stroke(GentleLightning.Colors.textSecondary.opacity(0.2), lineWidth: 1)
-                        )
-                )
+        HStack(spacing: 8) {
+            // Bold button
+            Button(action: { context.toggleBold() }) {
+                Text("B")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(context.isBoldActive ? .blue : .primary)
+                    .frame(width: 40, height: 32)
+                    .background(context.isBoldActive ? Color.blue.opacity(0.1) : Color.clear)
+                    .cornerRadius(6)
+            }
+            
+            // Italic button
+            Button(action: { context.toggleItalic() }) {
+                Text("I")
+                    .font(.system(size: 16, weight: .medium))
+                    .italic()
+                    .foregroundColor(context.isItalicActive ? .blue : .primary)
+                    .frame(width: 40, height: 32)
+                    .background(context.isItalicActive ? Color.blue.opacity(0.1) : Color.clear)
+                    .cornerRadius(6)
+            }
+            
+            // Strikethrough button
+            Button(action: { context.toggleStrikethrough() }) {
+                Text("S")
+                    .font(.system(size: 16, weight: .medium))
+                    .strikethrough()
+                    .foregroundColor(context.isStrikethroughActive ? .blue : .primary)
+                    .frame(width: 40, height: 32)
+                    .background(context.isStrikethroughActive ? Color.blue.opacity(0.1) : Color.clear)
+                    .cornerRadius(6)
+            }
+            
+            // Code button
+            Button(action: { context.toggleCodeBlock() }) {
+                Text("</>")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(context.isCodeBlockActive ? .blue : .primary)
+                    .frame(width: 40, height: 32)
+                    .background(context.isCodeBlockActive ? Color.blue.opacity(0.1) : Color.clear)
+                    .cornerRadius(6)
+            }
+            
+            // List button
+            Button(action: { context.toggleBulletList() }) {
+                Image(systemName: GentleLightning.Icons.formatList)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(context.isBulletListActive ? .blue : .primary)
+                    .frame(width: 40, height: 32)
+                    .background(context.isBulletListActive ? Color.blue.opacity(0.1) : Color.clear)
+                    .cornerRadius(6)
+            }
+            
+            // Checkbox button
+            Button(action: { context.toggleCheckbox() }) {
+                Image(systemName: GentleLightning.Icons.formatChecklist)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(context.isCheckboxActive ? .blue : .primary)
+                    .frame(width: 40, height: 32)
+                    .background(context.isCheckboxActive ? Color.blue.opacity(0.1) : Color.clear)
+                    .cornerRadius(6)
             }
             
             Spacer()
             
-            // Done button
-            Button("Done") {
-                // Dismiss keyboard
-                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            // More formats button (chevron down)
+            Button(action: { showingFormatting.toggle() }) {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.primary)
+                    .frame(width: 40, height: 32)
+                    .background(Color.clear)
             }
-            .foregroundColor(GentleLightning.Colors.accentNeutral)
         }
         .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(
+            Rectangle()
+                .fill(Color(UIColor.systemBackground))
+                .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: -1)
+        )
         .sheet(isPresented: $showingFormatting) {
-            FormattingSheet(text: $text)
+            RichFormattingSheet(context: context)
         }
     }
 }
 
-// MARK: - Formatting Sheet
-struct FormattingSheet: View {
-    @Binding var text: String
+// MARK: - Rich Formatting Sheet
+struct RichFormattingSheet: View {
+    @ObservedObject var context: RichTextContext
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
@@ -288,18 +323,17 @@ struct FormattingSheet: View {
                     .padding(.top, 20)
                 
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 16) {
-                    FormatButton(title: "Bold", symbol: "bold", action: { applyFormat("**", "**") })
-                    FormatButton(title: "Italic", symbol: "italic", action: { applyFormat("*", "*") })
-                    FormatButton(title: "Underline", symbol: "underline", action: { applyFormat("<u>", "</u>") })
-                    FormatButton(title: "Strikethrough", symbol: "strikethrough", action: { applyFormat("~~", "~~") })
-                    FormatButton(title: "Code", symbol: "chevron.left.forwardslash.chevron.right", action: { applyFormat("`", "`") })
-                    FormatButton(title: "Quote", symbol: "quote.bubble", action: { applyFormat("> ", "") })
-                    FormatButton(title: "Bullet", symbol: "list.bullet", action: { applyFormat("• ", "") })
-                    FormatButton(title: "Number", symbol: "list.number", action: { applyFormat("1. ", "") })
-                    FormatButton(title: "Header 1", symbol: "textformat.size.larger", action: { applyFormat("# ", "") })
-                    FormatButton(title: "Header 2", symbol: "textformat.size", action: { applyFormat("## ", "") })
-                    FormatButton(title: "Link", symbol: "link", action: { applyFormat("[", "](url)") })
-                    FormatButton(title: "Highlight", symbol: "highlighter", action: { applyFormat("==", "==") })
+                    RichFormatButton(title: "Bold", symbol: GentleLightning.Icons.formatBold, action: { context.toggleBold() }, isActive: context.isBoldActive)
+                    RichFormatButton(title: "Italic", symbol: GentleLightning.Icons.formatItalic, action: { context.toggleItalic() }, isActive: context.isItalicActive)
+                    RichFormatButton(title: "Underline", symbol: "underline", action: { context.toggleUnderline() }, isActive: context.isUnderlineActive)
+                    RichFormatButton(title: "Strikethrough", symbol: GentleLightning.Icons.formatStrikethrough, action: { context.toggleStrikethrough() }, isActive: context.isStrikethroughActive)
+                    RichFormatButton(title: "Code Block", symbol: GentleLightning.Icons.formatCode, action: { context.toggleCodeBlock() }, isActive: context.isCodeBlockActive)
+                    RichFormatButton(title: "Bullet List", symbol: GentleLightning.Icons.formatList, action: { context.toggleBulletList() }, isActive: context.isBulletListActive)
+                    RichFormatButton(title: "Checkbox", symbol: GentleLightning.Icons.formatChecklist, action: { context.toggleCheckbox() }, isActive: context.isCheckboxActive)
+                    RichFormatButton(title: "Indent In", symbol: "increase.indent", action: { context.indentIn() }, isActive: false)
+                    RichFormatButton(title: "Indent Out", symbol: "decrease.indent", action: { context.indentOut() }, isActive: false)
+                    RichFormatButton(title: "Undo", symbol: "arrow.uturn.left", action: { context.undo() }, isActive: false)
+                    RichFormatButton(title: "Redo", symbol: "arrow.uturn.right", action: { context.redo() }, isActive: false)
                 }
                 .padding(.horizontal, 20)
                 
@@ -316,38 +350,34 @@ struct FormattingSheet: View {
         }
         .presentationDetents([.medium, .large])
     }
-    
-    private func applyFormat(_ prefix: String, _ suffix: String) {
-        text += prefix + "text" + suffix
-        dismiss()
-    }
 }
 
-// MARK: - Format Button
-struct FormatButton: View {
+// MARK: - Rich Format Button
+struct RichFormatButton: View {
     let title: String
     let symbol: String
     let action: () -> Void
+    let isActive: Bool
     
     var body: some View {
         Button(action: action) {
             VStack(spacing: 8) {
                 Image(systemName: symbol)
                     .font(.system(size: 24))
-                    .foregroundColor(GentleLightning.Colors.accentNeutral)
+                    .foregroundColor(isActive ? .blue : GentleLightning.Colors.accentNeutral)
                 
                 Text(title)
                     .font(GentleLightning.Typography.caption)
-                    .foregroundColor(GentleLightning.Colors.textSecondary)
+                    .foregroundColor(isActive ? .blue : GentleLightning.Colors.textSecondary)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 80)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(GentleLightning.Colors.surface)
+                    .fill(isActive ? Color.blue.opacity(0.1) : GentleLightning.Colors.surface)
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
-                            .stroke(GentleLightning.Colors.textSecondary.opacity(0.2), lineWidth: 1)
+                            .stroke(isActive ? Color.blue : GentleLightning.Colors.textSecondary.opacity(0.2), lineWidth: isActive ? 2 : 1)
                     )
             )
         }
@@ -371,7 +401,8 @@ struct CategoryManagerView: View {
     @State private var errorMessage: String?
     
     var body: some View {
-        VStack(spacing: 0) {
+        NavigationView {
+            VStack(spacing: 0) {
             if showingCreateForm {
                 // Create Tag Form
                 CreateTagInlineView(
@@ -421,7 +452,7 @@ struct CategoryManagerView: View {
                                 showingCreateForm = true 
                             }) {
                                 HStack {
-                                    Image(systemName: "plus.circle.fill")
+                                    Image(systemName: GentleLightning.Icons.add)
                                         .font(.system(size: 18))
                                     Text("Create New Tag")
                                         .font(GentleLightning.Typography.body)
@@ -451,14 +482,14 @@ struct CategoryManagerView: View {
                     
                     Spacer()
                     
-                    // Create Category Button
+                    // Create Tag Button
                     if userCategories.count < 5 {
                         Button(action: { 
                             loadAvailableColors()
                             showingCreateForm = true 
                         }) {
                             HStack {
-                                Image(systemName: "plus.circle.fill")
+                                Image(systemName: GentleLightning.Icons.add)
                                     .font(.system(size: 18))
                                 Text("Create New Tag")
                                     .font(GentleLightning.Typography.body)
@@ -491,6 +522,7 @@ struct CategoryManagerView: View {
                         .foregroundColor(.black)
                 }
             }
+        }
     }
     
     private func toggleCategory(_ category: Category) {
@@ -607,13 +639,9 @@ struct CreateTagInlineView: View {
             // Back button and Header
             HStack {
                 Button(action: onCancel) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 16, weight: .medium))
-                        Text("Back")
-                            .font(GentleLightning.Typography.body)
-                    }
-                    .foregroundColor(GentleLightning.Colors.accentNeutral)
+                    Image(systemName: GentleLightning.Icons.navigationBack)
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(.black)
                 }
                 
                 Spacer()
@@ -700,6 +728,87 @@ struct CreateTagInlineView: View {
             .disabled(categoryName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || selectedColorKey.isEmpty)
             .padding(.horizontal, 20)
             .padding(.bottom, 20)
+        }
+    }
+}
+
+// MARK: - Formattable Text Editor
+struct FormattableTextEditor: UIViewRepresentable {
+    @Binding var text: String
+    
+    func makeUIView(context: Context) -> UITextView {
+        let textView = UITextView()
+        textView.text = text
+        textView.font = UIFont(name: "SpaceGrotesk-Regular", size: 19) ?? UIFont.systemFont(ofSize: 19)
+        textView.backgroundColor = .clear
+        textView.isEditable = true
+        textView.isSelectable = true
+        textView.delegate = context.coordinator
+        
+        // Better text view setup for formatting
+        textView.allowsEditingTextAttributes = true
+        textView.autocorrectionType = .yes
+        textView.autocapitalizationType = .sentences
+        textView.spellCheckingType = .yes
+        textView.smartQuotesType = .yes
+        textView.smartDashesType = .yes
+        textView.textContainerInset = UIEdgeInsets(top: 8, left: 0, bottom: 8, right: 0)
+        
+        // Register with the text view manager
+        TextViewManager.shared.setCurrentTextView(textView)
+        
+        return textView
+    }
+    
+    func updateUIView(_ uiView: UITextView, context: Context) {
+        // Only update text if it's different to avoid cursor jumps
+        if uiView.text != text {
+            let selectedRange = uiView.selectedRange
+            uiView.text = text
+            
+            // Restore cursor position safely
+            let textLength = text.count
+            let safeLocation = max(0, min(selectedRange.location, textLength))
+            let remainingLength = textLength - safeLocation
+            let safeLength = max(0, min(selectedRange.length, remainingLength))
+            
+            let safeRange = NSRange(location: safeLocation, length: safeLength)
+            uiView.selectedRange = safeRange
+        }
+        
+        
+        // Ensure this text view is always registered as the current one
+        TextViewManager.shared.setCurrentTextView(uiView)
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject, UITextViewDelegate {
+        let parent: FormattableTextEditor
+        
+        init(_ parent: FormattableTextEditor) {
+            self.parent = parent
+        }
+        
+        func textViewDidChange(_ textView: UITextView) {
+            parent.text = textView.text
+        }
+        
+        func textViewDidBeginEditing(_ textView: UITextView) {
+            // Update the text view manager when editing begins
+            TextViewManager.shared.setCurrentTextView(textView)
+            print("📝 FormattableTextEditor: textViewDidBeginEditing")
+        }
+        
+        func textViewDidEndEditing(_ textView: UITextView) {
+            print("📝 FormattableTextEditor: textViewDidEndEditing")
+        }
+        
+        func textViewShouldBeginEditing(_ textView: UITextView) -> Bool {
+            print("📝 FormattableTextEditor: textViewShouldBeginEditing")
+            return true
         }
     }
 }

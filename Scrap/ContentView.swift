@@ -8,6 +8,11 @@ import Speech
 import AVFoundation
 import FirebaseAuth
 
+// Dependencies needed for NoteEditor - ensure proper compilation order
+// This file requires: SparkServices.swift, NoteEditor.swift, SparkModels.swift
+
+// Ensure NoteEditor is accessible - workaround for target membership issues
+
 // MARK: - Search Result Model (Shared)
 struct SearchResult: Identifiable {
     let id = UUID()
@@ -323,6 +328,40 @@ struct GentleLightning {
         }
     }
     
+    struct Icons {
+        // MARK: - Navigation Icons
+        static let navigationBack = "chevron.left"
+        static let navigationOptions = "ellipsis"
+        static let navigationOptionsVertical = "ellipsis"
+        static let navigationMore = "ellipsis.circle"
+        static let navigationClose = "xmark"
+        
+        // MARK: - Action Icons
+        static let share = "square.and.arrow.up"
+        static let delete = "trash"
+        static let edit = "pencil"
+        static let add = "plus"
+        static let search = "magnifyingglass"
+        
+        // MARK: - Formatting Icons
+        static let formatBold = "bold"
+        static let formatItalic = "italic"
+        static let formatStrikethrough = "strikethrough"
+        static let formatCode = "chevron.left.forwardslash.chevron.right"
+        static let formatList = "list.bullet"
+        static let formatChecklist = "checklist"
+        static let formatQuote = "quote.bubble"
+        static let formatHeader = "textformat.size.larger"
+        static let formatLink = "link"
+        static let formatHighlight = "highlighter"
+        
+        // MARK: - Status Icons
+        static let success = "checkmark.circle.fill"
+        static let error = "exclamationmark.triangle.fill"
+        static let warning = "exclamationmark.circle.fill"
+        static let info = "info.circle.fill"
+    }
+    
     struct Animation {
         static let gentle = SwiftUI.Animation.easeInOut(duration: 0.4)
         static let elastic = SwiftUI.Animation.spring(response: 0.3, dampingFraction: 0.6)
@@ -470,13 +509,22 @@ class FirebaseDataManager: ObservableObject {
         print("📝 Creating item from NSAttributedString with \(attributedText.length) characters")
         
         // Convert attributed text to RTF data for storage using trait preservation
-        let rtfData: Data? = NavigationNoteEditView.attributedStringToData(attributedText)
+        var rtfData: Data? = nil
+        do {
+            let rtfCompatibleString = SparkItem.prepareForRTFSave(attributedText)
+            rtfData = try rtfCompatibleString.data(
+                from: NSRange(location: 0, length: rtfCompatibleString.length),
+                documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
+            )
+        } catch {
+            print("❌ Failed to create RTF data: \(error)")
+        }
         
         // Extract plain text for display and search
         let plainText = attributedText.string
         
         // Save to Firebase with AI-generated title first, then add to list
-        Task {
+        Task { [rtfData] in
             do {
                 print("📋 DataManager: Starting to save formatted note: '\(plainText)' type: '\(creationType)'")
                 
@@ -1384,172 +1432,147 @@ struct ContentView: View {
     @State private var displayedItemsCount = 10
     private let itemsPerPage = 10
     
-    var body: some View {
-        NavigationStack(path: $navigationPath) {
-        ZStack {
-            // Main content
-            VStack(spacing: 0) {
-                // Header with Spark title and settings
-                HStack {
-                    Spacer()
-                    
-                    Text("Scrap")
-                        .font(.custom("SharpGrotesk-Bold-Regular", size: 48))
-                        .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
-                    
-                    Spacer()
+    private var headerView: some View {
+        HStack {
+            Spacer()
+            
+            Text("Scrap")
+                .font(.custom("SharpGrotesk-Bold-Regular", size: 48))
+                .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+            
+            Spacer()
+        }
+        .padding(.horizontal, GentleLightning.Layout.Padding.xl)
+        .padding(.top, GentleLightning.Layout.Padding.xl)
+        .padding(.bottom, GentleLightning.Layout.Padding.lg)
+    }
+    
+    @ViewBuilder
+    private var notesSection: some View {
+        if !dataManager.items.isEmpty {
+            // Smaller spacer below
+            Spacer()
+                .frame(maxHeight: 20)
+            
+            notesSectionHeader
+            notesListContent
+        }
+    }
+    
+    @ViewBuilder
+    private var notesListContent: some View {
+        // Notes list or empty state
+        if hasSearched {
+            searchResultsView
+        } else {
+            mainNotesListView
+        }
+    }
+    
+    @ViewBuilder
+    private var searchResultsView: some View {
+        // Show search results
+        if isSearching {
+            VStack(spacing: 8) {
+                ProgressView()
+                    .scaleEffect(0.8)
+                Text("Searching...")
+                    .font(GentleLightning.Typography.caption)
+                    .foregroundColor(GentleLightning.Colors.textSecondary)
+            }
+            .padding(.top, 20)
+        } else if searchResults.isEmpty && !searchText.isEmpty {
+            // No search results found
+            VStack(spacing: 12) {
+                Text("No results found")
+                    .font(GentleLightning.Typography.subtitle)
+                    .foregroundColor(GentleLightning.Colors.textSecondary)
+                
+                Text("Try a different search term")
+                    .font(GentleLightning.Typography.secondary)
+                    .foregroundColor(GentleLightning.Colors.textSecondary)
+            }
+            .padding(.top, 20)
+        } else {
+            // Search results list
+            ScrollView {
+                LazyVStack(spacing: 8) {
+                    ForEach(searchResults, id: \.firebaseId) { result in
+                        SearchResultRow(
+                            result: result,
+                            onTap: {
+                                handleSearchResultTap(result)
+                            }
+                        )
+                        .padding(.horizontal, GentleLightning.Layout.Padding.xl)
+                    }
                 }
-                .padding(.horizontal, GentleLightning.Layout.Padding.xl)
-                .padding(.top, GentleLightning.Layout.Padding.xl)
-                .padding(.bottom, GentleLightning.Layout.Padding.lg)
+                .padding(.top, 8)
+            }
+            .transition(.asymmetric(
+                insertion: .move(edge: .top).combined(with: .opacity),
+                removal: .move(edge: .top).combined(with: .opacity)
+            ))
+            .animation(GentleLightning.Animation.swoosh, value: searchResults.count)
+        }
+    }
+    
+    @ViewBuilder
+    private var mainNotesListView: some View {
+        // Normal notes list or empty state
+        if dataManager.items.isEmpty {
+            // Empty state
+            VStack(spacing: 16) {
+                Text("No notes yet")
+                    .font(GentleLightning.Typography.title)
+                    .foregroundColor(GentleLightning.Colors.textSecondary)
+                
+                Text("Start by typing above or using voice recording")
+                    .font(GentleLightning.Typography.secondary)
+                    .foregroundColor(GentleLightning.Colors.textSecondary)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.top, 40)
+        } else {
+            // Notes list
+            ScrollView {
+                LazyVStack(spacing: 12) {
+                    ForEach(Array(dataManager.items.prefix(displayedItemsCount).enumerated()), id: \.element.id) { index, item in
+                        ItemRowSimple(item: item, dataManager: dataManager) {
+                            navigationPath.append(item)
+                        }
+                        .padding(.horizontal, GentleLightning.Layout.Padding.xl)
+                        .onAppear {
+                            // Load more items when approaching the end
+                            if index == displayedItemsCount - 3 {
+                                loadMoreItems()
+                            }
+                        }
+                    }
+                }
+                .padding(.top, 8)
+            }
+            .onTapGesture {
+                // Also dismiss keyboard when tapping in scroll area
+                if isInputFieldFocused {
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                }
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var mainContent: some View {
+        ZStack {
+            VStack(spacing: 0) {
+                headerView
                 
                 // Large spacer to push input field lower
                 Spacer()
                 Spacer()
                 
-                // Input Field - positioned lower on screen
-                InputField(text: $viewModel.inputText, 
-                          placeholder: viewModel.placeholderText,
-                          dataManager: dataManager,
-                          onCommit: {
-                    // No automatic saving - users must use the SAVE button
-                    // Just dismiss keyboard when pressing return
-                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                },
-                          isFieldFocused: $isInputFieldFocused)
-                .padding(.horizontal, GentleLightning.Layout.Padding.xl)
-                
-                // Only show My Notes header and search when there are notes to display
-                if !dataManager.items.isEmpty {
-                    // Smaller spacer below
-                    Spacer()
-                        .frame(maxHeight: 20)
-                    
-                    // My Notes header with search functionality overlay
-                    ZStack {
-                        // Base content: My Notes text and horizontal line
-                        HStack {
-                            Text("My Notes")
-                                .font(GentleLightning.Typography.caption)
-                                .foregroundColor(GentleLightning.Colors.textSecondary)
-                                .padding(.leading, GentleLightning.Layout.Padding.xl + GentleLightning.Layout.Padding.lg)
-                            
-                            Spacer()
-                        }
-                        .opacity(isSearchExpanded ? 0 : 1) // Hide when search is expanded
-                        .animation(GentleLightning.Animation.swoosh, value: isSearchExpanded)
-                        
-                        // Overlay: Search bar
-                        HStack {
-                            if isSearchExpanded {
-                                Spacer()
-                                    .frame(width: 36) // Match the trailing padding when expanded
-                            } else {
-                                Spacer()
-                            }
-                            SearchBarView(
-                                isExpanded: $isSearchExpanded,
-                                searchText: $searchText,
-                                searchResults: $searchResults,
-                                isSearching: $isSearching,
-                                searchTask: $searchTask,
-                                hasSearched: $hasSearched,
-                                isSearchFieldFocused: $isSearchFieldFocused,
-                                onResultTap: { result in
-                                    // Find the matching item in dataManager.items and navigate to it
-                                    if let item = dataManager.items.first(where: { $0.id == result.firebaseId }) {
-                                        navigationPath.append(item)
-                                        // Collapse search after navigation
-                                        withAnimation {
-                                            isSearchExpanded = false
-                                            searchText = ""
-                                            searchResults = []
-                                            hasSearched = false
-                                            searchTask?.cancel()
-                                            searchTask = nil
-                                        }
-                                    }
-                                },
-                                onSearch: performSearch,
-                                onReindex: triggerReindexing
-                            )
-                            .padding(.trailing, 36) // 20pt (outer) + 16pt (inner) to match microphone button center
-                        }
-                    }
-                    .padding(.top, 16)
-                    .padding(.bottom, 8)
-                }
-                
-                // Items List - scrollable content
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        if dataManager.items.isEmpty {
-                            EmptyStateView()
-                                .padding(.top, 20)
-                        } else if searchResults.isEmpty {
-                            // Only show notes list when not displaying search results
-                            let itemsToDisplay = Array(dataManager.items.prefix(displayedItemsCount))
-                            
-                            ForEach(itemsToDisplay) { item in
-                                ItemRowSimple(item: item, dataManager: dataManager) {
-                                    print("🎯 ContentView: Note tap detected - navigating to item.id = '\(item.id)'")
-                                    print("🎯 ContentView: item.content = '\(item.content)' (length: \(item.content.count))")
-                                    
-                                    AnalyticsManager.shared.trackNoteEditOpened(noteId: item.id)
-                                    
-                                    // Use navigation instead of sheets - bulletproof approach
-                                    navigationPath.append(item)
-                                    
-                                    print("✅ ContentView: Navigation pushed for item.id = '\(item.id)'")
-                                }
-                                .transition(.asymmetric(
-                                    insertion: .move(edge: .top).combined(with: .opacity).combined(with: .scale(scale: 0.8)),
-                                    removal: .move(edge: .leading).combined(with: .opacity)
-                                ))
-                                .animation(GentleLightning.Animation.elastic, value: item.id)
-                                .onAppear {
-                                    // Load more items when reaching the last item
-                                    if item.id == itemsToDisplay.last?.id && displayedItemsCount < dataManager.items.count {
-                                        loadMoreItems()
-                                    }
-                                }
-                            }
-                            
-                            // Loading indicator
-                            if displayedItemsCount < dataManager.items.count {
-                                HStack {
-                                    Spacer()
-                                    ProgressView()
-                                        .progressViewStyle(CircularProgressViewStyle())
-                                        .scaleEffect(0.8)
-                                    Spacer()
-                                }
-                                .padding(.vertical, 20)
-                                .onAppear {
-                                    loadMoreItems()
-                                }
-                            }
-                        }
-                    }
-                    .padding(.horizontal, GentleLightning.Layout.Padding.xl)
-                    .padding(.bottom, 120) // Extra padding for footer
-                }
-                .scrollDismissesKeyboard(.interactively)
-                .simultaneousGesture(
-                    DragGesture()
-                        .onChanged { gesture in
-                            // Dismiss keyboard immediately when scrolling starts  
-                            if abs(gesture.translation.height) > 10 && isInputFieldFocused {
-                                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                            }
-                        }
-                )
-                .onTapGesture {
-                    // Also dismiss keyboard when tapping in scroll area
-                    if isInputFieldFocused {
-                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                    }
-                }
+                inputFieldSection
+                itemsListSection
             }
             
             // Fixed footer at bottom - will be covered by keyboard
@@ -1577,18 +1600,188 @@ struct ContentView: View {
             }
             .ignoresSafeArea(.keyboard, edges: .bottom)
         }
-        .background(GentleLightning.Colors.background(isDark: themeManager.isDarkMode))
-        .contentShape(Rectangle()) // Make the entire area tappable for keyboard dismissal
-        .onTapGesture {
-            // Dismiss keyboard when tapping outside input area
+    }
+    
+    @ViewBuilder
+    private var inputFieldSection: some View {
+        // Input Field - positioned lower on screen
+        InputField(text: $viewModel.inputText, 
+                  placeholder: viewModel.placeholderText,
+                  dataManager: dataManager,
+                  onCommit: {
+            // No automatic saving - users must use the SAVE button
+            // Just dismiss keyboard when pressing return
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        },
+                  isFieldFocused: $isInputFieldFocused)
+        .padding(.horizontal, GentleLightning.Layout.Padding.xl)
+    }
+    
+    @ViewBuilder
+    private var notesSectionHeader: some View {
+        // My Notes header with search functionality overlay
+        ZStack {
+            // Base content: My Notes text and horizontal line
+            HStack {
+                Text("My Notes")
+                    .font(GentleLightning.Typography.caption)
+                    .foregroundColor(GentleLightning.Colors.textSecondary)
+                    .padding(.leading, GentleLightning.Layout.Padding.xl + GentleLightning.Layout.Padding.lg)
+                
+                Spacer()
+            }
+            .opacity(isSearchExpanded ? 0 : 1) // Hide when search is expanded
+            .animation(GentleLightning.Animation.swoosh, value: isSearchExpanded)
+            
+            // Overlay: Search bar
+            searchBarOverlay
         }
-        .navigationDestination(for: SparkItem.self) { item in
-            NoteEditor(item: item, dataManager: dataManager)
-                .onAppear {
-                    print("✅ Navigation NoteEditor: Successfully opened note with id = '\(item.id)'")
-                    print("✅ Navigation NoteEditor: Note content = '\(item.content)' (length: \(item.content.count))")
+        .padding(.top, 16)
+        .padding(.bottom, 8)
+    }
+    
+    @ViewBuilder
+    private var searchBarOverlay: some View {
+        HStack {
+            if isSearchExpanded {
+                Spacer()
+                    .frame(width: 36) // Match the trailing padding when expanded
+            } else {
+                Spacer()
+            }
+            SearchBarView(
+                isExpanded: $isSearchExpanded,
+                searchText: $searchText,
+                searchResults: $searchResults,
+                isSearching: $isSearching,
+                searchTask: $searchTask,
+                hasSearched: $hasSearched,
+                isSearchFieldFocused: $isSearchFieldFocused,
+                onResultTap: handleSearchResultTap,
+                onSearch: performSearch,
+                onReindex: triggerReindexing
+            )
+            .padding(.trailing, 36) // 20pt (outer) + 16pt (inner) to match microphone button center
+        }
+    }
+    
+    @ViewBuilder 
+    private var itemsListSection: some View {
+        // Items List - scrollable content with header
+        if !dataManager.items.isEmpty {
+            // Smaller spacer below
+            Spacer()
+                .frame(maxHeight: 20)
+            
+            notesSectionHeader
+        }
+        
+        ScrollView {
+            itemsListContent
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .simultaneousGesture(
+            DragGesture()
+                .onChanged { gesture in
+                    // Dismiss keyboard immediately when scrolling starts  
+                    if abs(gesture.translation.height) > 10 && isInputFieldFocused {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
                 }
+        )
+        .onTapGesture {
+            // Also dismiss keyboard when tapping in scroll area
+            if isInputFieldFocused {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
+        }
+        .buttonStyle(PlainButtonStyle())
+        .background(GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
+    }
+    
+    @ViewBuilder
+    private var itemsListContent: some View {
+        LazyVStack(spacing: 0) {
+            if dataManager.items.isEmpty {
+                EmptyStateView()
+                    .padding(.top, 20)
+            } else if hasSearched {
+                searchResultsView
+            } else {
+                mainNotesListContent
+            }
+        }
+        .padding(.horizontal, GentleLightning.Layout.Padding.xl)
+        .padding(.bottom, 120) // Extra padding for footer
+        .background(GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
+    }
+    
+    @ViewBuilder
+    private var mainNotesListContent: some View {
+        // Only show notes list when not displaying search results
+        let itemsToDisplay = Array(dataManager.items.prefix(displayedItemsCount))
+        
+        ForEach(itemsToDisplay) { item in
+            ItemRowSimple(item: item, dataManager: dataManager) {
+                print("🎯 ContentView: Note tap detected - navigating to item.id = '\(item.id)'")
+                print("🎯 ContentView: item.content = '\(item.content)' (length: \(item.content.count))")
+                
+                AnalyticsManager.shared.trackNoteEditOpened(noteId: item.id)
+                
+                // Use navigation instead of sheets - bulletproof approach
+                navigationPath.append(item)
+                
+                print("✅ ContentView: Navigation pushed for item.id = '\(item.id)'")
+            }
+            .transition(.asymmetric(
+                insertion: .move(edge: .top).combined(with: .opacity).combined(with: .scale(scale: 0.8)),
+                removal: .move(edge: .leading).combined(with: .opacity)
+            ))
+            .animation(GentleLightning.Animation.elastic, value: item.id)
+            .onAppear {
+                // Load more items when reaching the last item
+                if item.id == dataManager.items.last?.id && displayedItemsCount < dataManager.items.count {
+                    withAnimation(GentleLightning.Animation.gentle) {
+                        displayedItemsCount = min(displayedItemsCount + 10, dataManager.items.count)
+                    }
+                }
+            }
+        }
+        
+        // Loading indicator
+        if displayedItemsCount < dataManager.items.count {
+            HStack {
+                Spacer()
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle())
+                    .scaleEffect(0.8)
+                Spacer()
+            }
+            .padding(.vertical, 20)
+            .onAppear {
+                loadMoreItems()
+            }
+        }
+    }
+
+    var body: some View {
+        NavigationStack(path: $navigationPath) {
+            ZStack {
+                mainContent
+            }
+            .background(GentleLightning.Colors.background(isDark: themeManager.isDarkMode))
+            .contentShape(Rectangle()) // Make the entire area tappable for keyboard dismissal
+            .onTapGesture {
+                // Dismiss keyboard when tapping outside input area
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
+            .navigationDestination(for: SparkItem.self) { item in
+                NoteEditor(item: item, dataManager: dataManager)
+                    .onAppear {
+                        print("✅ Navigation NoteEditor: Successfully opened note with id = '\(item.id)'")
+                        print("✅ Navigation NoteEditor: Note content = '\(item.content.count))")
+                    }
+            }
         }
         .sheet(isPresented: $showingAccountDrawer) {
             AccountDrawerView(isPresented: $showingAccountDrawer)
@@ -1598,7 +1791,6 @@ struct ContentView: View {
                     AnalyticsManager.shared.trackAccountDrawerClosed()
                 }
         }
-        } // NavigationStack
         .onAppear {
             // Initialize widget with current note count when app starts
             updateWidgetData(noteCount: dataManager.items.count)
@@ -1634,7 +1826,7 @@ struct ContentView: View {
             // Reset pagination when items change (new item added or deleted)
             displayedItemsCount = min(10, dataManager.items.count)
         }
-    }
+        } // NavigationStack
     
     private func loadMoreItems() {
         // Add a small delay to simulate loading
@@ -1646,28 +1838,28 @@ struct ContentView: View {
     }
     
     private func performSearch() {
-        guard !self.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            self.searchResults = []
-            self.hasSearched = false
+        guard !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            searchResults = []
+            hasSearched = false
             return
         }
         
-        self.isSearching = true
+        isSearching = true
         
         Task { @MainActor in
             do {
                 let results = try await VectorSearchService.shared.semanticSearch(
-                    query: self.searchText,
+                    query: searchText,
                     limit: 10
                 )
                 
-                self.searchResults = results
-                self.hasSearched = true
-                self.isSearching = false
+                searchResults = results
+                hasSearched = true
+                isSearching = false
             } catch {
                 print("Search failed: \(error)")
-                self.hasSearched = true
-                self.isSearching = false
+                hasSearched = true
+                isSearching = false
                 // Could show error state here
             }
         }
@@ -1678,7 +1870,7 @@ struct ContentView: View {
         
         Task {
             // Get all current items and convert to FirebaseNote format for reindexing
-            let firebaseNotes = self.dataManager.items.compactMap { item -> FirebaseNote? in
+            let firebaseNotes = dataManager.items.compactMap { item -> FirebaseNote? in
                 guard let firebaseId = item.firebaseId else { return nil }
                 
                 return FirebaseNote(
@@ -1709,6 +1901,22 @@ struct ContentView: View {
             await MainActor.run {
                 // Could show a toast or alert here
                 print("💡 ContentView: Reindexing and debugging finished - check console for results!")
+            }
+        }
+    }
+    
+    private func handleSearchResultTap(_ result: SearchResult) {
+        // Find the matching item in dataManager.items and navigate to it
+        if let item = dataManager.items.first(where: { $0.id == result.firebaseId }) {
+            navigationPath.append(item)
+            // Collapse search after navigation
+            withAnimation {
+                isSearchExpanded = false
+                searchText = ""
+                searchResults = []
+                hasSearched = false
+                searchTask?.cancel()
+                searchTask = nil
             }
         }
     }
@@ -1851,155 +2059,6 @@ struct FormattingToolbarView: View {
 
 // MARK: - Conditional SafeAreaInset Modifier
 
-    
-    
-    // MARK: - Save Functions
-    
-    @MainActor
-    private func saveContentToFirebase() async {
-        guard !isSavingContent else {
-            print("💾 Save already in progress, skipping")
-            return
-        }
-        
-        let trimmedContent = attributedText.string.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedContent.isEmpty else {
-            print("💾 Empty content, skipping save")
-            return
-        }
-        
-        isSavingContent = true
-        print("💾 Starting RTF-only save to Firebase...")
-        
-        // Always save as RTF - this is now our primary format
-        if let rtfData = NavigationNoteEditView.attributedStringToData(attributedText) {
-            print("💾 Saving RTF data: '\(attributedText.string.prefix(100))...' (RTF bytes: \(rtfData.count))")
-            
-            // Save RTF data directly without updating plain text
-            item.rtfData = rtfData
-            
-            if item.firebaseId != nil {
-                // Use the data manager's public method instead of accessing private firebaseManager
-                dataManager.updateItemWithRTF(item, rtfData: rtfData)
-                print("💾 RTF saved via data manager")
-            }
-            
-            AnalyticsManager.shared.trackNoteEditSaved(noteId: item.id, contentLength: attributedText.length)
-        } else {
-            print("❌ Failed to convert to RTF - this should not happen")
-        }
-        
-        print("💾 Save completed successfully")
-        isSavingContent = false
-    }
-    
-    private func saveImmediately() {
-        saveTimer?.invalidate()
-        Task { @MainActor in
-            await saveContentToFirebase()
-        }
-    }
-    
-    private func sanitizeTextContent(_ text: String) -> String {
-        guard !text.isEmpty else { return " " }
-        
-        var sanitized = text
-        sanitized = sanitized.replacingOccurrences(of: "\0", with: "")
-        sanitized = sanitized.replacingOccurrences(of: "\u{200B}", with: "")
-        sanitized = sanitized.replacingOccurrences(of: "\u{FEFF}", with: "")
-        sanitized = sanitized.replacingOccurrences(of: "\u{202E}", with: "")
-        
-        if sanitized.isEmpty || sanitized.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return " "
-        }
-        
-        let lines = sanitized.components(separatedBy: .newlines)
-        let sanitizedLines = lines.map { line in
-            line.count > 1000 ? String(line.prefix(1000)) + "..." : line
-        }
-        
-        return sanitizedLines.joined(separator: "\n")
-    }
-    
-    // MARK: - Formatting Actions
-    
-    private func toggleBold() {
-        formattingState.toggleTextFormat(.bold)
-        applyFormattingToSelection(format: .bold, isActive: formattingState.isBoldActive)
-    }
-    
-    private func toggleItalic() {
-        formattingState.toggleTextFormat(.italic)
-        applyFormattingToSelection(format: .italic, isActive: formattingState.isItalicActive)
-    }
-    
-    private func toggleUnderline() {
-        formattingState.toggleTextFormat(.underline)
-        applyFormattingToSelection(format: .underline, isActive: formattingState.isUnderlineActive)
-    }
-    
-    private func toggleStrikethrough() {
-        formattingState.toggleTextFormat(.strikethrough)
-        applyFormattingToSelection(format: .strikethrough, isActive: formattingState.isStrikethroughActive)
-    }
-    
-    private func toggleListMode() {
-        let newState = !formattingState.isListModeActive
-        formattingState.setBlockFormat(newState ? .bulletList : nil)
-        applyBlockFormatting(format: .bulletList, isActive: formattingState.isListModeActive)
-    }
-    
-    private func toggleCheckboxMode() {
-        let newState = !formattingState.isCheckboxModeActive
-        formattingState.setBlockFormat(newState ? .checkbox : nil)
-        applyBlockFormatting(format: .checkbox, isActive: formattingState.isCheckboxModeActive)
-    }
-    
-    // MARK: - Formatting Application
-    private func applyFormattingToSelection(format: TextFormat, isActive: Bool) {
-        // This function will trigger the RichTextEditor to apply formatting to selected text
-        // We'll send a notification to the RichTextEditor
-        NotificationCenter.default.post(
-            name: .applyFormatting,
-            object: nil,
-            userInfo: ["format": format, "isActive": isActive]
-        )
-        print("📝 Applying \(format) formatting - active: \(isActive)")
-    }
-    
-    private func applyBlockFormatting(format: BlockFormat, isActive: Bool) {
-        // This function will trigger the RichTextEditor to apply block formatting to current line(s)
-        // We'll send a notification to the RichTextEditor
-        NotificationCenter.default.post(
-            name: .applyBlockFormatting,
-            object: nil,
-            userInfo: ["format": format, "isActive": isActive]
-        )
-        print("📝 Applying \(format) block formatting - active: \(isActive)")
-    }
-    
-    private func performUndo() {
-        // Send undo notification to RichTextEditor
-        NotificationCenter.default.post(
-            name: .performUndo,
-            object: nil
-        )
-    }
-    
-    private func performRedo() {
-        // Send redo notification to RichTextEditor
-        NotificationCenter.default.post(
-            name: .performRedo,
-            object: nil
-        )
-    }
-    
-    private func hideKeyboard() {
-        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-    }
-
-
-// MARK: - Formatting Toggle Button
 struct FormattingToggleButton: View {
     let icon: String
     let isActive: Bool
@@ -2027,86 +2086,6 @@ struct FormattingToggleButton: View {
     }
 }
 
-// MARK: - Formatting Sheet
-struct FormattingSheet: View {
-    @Binding var text: String
-    @Environment(\.dismiss) private var dismiss
-    
-    var body: some View {
-        NavigationView {
-            VStack(spacing: 20) {
-                Text("Text Formatting")
-                    .font(GentleLightning.Typography.title)
-                    .foregroundColor(GentleLightning.Colors.textPrimary)
-                    .padding(.top, 20)
-                
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 16) {
-                    FormatButton(title: "Bold", symbol: "bold", action: { applyFormat("**", "**") })
-                    FormatButton(title: "Italic", symbol: "italic", action: { applyFormat("*", "*") })
-                    FormatButton(title: "Underline", symbol: "underline", action: { applyFormat("<u>", "</u>") })
-                    FormatButton(title: "Strikethrough", symbol: "strikethrough", action: { applyFormat("~~", "~~") })
-                    FormatButton(title: "Code", symbol: "chevron.left.forwardslash.chevron.right", action: { applyFormat("`", "`") })
-                    FormatButton(title: "Quote", symbol: "quote.bubble", action: { applyFormat("> ", "") })
-                    FormatButton(title: "Bullet", symbol: "list.bullet", action: { applyFormat("• ", "") })
-                    FormatButton(title: "Number", symbol: "list.number", action: { applyFormat("1. ", "") })
-                    FormatButton(title: "Header 1", symbol: "textformat.size.larger", action: { applyFormat("# ", "") })
-                    FormatButton(title: "Header 2", symbol: "textformat.size", action: { applyFormat("## ", "") })
-                    FormatButton(title: "Link", symbol: "link", action: { applyFormat("[", "](url)") })
-                    FormatButton(title: "Highlight", symbol: "highlighter", action: { applyFormat("==", "==") })
-                }
-                .padding(.horizontal, 20)
-                
-                Spacer()
-            }
-            .navigationTitle("Formatting")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") { dismiss() }
-                        .foregroundColor(GentleLightning.Colors.accentNeutral)
-                }
-            }
-        }
-        .presentationDetents([.medium, .large])
-    }
-    
-    private func applyFormat(_ prefix: String, _ suffix: String) {
-        text += prefix + "text" + suffix
-        dismiss()
-    }
-}
-
-// MARK: - Format Button
-struct FormatButton: View {
-    let title: String
-    let symbol: String
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 8) {
-                Image(systemName: symbol)
-                    .font(.system(size: 24))
-                    .foregroundColor(GentleLightning.Colors.accentNeutral)
-                
-                Text(title)
-                    .font(GentleLightning.Typography.caption)
-                    .foregroundColor(GentleLightning.Colors.textSecondary)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 80)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(GentleLightning.Colors.surface)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(GentleLightning.Colors.textSecondary.opacity(0.2), lineWidth: 1)
-                    )
-            )
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-}
 
 // MARK: - Search Bar View
 struct SearchBarView: View {
