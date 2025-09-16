@@ -18,6 +18,17 @@ service cloud.firestore {
         && request.auth.uid == request.resource.data.userId;
     }
     
+    // Security rules for archived notes collection
+    match /notes_archived/{noteId} {
+      // Only allow writes for archiving - users can only archive their own notes
+      allow create: if request.auth != null 
+        && request.auth.uid == request.resource.data.userId
+        && validateArchivedNoteData(request.resource.data);
+      
+      // No read or update access from frontend - archives are storage-only
+      allow read, update, delete: if false;
+    }
+    
     // Security rules for user-specific categories subcollection
     match /users/{userId}/categories/{categoryId} {
       // Users can only access their own categories
@@ -67,4 +78,21 @@ function validateCategoryData(data) {
     && data.created_at is timestamp
     && data.usageCount is number
     && data.usageCount >= 0;
+}
+
+// Validate archived note data structure
+function validateArchivedNoteData(data) {
+  return data.keys().hasAll(['userId', 'content', 'isTask', 'categories', 'createdAt', 'updatedAt', 'creationType', 'archivedAt', 'originalId'])
+    && data.userId is string
+    && data.content is string
+    && data.content.size() <= 10000  // Max 10k characters
+    && data.isTask is bool
+    && data.categories is list
+    && data.categories.size() <= 10  // Max 10 categories
+    && data.createdAt is timestamp
+    && data.updatedAt is timestamp
+    && data.creationType is string
+    && data.creationType in ['voice', 'text']
+    && data.archivedAt is timestamp
+    && data.originalId is string;
 }

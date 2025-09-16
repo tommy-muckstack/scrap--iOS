@@ -31,6 +31,11 @@ struct ScrapApp: App {
     init() {
         print("ScrapApp: Initializing app...")
         
+        // Enable CoreGraphics debugging for NaN error tracking
+        #if DEBUG
+        CoreGraphicsDebugger.enableDebugMode()
+        #endif
+        
         // Initialize Firebase
         FirebaseApp.configure()
         print("ScrapApp: Firebase configured")

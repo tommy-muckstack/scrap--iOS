@@ -475,7 +475,27 @@ class FirebaseManager: ObservableObject {
     }
     
     func deleteNote(noteId: String) async throws {
-        try await db.collection("notes").document(noteId).delete()
+        let noteRef = db.collection("notes").document(noteId)
+        
+        // First, get the note data before deleting
+        let noteSnapshot = try await noteRef.getDocument()
+        guard let noteData = noteSnapshot.data() else {
+            print("⚠️ FirebaseManager: Note \(noteId) not found, cannot archive")
+            throw NSError(domain: "FirebaseManager", code: 404, userInfo: [NSLocalizedDescriptionKey: "Note not found"])
+        }
+        
+        // Create archived version with additional metadata
+        var archivedData = noteData
+        archivedData["archivedAt"] = FieldValue.serverTimestamp()
+        archivedData["originalId"] = noteId
+        
+        // Copy note to archived collection
+        try await db.collection("notes_archived").document(noteId).setData(archivedData)
+        print("✅ FirebaseManager: Note \(noteId) copied to archives")
+        
+        // Now delete from original collection
+        try await noteRef.delete()
+        print("✅ FirebaseManager: Note \(noteId) deleted from notes collection")
         
         // Remove from vector search index (async, don't block delete)
         Task {
@@ -487,7 +507,7 @@ class FirebaseManager: ObservableObject {
         }
         
         // Track analytics
-        AnalyticsManager.shared.trackItemDeleted(isTask: false) // We don't have task info here
+        AnalyticsManager.shared.trackItemDeleted(isTask: noteData["isTask"] as? Bool ?? false)
     }
     
     func toggleNoteCompletion(noteId: String, isCompleted: Bool) async throws {

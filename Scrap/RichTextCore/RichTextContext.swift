@@ -39,11 +39,36 @@ public class RichTextContext: ObservableObject {
     /// Whether text is currently being edited
     @Published public var isEditingText = false
     
-    /// The current font name
-    @Published public var fontName = "SpaceGrotesk-Regular"
+    /// The current font name (validated to prevent font loading issues)
+    @Published public var fontName = "SpaceGrotesk-Regular" {
+        didSet {
+            // Validate font name to ensure it's available
+            if fontName.isEmpty {
+                print("❌ RichTextContext: Empty fontName detected, reverting to SpaceGrotesk-Regular")
+                fontName = "SpaceGrotesk-Regular"
+            } else if UIFont(name: fontName, size: 16) == nil {
+                print("⚠️ RichTextContext: Font '\(fontName)' not available, reverting to SpaceGrotesk-Regular")
+                fontName = "SpaceGrotesk-Regular"
+            }
+        }
+    }
     
-    /// The current font size
-    @Published public var fontSize: CGFloat = 16
+    /// The current font size (validated to prevent NaN errors)
+    @Published public var fontSize: CGFloat = 16 {
+        didSet {
+            // Validate font size to prevent CoreGraphics NaN errors
+            if !fontSize.isFinite || fontSize.isNaN || fontSize <= 0 {
+                print("❌ RichTextContext: Invalid fontSize (\(fontSize)) detected, reverting to 16")
+                fontSize = 16.0
+            } else if fontSize < 8.0 {
+                print("⚠️ RichTextContext: fontSize (\(fontSize)) too small, clamping to 8.0")
+                fontSize = 8.0
+            } else if fontSize > 72.0 {
+                print("⚠️ RichTextContext: fontSize (\(fontSize)) too large, clamping to 72.0")
+                fontSize = 72.0
+            }
+        }
+    }
     
     // MARK: - Formatting State
     
@@ -230,8 +255,11 @@ public class RichTextContext: ObservableObject {
                 
                 // If the previous character has bold formatting, maintain it for typing
                 if let font = prevAttributes[.font] as? UIFont {
-                    let hadBold = font.fontDescriptor.symbolicTraits.contains(.traitBold) || 
-                                 font.fontName.contains("Bold")
+                    // Only consider text as bold if it has symbolic traits OR is explicitly SpaceGrotesk-Bold
+                    // (not just any font name containing "Bold")
+                    let hasTraitBold = font.fontDescriptor.symbolicTraits.contains(.traitBold)
+                    let isExplicitlyBold = font.fontName == "SpaceGrotesk-Bold" // Exact match only
+                    let hadBold = hasTraitBold || isExplicitlyBold
                     if hadBold && !self.isBoldActive {
                         if Thread.isMainThread {
                             self.isBoldActive = true
@@ -294,10 +322,13 @@ public class RichTextContext: ObservableObject {
     private func updateBoldState(from attributes: [NSAttributedString.Key: Any]) {
         let newBoldState: Bool
         if let font = attributes[.font] as? UIFont {
-            // Check both symbolic traits and font name patterns for bold detection
+            // Check symbolic traits and only specific bold font names to prevent false positives
             let hasTraitBold = font.fontDescriptor.symbolicTraits.contains(.traitBold)
-            let hasBoldName = font.fontName.contains("Bold") || font.fontName.contains("SemiBold") || font.fontName.contains("Heavy")
-            newBoldState = hasTraitBold || hasBoldName
+            // Only consider exact matches for SpaceGrotesk-Bold, not partial matches
+            let isExplicitlyBold = font.fontName == "SpaceGrotesk-Bold" || 
+                                 font.fontName == "SpaceGrotesk-SemiBold" ||
+                                 font.fontName == "SpaceGrotesk-Heavy"
+            newBoldState = hasTraitBold || isExplicitlyBold
         } else {
             newBoldState = false
         }
@@ -361,7 +392,7 @@ public class RichTextContext: ObservableObject {
         let bulletActive = trimmedLine.hasPrefix("•")
         
         // Check for checkbox formatting - Unicode checkboxes
-        var checkboxActive = trimmedLine.hasPrefix("○") || trimmedLine.hasPrefix("●")
+        var checkboxActive = trimmedLine.hasPrefix("☐") || trimmedLine.hasPrefix("☑")
         
         // Also check for Unicode checkboxes at the beginning of the line
         if !checkboxActive && attributedString.length > 0 {

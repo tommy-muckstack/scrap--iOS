@@ -37,6 +37,9 @@ public class RichTextCoordinator: NSObject {
     /// Prevents re-entrant calls during newline insertion
     private var isHandlingNewlineInsertion = false
     
+    /// Prevents checkbox cursor detection during checkbox toggling
+    private var isTogglingSelf = false
+    
     // MARK: - Initialization
     
     public init(
@@ -77,10 +80,8 @@ public class RichTextCoordinator: NSObject {
         // Update typing attributes based on context state
         updateTypingAttributes()
         
-        // Add tap gesture for checkbox interaction
-        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
-        tapGesture.delegate = self
-        textView.addGestureRecognizer(tapGesture)
+        // Tap gesture for checkbox interaction is added by RichTextEditor
+        // to avoid duplicate gesture recognizers that could conflict
     }
     
     private func setupContextObservation() {
@@ -249,8 +250,9 @@ public class RichTextCoordinator: NSObject {
             // For cursor position (no selection), check the current typing attributes
             // to determine if bold should be added or removed
             let currentFont = textView.typingAttributes[.font] as? UIFont ?? UIFont.systemFont(ofSize: 16)
+            // Use exact font name matching to prevent false positives
             let isBoldInTypingAttributes = currentFont.fontDescriptor.symbolicTraits.contains(.traitBold) || 
-                                         currentFont.fontName.contains("Bold")
+                                         currentFont.fontName == "SpaceGrotesk-Bold"
             shouldAddBold = !isBoldInTypingAttributes
         }
         
@@ -588,8 +590,8 @@ public class RichTextCoordinator: NSObject {
             
             // Count bullets and checkboxes
             let bulletCount = trimmedLine.components(separatedBy: "• ").count - 1
-            let checkboxCount = (trimmedLine.components(separatedBy: "○ ").count - 1) + 
-                               (trimmedLine.components(separatedBy: "● ").count - 1)
+            let checkboxCount = (trimmedLine.components(separatedBy: "☐ ").count - 1) + 
+                               (trimmedLine.components(separatedBy: "☑ ").count - 1)
             
             if bulletCount > 1 {
                 // Multiple bullets - clean up
@@ -619,8 +621,8 @@ public class RichTextCoordinator: NSObject {
     /// Clean up duplicate checkboxes on a line, keeping only one at the start
     private func cleanupDuplicateCheckboxes(_ line: String) -> String {
         // Remove all checkboxes but preserve spaces after content
-        var withoutCheckboxes = line.replacingOccurrences(of: "○ ", with: "")
-                                   .replacingOccurrences(of: "● ", with: "")
+        var withoutCheckboxes = line.replacingOccurrences(of: "☐ ", with: "")
+                                   .replacingOccurrences(of: "☑ ", with: "")
         
         // Only trim leading whitespace, preserve trailing and internal spaces
         while withoutCheckboxes.hasPrefix(" ") {
@@ -628,8 +630,13 @@ public class RichTextCoordinator: NSObject {
         }
         
         // Add single checkbox at start (preserve checked state if any were checked)
-        let hadCheckedBox = line.contains("● ")
-        return (hadCheckedBox ? "● " : "○ ") + withoutCheckboxes
+        let hadCheckedBox = line.contains("☑ ")
+        let checkboxString = createUnicodeCheckbox(isChecked: hadCheckedBox)
+        let spaceString = NSAttributedString(string: " ")
+        let checkboxWithSpace = NSMutableAttributedString()
+        checkboxWithSpace.append(checkboxString)
+        checkboxWithSpace.append(spaceString)
+        return checkboxWithSpace.string + withoutCheckboxes
     }
     
     private func applyCheckboxFormat(_ mutableText: NSMutableAttributedString, _ lineRange: NSRange, _ lineText: String) {
@@ -664,12 +671,12 @@ public class RichTextCoordinator: NSObject {
         let newCursorPosition: Int
         
         // Check if line already has a checkbox (prevent duplicates)
-        if trimmedLine.hasPrefix("○ ") || trimmedLine.hasPrefix("● ") {
+        if trimmedLine.hasPrefix("☐ ") || trimmedLine.hasPrefix("☑ ") {
             // Remove checkbox - cursor goes to start of text content
             mutableLineText = String(trimmedLine.dropFirst(2))
             newCursorPosition = lineRange.location + mutableLineText.count
             print("🔸 RichTextCoordinator: Removing checkbox from line")
-        } else if trimmedLine.hasPrefix("○") || trimmedLine.hasPrefix("●") {
+        } else if trimmedLine.hasPrefix("☐") || trimmedLine.hasPrefix("☑") {
             // Line starts with checkbox (but no space) - remove it completely but preserve trailing spaces
             var withoutCheckbox = String(trimmedLine.dropFirst(1))
             // Only trim leading whitespace, preserve trailing spaces
@@ -706,7 +713,7 @@ public class RichTextCoordinator: NSObject {
             updateBindingFromTextView()
             updateContextFromTextView()
             return
-        } else if !trimmedLine.contains("○") && !trimmedLine.contains("●") {
+        } else if !trimmedLine.contains("☐") && !trimmedLine.contains("☑") {
             // Add Unicode checkbox with space
             let checkboxString = createUnicodeCheckbox(isChecked: false)
             let spaceString = NSAttributedString(string: " ")
@@ -1299,7 +1306,10 @@ public class RichTextCoordinator: NSObject {
             // Update bold state
             if let font = attributes[.font] as? UIFont {
                 let hasTraitBold = font.fontDescriptor.symbolicTraits.contains(.traitBold)
-                let hasBoldName = font.fontName.contains("Bold") || font.fontName.contains("SemiBold") || font.fontName.contains("Heavy")
+                // Use exact font name matching to prevent false positives
+                let hasBoldName = font.fontName == "SpaceGrotesk-Bold" || 
+                                font.fontName == "SpaceGrotesk-SemiBold" || 
+                                font.fontName == "SpaceGrotesk-Heavy"
                 self.context.isBoldActive = hasTraitBold || hasBoldName
                 
                 // Update italic state
@@ -1330,7 +1340,7 @@ public class RichTextCoordinator: NSObject {
             let trimmedLine = lineText.trimmingCharacters(in: .whitespaces)
             
             self.context.isBulletListActive = trimmedLine.hasPrefix("•")
-            self.context.isCheckboxActive = trimmedLine.hasPrefix("○") || trimmedLine.hasPrefix("●")
+            self.context.isCheckboxActive = trimmedLine.hasPrefix("☐") || trimmedLine.hasPrefix("☑")
             
             print("🔄 updateNonCodeBlockFormattingState: Updated other states, preserved code block active state")
         }
@@ -1425,6 +1435,30 @@ public class RichTextCoordinator: NSObject {
         textView.typingAttributes = typingAttributes
     }
     
+    /// Reset typing attributes to normal formatting after removing checkboxes/bullets
+    /// This prevents formatting inheritance from surrounding text
+    private func resetTypingAttributesToNormal() {
+        // Get the base font for normal text
+        let baseFont = UIFont(name: context.fontName, size: safeFontSize(context.fontSize)) ?? UIFont.systemFont(ofSize: safeFontSize(context.fontSize))
+        
+        // Create clean typing attributes with normal formatting
+        var normalAttributes: [NSAttributedString.Key: Any] = [
+            .font: baseFont,
+            .foregroundColor: UIColor.label
+        ]
+        
+        // Remove any special formatting
+        normalAttributes.removeValue(forKey: .backgroundColor)
+        normalAttributes.removeValue(forKey: .paragraphStyle)
+        normalAttributes.removeValue(forKey: .underlineStyle)
+        normalAttributes.removeValue(forKey: .strikethroughStyle)
+        
+        // Apply the clean attributes
+        textView.typingAttributes = normalAttributes
+        
+        print("🔄 resetTypingAttributesToNormal: Reset typing attributes to normal formatting")
+    }
+    
     private func applyBoldToFont(_ font: UIFont) -> UIFont {
         let safeSize = safeFontSize(font.pointSize)
         // Use specific SpaceGrotesk-Bold font for bold formatting
@@ -1469,6 +1503,13 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         guard !isHandlingNewlineInsertion else { return }
         
         print("📍 textViewDidChangeSelection: Selection changed to \(textView.selectedRange)")
+        
+        // Disabled cursor-based checkbox detection due to over-triggering
+        // Rely on tap gesture recognition instead
+        // if !isTogglingSelf {
+        //     checkForCheckboxAtCursorPosition()
+        // }
+        
         updateContextFromTextView()
         updateTypingAttributes()
     }
@@ -1763,7 +1804,7 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         
         // Continue checkbox lists (handle both custom attachments and Unicode checkboxes)
         let hasCheckboxAtStart = checkForCheckboxAtLineStart(mutableText: NSMutableAttributedString(attributedString: textView.attributedText), lineRange: lineRange, lineText: lineText)
-        if hasCheckboxAtStart || trimmedLine.hasPrefix("○ ") || trimmedLine.hasPrefix("● ") {
+        if hasCheckboxAtStart || trimmedLine.hasPrefix("☐ ") || trimmedLine.hasPrefix("☑ ") {
             let remainingText = String(trimmedLine.dropFirst(2)).trimmingCharacters(in: .whitespaces)
             if remainingText.isEmpty {
                 // Empty checkbox - remove it
@@ -1866,6 +1907,9 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
                     // Position cursor where the marker was
                     textView.selectedRange = NSRange(location: markerPosition, length: 0)
                     
+                    // Reset typing attributes to prevent formatting inheritance after checkbox removal
+                    resetTypingAttributesToNormal()
+                    
                     updateBindingFromTextView()
                     updateContextFromTextView()
                     
@@ -1874,7 +1918,7 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
                 }
             }
             // Check for Unicode checkboxes and bullets
-            else if trimmedLine.hasPrefix("• ") || trimmedLine.hasPrefix("○ ") || trimmedLine.hasPrefix("● ") {
+            else if trimmedLine.hasPrefix("• ") || trimmedLine.hasPrefix("☐ ") || trimmedLine.hasPrefix("☑ ") {
                 // Remove the list marker + space
                 let lengthToRemove = min(2, mutableText.length - markerPosition)
                 guard lengthToRemove > 0 else { return true }
@@ -1885,6 +1929,9 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
                 
                 // Position cursor where the marker was
                 textView.selectedRange = NSRange(location: markerPosition, length: 0)
+                
+                // Reset typing attributes to prevent formatting inheritance after checkbox removal
+                resetTypingAttributesToNormal()
                 
                 updateBindingFromTextView()
                 updateContextFromTextView()
@@ -1912,7 +1959,7 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         // Check if we're backspacing right after a bullet/checkbox marker
         // The marker is 2 characters (e.g. "• " or "○ "), so check if cursor is anywhere after that
         let isAfterMarker = range.location > markerPosition + 1 && 
-                           (trimmedLine.hasPrefix("• ") || trimmedLine.hasPrefix("○ ") || trimmedLine.hasPrefix("● "))
+                           (trimmedLine.hasPrefix("• ") || trimmedLine.hasPrefix("☐ ") || trimmedLine.hasPrefix("☑ "))
         
         // Also check for Unicode checkbox
         let hasUnicodeCheckbox: Bool
@@ -1995,20 +2042,125 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
     // MARK: - Checkbox Customization (Easy to modify for future visual changes)
     
     /// Create simple Unicode checkbox - much simpler than NSTextAttachment
-    /// This method creates checkbox text that works like Apple Notes
+    /// This method creates checkbox text that works like Apple Notes with consistent sizing
     private func createUnicodeCheckbox(isChecked: Bool) -> NSAttributedString {
         let checkboxChar = isChecked ? "☑" : "☐"
         
-        // Use larger font size for better tap targets like Apple Notes
-        let checkboxFont = UIFont.systemFont(ofSize: 22, weight: .medium)
+        // Use larger font size for better tap targets and visibility
+        let safeCheckboxSize = safeFontSize(24.0) // Larger for better tap targets
+        
+        // Use regular system font with heavier weight for better visibility
+        let checkboxFont = UIFont.systemFont(ofSize: safeCheckboxSize, weight: .semibold)
+        
         let checkboxColor = UIColor.label
+        
+        // Validate the font before creating attributes
+        let actualSize = checkboxFont.pointSize
+        guard actualSize.isFinite && !actualSize.isNaN && actualSize > 0 else {
+            print("❌ createUnicodeCheckbox: Invalid font size \(actualSize), using fallback")
+            let fallbackFont = UIFont.systemFont(ofSize: 17.0, weight: .medium)
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: fallbackFont,
+                .foregroundColor: checkboxColor
+            ]
+            return NSAttributedString(string: checkboxChar, attributes: attributes)
+        }
+        
+        // Create attributes with consistent styling for both states
+        // Validate baseline offset to prevent NaN
+        let safeBaselineOffset: CGFloat = 0.0
+        guard safeBaselineOffset.isFinite && !safeBaselineOffset.isNaN else {
+            print("❌ createUnicodeCheckbox: Invalid baseline offset, skipping")
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: checkboxFont,
+                .foregroundColor: checkboxColor
+            ]
+            return NSAttributedString(string: checkboxChar, attributes: attributes)
+        }
         
         let attributes: [NSAttributedString.Key: Any] = [
             .font: checkboxFont,
-            .foregroundColor: checkboxColor
+            .foregroundColor: checkboxColor,
+            // Add consistent baseline to align both characters identically
+            .baselineOffset: safeBaselineOffset
         ]
         
-        return NSAttributedString(string: checkboxChar, attributes: attributes)
+        // Validate the attributed string before returning
+        let checkboxString = NSAttributedString(string: checkboxChar, attributes: attributes)
+        let issues = validateAttributedStringForNaN(checkboxString)
+        if !issues.isEmpty {
+            print("❌ createUnicodeCheckbox: Found issues in checkbox string:")
+            for issue in issues {
+                print("   \(issue)")
+            }
+        }
+        
+        print("✅ createUnicodeCheckbox: Created \(isChecked ? "checked" : "unchecked") checkbox with size \(actualSize)")
+        
+        return checkboxString
+    }
+    
+    /// Validate NSAttributedString for NaN values that could cause CoreGraphics errors
+    private func validateAttributedStringForNaN(_ attributedString: NSAttributedString) -> [String] {
+        var issues: [String] = []
+        let range = NSRange(location: 0, length: attributedString.length)
+        
+        attributedString.enumerateAttributes(in: range, options: []) { attributes, subRange, _ in
+            for (key, value) in attributes {
+                switch key {
+                case .font:
+                    if let font = value as? UIFont {
+                        let size = font.pointSize
+                        if !size.isFinite || size.isNaN {
+                            issues.append("Font size NaN/infinite: \(size)")
+                        }
+                    }
+                case .baselineOffset:
+                    if let offset = value as? NSNumber {
+                        let offsetValue = offset.doubleValue
+                        if !offsetValue.isFinite || offsetValue.isNaN {
+                            issues.append("Baseline offset NaN/infinite: \(offsetValue)")
+                        }
+                    }
+                case .kern:
+                    if let kern = value as? NSNumber {
+                        let kernValue = kern.doubleValue
+                        if !kernValue.isFinite || kernValue.isNaN {
+                            issues.append("Kerning NaN/infinite: \(kernValue)")
+                        }
+                    }
+                case .paragraphStyle:
+                    if let paragraphStyle = value as? NSParagraphStyle {
+                        let values = [
+                            paragraphStyle.lineSpacing,
+                            paragraphStyle.paragraphSpacing,
+                            paragraphStyle.headIndent,
+                            paragraphStyle.tailIndent,
+                            paragraphStyle.firstLineHeadIndent,
+                            paragraphStyle.minimumLineHeight,
+                            paragraphStyle.maximumLineHeight
+                        ]
+                        
+                        for (index, val) in values.enumerated() {
+                            if !val.isFinite || val.isNaN {
+                                let names = ["lineSpacing", "paragraphSpacing", "headIndent", "tailIndent", "firstLineHeadIndent", "minimumLineHeight", "maximumLineHeight"]
+                                issues.append("ParagraphStyle.\(names[index]) NaN/infinite: \(val)")
+                            }
+                        }
+                    }
+                default:
+                    // Check if any other value is a numeric type that could be NaN
+                    if let number = value as? NSNumber {
+                        let doubleValue = number.doubleValue
+                        if !doubleValue.isFinite || doubleValue.isNaN {
+                            issues.append("Attribute \(key.rawValue) NaN/infinite: \(doubleValue)")
+                        }
+                    }
+                }
+            }
+        }
+        
+        return issues
     }
     
     
@@ -2016,6 +2168,7 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
     
     @objc func handleTap(_ gesture: UITapGestureRecognizer) {
         let location = gesture.location(in: textView)
+        print("👆 handleTap: Tap detected at location \(location)")
         
         // Validate tap location is within bounds
         guard location.x.isFinite && location.y.isFinite else {
@@ -2028,26 +2181,34 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         // Simplified checkbox detection for Unicode characters
         if let tapPosition = textView.closestPosition(to: location) {
             let tapIndex = textView.offset(from: textView.beginningOfDocument, to: tapPosition)
+            print("📍 handleTap: Tap index calculated as \(tapIndex), text length: \(attributedText.length)")
             
             if tapIndex >= 0 && tapIndex < attributedText.length {
                 // Check around the tap position for checkbox Unicode characters
-                let tapTolerance = 10 // Large tap area for mobile usability
+                let tapTolerance = 20 // Increased tap area for better mobile usability
                 let checkStartRange = max(0, tapIndex - tapTolerance)
                 let checkEndRange = min(attributedText.length - 1, tapIndex + tapTolerance)
+                print("🔍 handleTap: Checking range \(checkStartRange) to \(checkEndRange) for checkboxes")
                 
                 for checkIndex in checkStartRange...checkEndRange {
                     if checkIndex < attributedText.length {
                         let character = (attributedText.string as NSString).character(at: checkIndex)
+                        let charString = String(Character(UnicodeScalar(character)!))
                         
                         // Check for Unicode checkbox characters
                         if character == 0x2610 { // ☐ unchecked
+                            print("✅ handleTap: Found unchecked checkbox '☐' at position \(checkIndex)")
                             toggleUnicodeCheckboxAtPosition(checkIndex, isCurrentlyChecked: false)
                             print("🎯 RichTextCoordinator: Toggled unchecked Unicode checkbox at position \(checkIndex)")
                             return
                         } else if character == 0x2611 { // ☑ checked
+                            print("✅ handleTap: Found checked checkbox '☑' at position \(checkIndex)")
                             toggleUnicodeCheckboxAtPosition(checkIndex, isCurrentlyChecked: true)
                             print("🎯 RichTextCoordinator: Toggled checked Unicode checkbox at position \(checkIndex)")
                             return
+                        } else if checkIndex == tapIndex {
+                            // Log the character at the exact tap position for debugging
+                            print("🔤 handleTap: Character at tap position \(tapIndex): '\(charString)' (Unicode: \(character))")
                         }
                     }
                 }
@@ -2055,12 +2216,39 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         }
         
         print("📍 handleTap: No Unicode checkbox found at tap location \(location)")
+        
+        // Debug: Let's see if there are ANY checkboxes in the entire text
+        let fullText = attributedText.string
+        let checkboxCount = fullText.filter { $0 == "☐" || $0 == "☑" }.count
+        print("📊 handleTap: Total checkboxes in text: \(checkboxCount)")
     }
     
     /// Toggle a Unicode checkbox between checked and unchecked state
     private func toggleUnicodeCheckboxAtPosition(_ position: Int, isCurrentlyChecked: Bool) {
-        guard let mutableText = textView.attributedText?.mutableCopy() as? NSMutableAttributedString else { return }
-        guard position < mutableText.length else { return }
+        // Prevent recursive checkbox detection during toggle
+        guard !isTogglingSelf else { 
+            print("⚠️ toggleUnicodeCheckboxAtPosition: Already toggling, skipping")
+            return 
+        }
+        
+        print("🔄 toggleUnicodeCheckboxAtPosition: Starting toggle at position \(position), currently checked: \(isCurrentlyChecked)")
+        guard let mutableText = textView.attributedText?.mutableCopy() as? NSMutableAttributedString else {
+            print("❌ toggleUnicodeCheckboxAtPosition: Could not get mutableText")
+            return
+        }
+        guard position < mutableText.length else {
+            print("❌ toggleUnicodeCheckboxAtPosition: Position \(position) >= text length \(mutableText.length)")
+            return
+        }
+        
+        // Set flag to prevent cursor-based detection during toggle
+        isTogglingSelf = true
+        defer { 
+            // Reset flag after a brief delay to ensure all selection changes are processed
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                self.isTogglingSelf = false
+            }
+        }
         
         // Create the new checkbox with opposite state
         let newCheckbox = createUnicodeCheckbox(isChecked: !isCurrentlyChecked)
@@ -2071,13 +2259,68 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         // Update the text view
         textView.attributedText = mutableText
         
+        // Update the binding and context to reflect the changes
+        updateBindingFromTextView()
+        updateContextFromTextView()
+        
         // Track analytics
         AnalyticsManager.shared.trackCheckboxClicked(isChecked: !isCurrentlyChecked, checkboxType: "unicode")
         
         print("✅ RichTextCoordinator: Toggled Unicode checkbox to \(isCurrentlyChecked ? "unchecked" : "checked") at position \(position)")
     }
     
-    
+    /// Check if the cursor is positioned on or near a checkbox and toggle it
+    /// This provides an alternative to gesture-based checkbox detection
+    private func checkForCheckboxAtCursorPosition() {
+        guard let attributedText = textView.attributedText else { return }
+        guard textView.selectedRange.length == 0 else { return } // Only for cursor, not selection
+        
+        let cursorPosition = textView.selectedRange.location
+        guard cursorPosition >= 0 && cursorPosition <= attributedText.length else { return }
+        
+        // For cursor at end of text, check if the last character is a checkbox
+        let checkPosition = cursorPosition == attributedText.length ? cursorPosition - 1 : cursorPosition
+        guard checkPosition >= 0 && checkPosition < attributedText.length else { return }
+        
+        // Check exact cursor position and adjacent positions for checkboxes
+        let checkRange = 1
+        let startRange = max(0, checkPosition - checkRange)
+        let endRange = min(attributedText.length - 1, checkPosition + checkRange)
+        
+        print("🎯 checkForCheckboxAtCursorPosition: Checking range \(startRange) to \(endRange) around cursor at \(cursorPosition)")
+        
+        // Prioritize exact position first
+        if checkPosition < attributedText.length {
+            let character = (attributedText.string as NSString).character(at: checkPosition)
+            if character == 0x2610 { // ☐ unchecked
+                print("🎯 checkForCheckboxAtCursorPosition: Found unchecked checkbox at exact position \(checkPosition), toggling!")
+                toggleUnicodeCheckboxAtPosition(checkPosition, isCurrentlyChecked: false)
+                return
+            } else if character == 0x2611 { // ☑ checked
+                print("🎯 checkForCheckboxAtCursorPosition: Found checked checkbox at exact position \(checkPosition), toggling!")
+                toggleUnicodeCheckboxAtPosition(checkPosition, isCurrentlyChecked: true)
+                return
+            }
+        }
+        
+        // Then check adjacent positions
+        for checkIndex in startRange...endRange {
+            if checkIndex != checkPosition && checkIndex < attributedText.length {
+                let character = (attributedText.string as NSString).character(at: checkIndex)
+                
+                // Check for Unicode checkbox characters
+                if character == 0x2610 { // ☐ unchecked
+                    print("🎯 checkForCheckboxAtCursorPosition: Found unchecked checkbox at adjacent position \(checkIndex), toggling!")
+                    toggleUnicodeCheckboxAtPosition(checkIndex, isCurrentlyChecked: false)
+                    return
+                } else if character == 0x2611 { // ☑ checked
+                    print("🎯 checkForCheckboxAtCursorPosition: Found checked checkbox at adjacent position \(checkIndex), toggling!")
+                    toggleUnicodeCheckboxAtPosition(checkIndex, isCurrentlyChecked: true)
+                    return
+                }
+            }
+        }
+    }
     
     // MARK: - Helper Methods
     
@@ -2116,6 +2359,8 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
     
     public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
         // Always receive touch events for potential checkbox detection
+        let location = touch.location(in: textView)
+        print("🖱️ gestureRecognizer shouldReceive touch at location: \(location)")
         return true
     }
     

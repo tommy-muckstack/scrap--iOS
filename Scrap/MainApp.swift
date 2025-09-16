@@ -119,6 +119,7 @@ struct MainApp: View {
                         // Track new note started with voice method
                         AnalyticsManager.shared.trackNewNoteStarted(method: "voice")
                         dataManager.createItem(from: text, creationType: "voice")
+                        inputText = "" // Clear input after creating voice note
                     }
                 )
                 
@@ -235,7 +236,11 @@ struct InputField: View {
         }
         .padding(.horizontal, 16)
         .onChange(of: voiceRecorder.transcribedText) { transcription in
-            if !transcription.isEmpty {
+            if voiceRecorder.isRecording {
+                // Update text field in real-time during recording
+                text = transcription
+            } else if !transcription.isEmpty {
+                // Recording has stopped, create the note
                 onVoiceNote(transcription)
             }
         }
