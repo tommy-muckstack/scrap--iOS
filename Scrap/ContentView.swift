@@ -453,6 +453,24 @@ class FirebaseDataManager: ObservableObject {
                 // TODO: Add category suggestion and selection logic here
                 let categoryIds: [String] = [] // Will be populated when categories are implemented
                 
+                // Create RTF data with Space Grotesk font for consistent display
+                var rtfData: Data? = nil
+                do {
+                    let attributes: [NSAttributedString.Key: Any] = [
+                        .font: UIFont(name: "SpaceGrotesk-Regular", size: 16) ?? UIFont.systemFont(ofSize: 16),
+                        .foregroundColor: UIColor.label
+                    ]
+                    let attributedText = NSAttributedString(string: text, attributes: attributes)
+                    let rtfCompatibleString = SparkItem.prepareForRTFSave(attributedText)
+                    rtfData = try rtfCompatibleString.data(
+                        from: NSRange(location: 0, length: rtfCompatibleString.length),
+                        documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
+                    )
+                    print("✅ DataManager: Created RTF data (\(rtfData?.count ?? 0) bytes) for \(creationType) note")
+                } catch {
+                    print("❌ DataManager: Failed to create RTF data: \(error)")
+                }
+                
                 let finalTitle = generatedTitle
                 let firebaseId = try await firebaseManager.createNote(
                     content: text,
@@ -460,7 +478,8 @@ class FirebaseDataManager: ObservableObject {
                     categoryIds: categoryIds,
                     isTask: false, 
                     categories: legacyCategories,
-                    creationType: creationType
+                    creationType: creationType,
+                    rtfData: rtfData
                 )
                 
                 print("✅ DataManager: Note saved successfully with Firebase ID: \(firebaseId)")
@@ -890,21 +909,24 @@ struct InputField: View {
             .padding(.vertical, GentleLightning.Layout.Padding.lg)
             .background(Color.white)
             
-            // Recording indicator
+            // Simple recording indicator that doesn't interfere with transcription
             if isRecording {
                 HStack {
                     Circle()
-                        .fill(GentleLightning.Colors.error)
+                        .fill(Color.red)
                         .frame(width: 8, height: 8)
                         .opacity(0.8)
-                        .scaleEffect(1.5)
-                        .animation(.easeInOut(duration: 0.8).repeatForever(), value: isRecording)
                     
-                    Text("Recording...")
+                    Text("Listening...")
                         .font(GentleLightning.Typography.small)
                         .foregroundColor(GentleLightning.Colors.textSecondary)
                     
                     Spacer()
+                    
+                    Text("Tap red button to stop")
+                        .font(GentleLightning.Typography.small)
+                        .foregroundColor(GentleLightning.Colors.textSecondary)
+                        .opacity(0.7)
                 }
                 .padding(.horizontal, GentleLightning.Layout.Padding.lg)
                 .padding(.top, 4)
@@ -967,18 +989,24 @@ struct InputField: View {
     }
     
     private func startRecording() {
+        print("🎙️ ContentView: startRecording() called")
+        
         guard authorizationStatus == .authorized else {
+            print("❌ ContentView: Speech authorization not granted: \(authorizationStatus)")
             AnalyticsManager.shared.trackVoicePermissionDenied()
             return
         }
         
+        print("✅ ContentView: Speech authorization confirmed")
         AnalyticsManager.shared.trackVoiceRecordingStarted()
         recordingStartTime = Date()
         
         guard let speechRecognizer = speechRecognizer, speechRecognizer.isAvailable else {
-            print("Speech recognizer not available")
+            print("❌ ContentView: Speech recognizer not available")
             return
         }
+        
+        print("✅ ContentView: Speech recognizer available")
         
         do {
             // Cancel previous task if any
@@ -1004,24 +1032,54 @@ struct InputField: View {
             var voiceNoteContent = ""
             
             // Start recognition task
+            print("🎙️ ContentView: Starting speech recognition task...")
             recognitionTask = speechRecognizer.recognitionTask(with: recognitionRequest) { result, error in
                 var isFinal = false
                 
                 if let result = result {
                     DispatchQueue.main.async {
                         let transcription = result.bestTranscription.formattedString
+                        print("🎙️ ContentView: Transcription update: '\(transcription)' (isFinal: \(result.isFinal), isRecording: \(self.isRecording))")
                         
                         // Update the temporary voice note content for visual feedback
-                        // Only update visual text if we're still recording
                         voiceNoteContent = transcription
-                        if self.isRecording {
-                            self.text = transcription
+                        
+                        // Always update the UI for real-time transcription (including final results)
+                        // The isFinal check will handle cleanup after UI is updated
+                        print("🎙️ ContentView: Updating text field with transcription: '\(transcription)'")
+                        print("🎙️ ContentView: Current isRecording state: \(self.isRecording)")
+                        print("🎙️ ContentView: Current text before update: '\(self.text)'")
+                        self.text = transcription
+                        print("🎙️ ContentView: Text after update: '\(self.text)'")
+                        
+                        // Handle final result cleanup AFTER updating the UI
+                        if result.isFinal {
+                            print("🎙️ ContentView: Processing final result - cleaning up after UI update")
+                            
+                            // Perform cleanup in the same dispatch block to ensure proper sequencing
+                            self.audioEngine.stop()
+                            inputNode.removeTap(onBus: 0)
+                            
+                            self.recognitionRequest = nil
+                            self.recognitionTask = nil
+                            self.isRecording = false
+                            
+                            // Clear the text field immediately to reset button state
+                            self.text = ""
+                            
+                            // Auto-save voice note if we have content
+                            if !voiceNoteContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                self.dataManager.createItem(from: voiceNoteContent, creationType: "voice")
+                            }
                         }
                     }
                     isFinal = result.isFinal
                 }
                 
-                if error != nil || isFinal {
+                // Error handling only - cleanup is now handled in the result processing above
+                if let error = error {
+                    print("🎙️ ContentView: Speech recognition error: \(error)")
+                    // Only stop on error, not on isFinal (that's handled above)
                     self.audioEngine.stop()
                     inputNode.removeTap(onBus: 0)
                     
@@ -1029,28 +1087,41 @@ struct InputField: View {
                         self.recognitionRequest = nil
                         self.recognitionTask = nil
                         self.isRecording = false
-                        
-                        // Clear the text field immediately to reset button state
                         self.text = ""
-                        
-                        // Auto-save voice note if we have content
-                        if !voiceNoteContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            self.dataManager.createItem(from: voiceNoteContent, creationType: "voice")
-                        }
                     }
                 }
             }
             
             // Configure microphone input
             let recordingFormat = inputNode.outputFormat(forBus: 0)
+            print("🎙️ ContentView: Setting up audio tap with format: \(recordingFormat)")
+            
+            var bufferCount = 0
             inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { buffer, _ in
+                bufferCount += 1
+                if bufferCount % 100 == 0 { // Log every 100th buffer to avoid spam
+                    print("🎙️ ContentView: Audio buffer #\(bufferCount) received (frameLength: \(buffer.frameLength))")
+                }
                 self.recognitionRequest?.append(buffer)
             }
             
+            print("🎙️ ContentView: Preparing audio engine...")
             audioEngine.prepare()
+            
+            print("🎙️ ContentView: Starting audio engine...")
             try audioEngine.start()
             
+            print("✅ ContentView: Audio engine started successfully")
             isRecording = true
+            
+            // Clear text field but keep it focused so user can see real-time transcription
+            text = ""
+            isFieldFocused.wrappedValue = true
+            print("🎤 Starting voice recording - cleared text field and kept focused for transcription")
+            print("🎤 Current isRecording state: \(isRecording)")
+            print("🎤 Current text field state: '\(text)'")
+            print("🎤 Current focus state: \(isFieldFocused.wrappedValue)")
+            
             AnalyticsManager.shared.trackEvent("voice_recording_started")
             
         } catch {
@@ -1805,10 +1876,6 @@ struct ContentView: View {
             .navigationDestination(for: SparkItem.self) { item in
                 NoteEditor(item: item, dataManager: dataManager)
                     .navigationBarHidden(false)
-                    .onAppear {
-                        print("✅ Navigation NoteEditor: Successfully opened note with id = '\(item.id)'")
-                        print("✅ Navigation NoteEditor: Note content = '\(item.content.count))")
-                    }
             }
         }
         .sheet(isPresented: $showingAccountDrawer) {

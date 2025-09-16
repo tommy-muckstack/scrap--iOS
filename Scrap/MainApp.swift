@@ -279,10 +279,10 @@ struct InputField: View {
             // Track voice recording toggle
             if !voiceRecorder.isRecording {
                 AnalyticsManager.shared.trackVoiceRecordingStarted()
-                // Clear text field and unfocus when starting voice recording
+                // Clear text field but keep it focused so user can see transcription
                 text = ""
-                isFocused = false
-                print("🎤 Starting voice recording - cleared text field and unfocused")
+                isFocused = true  // Keep focused to show real-time transcription
+                print("🎤 Starting voice recording - cleared text field and kept focused for transcription")
             }
             voiceRecorder.toggleRecording()
         }
@@ -303,19 +303,20 @@ class FirebaseDataManager: ObservableObject {
     func createItem(from text: String, creationType: String = "text") {
         // Create RTF document from the start
         let attributes: [NSAttributedString.Key: Any] = [
-            .font: UIFont(name: "SpaceGrotesk-Regular", size: 17) ?? UIFont.systemFont(ofSize: 17),
-            .foregroundColor: UIColor.black
+            .font: UIFont(name: "SpaceGrotesk-Regular", size: 16) ?? UIFont.systemFont(ofSize: 16),
+            .foregroundColor: UIColor.label
         ]
         let attributedText = NSAttributedString(string: text, attributes: attributes)
         
         // Convert to RTF data using trait preservation
         var rtfData: Data? = nil
         do {
-            let rtfCompatibleString = prepareForRTFSave(attributedText)
+            let rtfCompatibleString = SparkItem.prepareForRTFSave(attributedText)
             rtfData = try rtfCompatibleString.data(
                 from: NSRange(location: 0, length: rtfCompatibleString.length),
                 documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
             )
+            print("✅ Created RTF data for voice note: \(rtfData?.count ?? 0) bytes")
         } catch {
             print("❌ Failed to create RTF data: \(error)")
         }
@@ -372,7 +373,7 @@ class FirebaseDataManager: ObservableObject {
         var rtfData: Data? = nil
         do {
             // Convert custom fonts to system fonts before RTF generation to preserve traits
-            let rtfCompatibleString = prepareForRTFSave(attributedText)
+            let rtfCompatibleString = SparkItem.prepareForRTFSave(attributedText)
             rtfData = try rtfCompatibleString.data(
                 from: NSRange(location: 0, length: rtfCompatibleString.length),
                 documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
@@ -521,36 +522,4 @@ class FirebaseDataManager: ObservableObject {
         }
     }
     
-    // MARK: - RTF Font Trait Preservation
-    
-    // Prepare attributed string for RTF saving by converting to system fonts with preserved traits
-    private func prepareForRTFSave(_ attributedString: NSAttributedString) -> NSAttributedString {
-        let mutableString = NSMutableAttributedString(attributedString: attributedString)
-        let range = NSRange(location: 0, length: mutableString.length)
-        
-        mutableString.enumerateAttribute(.font, in: range, options: []) { value, range, _ in
-            guard let font = value as? UIFont else { return }
-            
-            // Only convert custom fonts (SpaceGrotesk) to system fonts
-            if font.fontName.contains("SpaceGrotesk") {
-                let isBold = font.fontName.contains("Bold")
-                let size = font.pointSize
-                
-                // Convert to system font while preserving traits using font descriptors
-                var systemFont: UIFont
-                if isBold {
-                    // Create system font with explicit bold traits for better RTF preservation
-                    let descriptor = UIFontDescriptor.preferredFontDescriptor(withTextStyle: .body)
-                        .withSymbolicTraits([.traitBold])
-                    systemFont = UIFont(descriptor: descriptor ?? UIFontDescriptor(), size: size)
-                } else {
-                    systemFont = UIFont.systemFont(ofSize: size)
-                }
-                
-                mutableString.addAttribute(.font, value: systemFont, range: range)
-            }
-        }
-        
-        return mutableString
-    }
 }

@@ -214,9 +214,6 @@ public class RichTextCoordinator: NSObject {
         textView.attributedText = mutableText
         textView.selectedRange = selectedRange
         
-        // Update binding to sync the attributed text with the formatted content
-        updateBindingFromTextView()
-        
         // Update context state to reflect the new formatting state
         updateContextFromTextView()
         
@@ -226,6 +223,12 @@ public class RichTextCoordinator: NSObject {
         
         // Update typing attributes for future typing
         updateTypingAttributes()
+        
+        // Delay binding update to prevent overwriting formatting during rapid formatting changes
+        // This is crucial for preserving previously applied formatting
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            self.updateBindingFromTextView()
+        }
     }
     
     private func toggleBoldInRange(_ mutableText: NSMutableAttributedString, _ range: NSRange) {
@@ -1230,9 +1233,18 @@ public class RichTextCoordinator: NSObject {
         isUpdatingFromTextView = true
         
         // Only update binding if the text actually changed to prevent loops
-        if !textBinding.wrappedValue.isEqual(to: textView.attributedText) {
-            print("💾 RichTextCoordinator: Updating binding with formatted text (length: \(textView.attributedText.length))")
-            textBinding.wrappedValue = textView.attributedText
+        // Make a defensive copy to ensure we don't have reference issues
+        guard let currentTextViewContent = textView.attributedText else {
+            isUpdatingFromTextView = false
+            return
+        }
+        
+        let textViewCopy = NSAttributedString(attributedString: currentTextViewContent)
+        
+        if !textBinding.wrappedValue.isEqual(to: textViewCopy) {
+            print("💾 RichTextCoordinator: Updating binding with formatted text (length: \(textViewCopy.length))")
+            // Create a completely new attributed string to prevent any reference sharing
+            textBinding.wrappedValue = NSAttributedString(attributedString: textViewCopy)
         }
         
         // Reset flag after a longer delay to ensure SwiftUI has fully processed the binding update

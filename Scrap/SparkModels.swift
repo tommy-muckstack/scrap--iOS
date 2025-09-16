@@ -70,8 +70,8 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
             
             // Convert plain content to RTF format with default styling
             let attributes: [NSAttributedString.Key: Any] = [
-                .font: UIFont(name: "SpaceGrotesk-Regular", size: 17) ?? UIFont.systemFont(ofSize: 17),
-                .foregroundColor: UIColor.black
+                .font: UIFont(name: "SpaceGrotesk-Regular", size: 16) ?? UIFont.systemFont(ofSize: 16),
+                .foregroundColor: UIColor.label
             ]
             let attributedString = NSAttributedString(string: firebaseNote.content, attributes: attributes)
             
@@ -124,17 +124,21 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
         let mutableString = NSMutableAttributedString(attributedString: attributedString)
         
         // First, convert NSTextAttachment checkboxes to Unicode characters for RTF persistence
+        print("🔧 SparkItem.prepareForRTFSave: Converting checkboxes to Unicode before RTF save")
         let processedString = CheckboxManager.convertAttachmentsToUnicodeCheckboxes(mutableString)
         let finalMutableString = NSMutableAttributedString(attributedString: processedString)
+        print("🔧 SparkItem.prepareForRTFSave: Checkbox conversion complete")
         
-        // Then convert fonts to system fonts for RTF compatibility
+        // Then convert fonts to system fonts for RTF compatibility and preserve paragraph styles
         let range = NSRange(location: 0, length: finalMutableString.length)
+        
+        // First pass: Convert fonts for RTF compatibility
         finalMutableString.enumerateAttribute(.font, in: range, options: []) { value, fontRange, _ in
             guard let font = value as? UIFont else { return }
             
             let size = safeFontSize(font.pointSize)
             let isBold = font.fontName.contains("Bold") || font.fontDescriptor.symbolicTraits.contains(.traitBold)
-            let isItalic = font.fontDescriptor.symbolicTraits.contains(.traitItalic)
+            let isItalic = font.fontName.contains("Italic") || font.fontDescriptor.symbolicTraits.contains(.traitItalic)
             
             // Create system font with proper traits for RTF compatibility
             var systemFont: UIFont
@@ -150,11 +154,15 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
                 // Bold only
                 systemFont = UIFont.boldSystemFont(ofSize: size)
             } else if isItalic {
-                // Italic only
-                if let descriptor = UIFont.systemFont(ofSize: size).fontDescriptor.withSymbolicTraits([.traitItalic]) {
-                    systemFont = UIFont(descriptor: descriptor, size: size)
+                // Italic only - ensure we properly create system italic font
+                let baseDescriptor = UIFont.systemFont(ofSize: size).fontDescriptor
+                if let italicDescriptor = baseDescriptor.withSymbolicTraits([.traitItalic]) {
+                    systemFont = UIFont(descriptor: italicDescriptor, size: size)
+                    print("✅ SparkItem: Created system italic font for RTF save")
                 } else {
-                    systemFont = UIFont.italicSystemFont(ofSize: size) // Fallback
+                    // Alternative approach using UIFont.italicSystemFont if symbolic traits fail
+                    systemFont = UIFont.italicSystemFont(ofSize: size)
+                    print("⚠️ SparkItem: Used UIFont.italicSystemFont fallback for RTF save")
                 }
             } else {
                 // Regular
@@ -162,6 +170,24 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
             }
             
             finalMutableString.addAttribute(.font, value: systemFont, range: fontRange)
+        }
+        
+        // Second pass: Ensure paragraph styles are properly set for RTF compatibility
+        finalMutableString.enumerateAttribute(.paragraphStyle, in: range, options: []) { value, styleRange, _ in
+            if let paragraphStyle = value as? NSParagraphStyle {
+                // Create a mutable copy to ensure RTF compatibility
+                let mutableParagraphStyle = NSMutableParagraphStyle()
+                mutableParagraphStyle.setParagraphStyle(paragraphStyle)
+                
+                // Ensure RTF-compatible values (clamp to reasonable ranges)
+                mutableParagraphStyle.firstLineHeadIndent = max(0, min(paragraphStyle.firstLineHeadIndent, 200))
+                mutableParagraphStyle.headIndent = max(0, min(paragraphStyle.headIndent, 200))
+                mutableParagraphStyle.lineSpacing = max(0, min(paragraphStyle.lineSpacing, 50))
+                
+                print("🔧 SparkItem: Preserving paragraph style - firstLineIndent: \(mutableParagraphStyle.firstLineHeadIndent), headIndent: \(mutableParagraphStyle.headIndent)")
+                
+                finalMutableString.addAttribute(.paragraphStyle, value: mutableParagraphStyle, range: styleRange)
+            }
         }
         
         return finalMutableString
@@ -172,8 +198,10 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
         let mutableString = NSMutableAttributedString(attributedString: attributedString)
         
         // First, convert Unicode checkboxes to NSTextAttachment for better display
+        print("🔧 SparkItem.prepareForDisplay: Converting Unicode checkboxes to attachments for display")
         let processedString = CheckboxManager.convertUnicodeCheckboxesToAttachments(mutableString)
         let finalMutableString = NSMutableAttributedString(attributedString: processedString)
+        print("🔧 SparkItem.prepareForDisplay: Unicode checkbox conversion complete")
         
         // Then get the range after potential length changes from checkbox conversion
         let updatedRange = NSRange(location: 0, length: finalMutableString.length)
@@ -182,23 +210,24 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
             guard let font = value as? UIFont else { return }
             
             let size = safeFontSize(font.pointSize)
-            let isBold = font.fontDescriptor.symbolicTraits.contains(.traitBold)
-            let isItalic = font.fontDescriptor.symbolicTraits.contains(.traitItalic)
+            let isBold = font.fontName.contains("Bold") || font.fontDescriptor.symbolicTraits.contains(.traitBold)
+            let isItalic = font.fontName.contains("Italic") || font.fontDescriptor.symbolicTraits.contains(.traitItalic)
             
             // Convert system fonts back to SpaceGrotesk fonts
             var spaceGroteskFont: UIFont
             
             if isBold && isItalic {
-                // Bold + Italic (if available, fallback to just bold)
-                if let boldItalicFont = UIFont(name: "SpaceGrotesk-Bold", size: size) {
-                    // Apply italic trait to the bold font
-                    if let descriptor = boldItalicFont.fontDescriptor.withSymbolicTraits([.traitItalic]) {
-                        spaceGroteskFont = UIFont(descriptor: descriptor, size: size)
-                    } else {
-                        spaceGroteskFont = boldItalicFont // Fallback to just bold
-                    }
+                // Bold + Italic - Use Space Mono Bold Italic for true italic rendering
+                if let boldItalicFont = UIFont(name: "SpaceMono-BoldItalic", size: size) {
+                    spaceGroteskFont = boldItalicFont
+                    print("✅ SparkItem: Using SpaceMono-BoldItalic for bold italic text")
+                } else if let spaceGroteskBold = UIFont(name: "SpaceGrotesk-Bold", size: size) {
+                    // Fallback to SpaceGrotesk-Bold if Space Mono not available
+                    spaceGroteskFont = spaceGroteskBold
+                    print("⚠️ SparkItem: SpaceMono-BoldItalic not available, using SpaceGrotesk-Bold")
                 } else {
-                    spaceGroteskFont = UIFont.boldSystemFont(ofSize: size) // System fallback
+                    spaceGroteskFont = UIFont.boldSystemFont(ofSize: size) // Ultimate fallback
+                    print("⚠️ SparkItem: No custom fonts available, using system bold")
                 }
             } else if isBold {
                 // Bold only
@@ -208,16 +237,17 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
                     spaceGroteskFont = UIFont.boldSystemFont(ofSize: size) // System fallback
                 }
             } else if isItalic {
-                // Italic only
-                if let regularFont = UIFont(name: "SpaceGrotesk-Regular", size: size) {
-                    // Apply italic trait to regular font
-                    if let descriptor = regularFont.fontDescriptor.withSymbolicTraits([.traitItalic]) {
-                        spaceGroteskFont = UIFont(descriptor: descriptor, size: size)
-                    } else {
-                        spaceGroteskFont = regularFont // Fallback to regular
-                    }
+                // Italic only - Use Space Mono Italic for true italic rendering
+                if let italicFont = UIFont(name: "SpaceMono-Italic", size: size) {
+                    spaceGroteskFont = italicFont
+                    print("✅ SparkItem: Using SpaceMono-Italic for italic text")
+                } else if let spaceGroteskRegular = UIFont(name: "SpaceGrotesk-Regular", size: size) {
+                    // Fallback to SpaceGrotesk-Regular if Space Mono not available
+                    spaceGroteskFont = spaceGroteskRegular
+                    print("⚠️ SparkItem: SpaceMono-Italic not available, using SpaceGrotesk-Regular")
                 } else {
-                    spaceGroteskFont = UIFont.italicSystemFont(ofSize: size) // System fallback
+                    spaceGroteskFont = UIFont.systemFont(ofSize: size) // Ultimate fallback
+                    print("⚠️ SparkItem: No custom fonts available, using system font")
                 }
             } else {
                 // Regular
@@ -229,6 +259,16 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
             }
             
             finalMutableString.addAttribute(.font, value: spaceGroteskFont, range: range)
+        }
+        
+        // Ensure paragraph styles are preserved when converting back from RTF
+        let fullRange = NSRange(location: 0, length: finalMutableString.length)
+        finalMutableString.enumerateAttribute(.paragraphStyle, in: fullRange, options: []) { value, styleRange, _ in
+            if let paragraphStyle = value as? NSParagraphStyle {
+                print("📖 SparkItem: Preserving paragraph style for display - firstLineIndent: \(paragraphStyle.firstLineHeadIndent), headIndent: \(paragraphStyle.headIndent)")
+                // Paragraph styles should already be compatible, just ensure they're preserved
+                finalMutableString.addAttribute(.paragraphStyle, value: paragraphStyle, range: styleRange)
+            }
         }
         
         return finalMutableString

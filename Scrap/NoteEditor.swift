@@ -22,13 +22,14 @@ struct NoteEditor: View {
     @State private var autoSaveTimer: Timer?
     @State private var noteOpenTime = Date()
     @State private var hasTrackedOpen = false
+    @State private var isBeingDeleted = false
     
     init(item: SparkItem, dataManager: FirebaseDataManager) {
         self.item = item
         self.dataManager = dataManager
         
         // Initialize with plain text first for fast display, load RTF asynchronously
-        let initialText = NSAttributedString(string: item.content)
+        let initialText = Self.createFormattedText(from: item.content)
         
         self._editedText = State(initialValue: initialText)
         self._editedTitle = State(initialValue: item.title)
@@ -88,8 +89,10 @@ struct NoteEditor: View {
                     .padding(.horizontal, 16)
                     .focused($isTextFocused)
                     .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
-                        // Save when app goes to background
-                        updateContent(editedText)
+                        // Save when app goes to background (unless being deleted)
+                        if !isBeingDeleted {
+                            updateContent(editedText)
+                        }
                     }
                     
                     Divider()
@@ -148,13 +151,17 @@ struct NoteEditor: View {
                     showingSkeleton = false
                 }
                 
-                // Save content quickly before dismiss
-                DispatchQueue.global(qos: .userInitiated).async {
-                    updateContent(editedText)
-                    
-                    DispatchQueue.main.async {
-                        dismiss()
+                // Save content quickly before dismiss (unless being deleted)
+                if !isBeingDeleted {
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        updateContent(editedText)
+                        
+                        DispatchQueue.main.async {
+                            dismiss()
+                        }
                     }
+                } else {
+                    dismiss()
                 }
             }) {
                 Image(systemName: GentleLightning.Icons.navigationBack)
@@ -251,8 +258,8 @@ struct NoteEditor: View {
                             documentAttributes: nil
                         )
                     } catch {
-                        print("❌ NoteEditor: Failed to load RTF, using plain text: \(error)")
-                        finalText = NSAttributedString(string: item.content)
+                        print("❌ NoteEditor: Failed to load RTF, using formatted text: \(error)")
+                        finalText = Self.createFormattedText(from: item.content)
                     }
                 }
                 
@@ -285,6 +292,9 @@ struct NoteEditor: View {
     // MARK: - Actions
     
     private func updateTitle(_ newTitle: String) {
+        // Don't save if note is being deleted
+        guard !isBeingDeleted else { return }
+        
         item.title = newTitle
         if let firebaseId = item.firebaseId {
             Task {
@@ -294,6 +304,9 @@ struct NoteEditor: View {
     }
     
     private func updateContent(_ attributedText: NSAttributedString) {
+        // Don't save if note is being deleted
+        guard !isBeingDeleted else { return }
+        
         let plainText = attributedText.string.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !plainText.isEmpty else { return }
         
@@ -323,6 +336,9 @@ struct NoteEditor: View {
     }
     
     private func updateCategories(_ categoryIds: [String]) {
+        // Don't save if note is being deleted
+        guard !isBeingDeleted else { return }
+        
         item.categoryIds = categoryIds
         if let firebaseId = item.firebaseId {
             Task {
@@ -349,6 +365,13 @@ struct NoteEditor: View {
     }
     
     private func deleteNote() {
+        // Set flag to prevent any further auto-saves
+        isBeingDeleted = true
+        
+        // Cancel any pending auto-save timers
+        autoSaveTimer?.invalidate()
+        autoSaveTimer = nil
+        
         dataManager.deleteItem(item)
         dismiss()
     }
@@ -369,6 +392,24 @@ struct NoteEditor: View {
                 print("Failed to load categories: \(error)")
             }
         }
+    }
+    
+    // MARK: - Helper Functions
+    
+    /// Create properly formatted NSAttributedString with Space Grotesk font
+    private static func createFormattedText(from content: String) -> NSAttributedString {
+        let font = UIFont(name: "SpaceGrotesk-Regular", size: 16) ?? UIFont.systemFont(ofSize: 16)
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.lineSpacing = 4
+        paragraphStyle.paragraphSpacing = 8
+        
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: UIColor.label,
+            .paragraphStyle: paragraphStyle
+        ]
+        
+        return NSAttributedString(string: content, attributes: attributes)
     }
 }
 

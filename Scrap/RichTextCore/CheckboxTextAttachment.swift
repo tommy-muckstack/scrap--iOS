@@ -126,17 +126,26 @@ class CheckboxManager {
         let text = attributedString.string
         
         // Find Unicode checkbox characters and replace with attachments
-        let checkboxPattern = "[☐☑️☑]"
+        // Note: ☑️ is two Unicode scalars (☑ + variation selector), so we need separate patterns
+        let checkboxPattern = "☑️|☑|☐"
         guard let regex = try? NSRegularExpression(pattern: checkboxPattern) else {
+            print("❌ CheckboxManager: Failed to create regex for checkbox conversion")
             return attributedString
         }
         
         let matches = regex.matches(in: text, range: NSRange(location: 0, length: text.count))
+        print("🔍 CheckboxManager: Found \(matches.count) checkbox Unicode characters to convert")
+        
+        if matches.count == 0 {
+            print("⚠️ CheckboxManager: No checkbox characters found in text: '\(text.prefix(100))...'")
+        }
         
         // Process matches in reverse order to maintain indices
         for match in matches.reversed() {
             let character = (text as NSString).substring(with: match.range)
             let isChecked = character == "☑️" || character == "☑"
+            
+            print("📝 CheckboxManager: Converting '\(character)' to attachment (checked: \(isChecked))")
             
             // Create checkbox attachment
             let attachment = CheckboxTextAttachment(isChecked: isChecked)
@@ -146,6 +155,7 @@ class CheckboxManager {
             mutableString.replaceCharacters(in: match.range, with: attachmentString)
         }
         
+        print("✅ CheckboxManager: Converted \(matches.count) Unicode checkboxes to attachments")
         return mutableString
     }
     
@@ -153,17 +163,29 @@ class CheckboxManager {
     static func convertAttachmentsToUnicodeCheckboxes(_ attributedString: NSAttributedString) -> NSAttributedString {
         let mutableString = NSMutableAttributedString(attributedString: attributedString)
         
+        print("🔄 CheckboxManager: Starting conversion of attachments to Unicode")
+        print("🔍 CheckboxManager: Input string length: \(attributedString.length)")
+        
+        var checkboxCount = 0
+        
         // Find checkbox attachments and replace with Unicode
         attributedString.enumerateAttribute(.attachment, 
                                           in: NSRange(location: 0, length: attributedString.length),
                                           options: [.reverse]) { value, range, _ in
             if let checkboxAttachment = value as? CheckboxTextAttachment {
+                checkboxCount += 1
                 let checkboxText = checkboxAttachment.isChecked ? "☑" : "☐"
+                print("📝 CheckboxManager: Converting attachment #\(checkboxCount) at range \(range) to '\(checkboxText)' (checked: \(checkboxAttachment.isChecked))")
+                
                 let replacement = NSAttributedString(string: checkboxText)
                 mutableString.replaceCharacters(in: range, with: replacement)
+                print("✅ CheckboxManager: Converted attachment to Unicode '\(checkboxText)'")
+            } else if value != nil {
+                print("🔍 CheckboxManager: Found non-checkbox attachment at range \(range): \(type(of: value!))")
             }
         }
         
+        print("✅ CheckboxManager: Conversion complete - converted \(checkboxCount) checkbox attachments to Unicode")
         return mutableString
     }
     

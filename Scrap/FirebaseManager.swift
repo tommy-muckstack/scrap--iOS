@@ -486,7 +486,7 @@ class FirebaseManager: ObservableObject {
         
         // Create archived version with additional metadata
         var archivedData = noteData
-        archivedData["archivedAt"] = FieldValue.serverTimestamp()
+        archivedData["archivedAt"] = Timestamp(date: Date()) // Use current timestamp instead of server timestamp
         archivedData["originalId"] = noteId
         
         // Copy note to archived collection

@@ -56,6 +56,10 @@
         <string>SpaceGrotesk-SemiBold.ttf</string>
         <string>SpaceGrotesk-Bold.ttf</string>
         <string>SpaceGrotesk-VariableFont_wght.ttf</string>
+        <string>SpaceMono-Regular.ttf</string>
+        <string>SpaceMono-Italic.ttf</string>
+        <string>SpaceMono-Bold.ttf</string>
+        <string>SpaceMono-BoldItalic.ttf</string>
     </array>
     <key>NSMicrophoneUsageDescription</key>
     <string>Scrap uses your microphone to transcribe voice notes, making it easy to capture your thoughts hands-free.</string>

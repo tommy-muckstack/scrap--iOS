@@ -205,7 +205,14 @@ public struct RichTextEditor: UIViewRepresentable {
             paragraphStyle.lineSpacing = 4
             paragraphStyle.paragraphSpacing = 8
             
-            textView.typingAttributes[.paragraphStyle] = paragraphStyle
+            // Set default Space Grotesk font for all notes
+            let defaultFont = UIFont(name: "SpaceGrotesk-Regular", size: 16) ?? UIFont.systemFont(ofSize: 16)
+            
+            textView.typingAttributes = [
+                .paragraphStyle: paragraphStyle,
+                .font: defaultFont,
+                .foregroundColor: UIColor.label
+            ]
         }
     }
 }

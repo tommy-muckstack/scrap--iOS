@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -13,6 +13,7 @@
 		1D1A2B312B1234567890ABD0 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1D1A2B302B1234567890ABD0 /* Preview Assets.xcassets */; };
 		AA304E792F6F72980054DD41 /* AnalyticsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA304E7A2F6F72980054DD41 /* AnalyticsManager.swift */; };
 		BB304E782E6F72970054DD40 /* AmplitudeSwift in Frameworks */ = {isa = PBXBuildFile; productRef = BB304E772E6F72970054DD40 /* AmplitudeSwift */; };
+		BB304E782E6F72970054DD42 /* AmplitudeSwiftSessionReplayPlugin in Frameworks */ = {isa = PBXBuildFile; productRef = BB304E772E6F72970054DD42 /* AmplitudeSwiftSessionReplayPlugin */; };
 		BB304E7A2E6F9E750054DD40 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB304E792E6F9E750054DD40 /* GoogleService-Info.plist */; };
 		BB304E7D2E6F9EEA0054DD40 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = BB304E7C2E6F9EEA0054DD40 /* FirebaseAuth */; };
 		BB304E7F2E6F9EEA0054DD40 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = BB304E7E2E6F9EEA0054DD40 /* FirebaseCore */; };
@@ -21,91 +22,78 @@
 		BB304E852E6F9F0A0054DD40 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = BB304E842E6F9F0A0054DD40 /* FirebaseStorage */; };
 		BB304E892E6FA8650054DD40 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = BB304E882E6FA8650054DD40 /* GoogleSignIn */; };
 		BB304E8B2E6FA8650054DD40 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = BB304E8A2E6FA8650054DD40 /* GoogleSignInSwift */; };
-		BBC2A3252E719333000BEABE /* Satoshi-Black.eot in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2DE2E719333000BEABE /* Satoshi-Black.eot */; };
-		BBC2A3262E719333000BEABE /* Satoshi-VariableItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A30B2E719333000BEABE /* Satoshi-VariableItalic.ttf */; };
-		BBC2A3272E719333000BEABE /* Satoshi-VariableItalic.woff2 in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A30D2E719333000BEABE /* Satoshi-VariableItalic.woff2 */; };
-		BBC2A3282E719333000BEABE /* Satoshi-LightItalic.woff in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2F82E719333000BEABE /* Satoshi-LightItalic.woff */; };
-		BBC2A3292E719333000BEABE /* Satoshi-LightItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2F72E719333000BEABE /* Satoshi-LightItalic.ttf */; };
-		BBC2A32A2E719333000BEABE /* Satoshi-Variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3182E719333000BEABE /* Satoshi-Variable.ttf */; };
-		BBC2A32B2E719333000BEABE /* FFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3122E719333000BEABE /* FFL.txt */; };
-		BBC2A32C2E719333000BEABE /* Satoshi-BlackItalic.eot in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2E22E719333000BEABE /* Satoshi-BlackItalic.eot */; };
-		BBC2A32D2E719333000BEABE /* Satoshi-Italic.woff2 in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2F12E719333000BEABE /* Satoshi-Italic.woff2 */; };
-		BBC2A32E2E719333000BEABE /* Satoshi-MediumItalic.woff2 in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3012E719333000BEABE /* Satoshi-MediumItalic.woff2 */; };
-		BBC2A32F2E719333000BEABE /* Satoshi-BoldItalic.woff2 in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2ED2E719333000BEABE /* Satoshi-BoldItalic.woff2 */; };
-		BBC2A3302E719333000BEABE /* Office Notes.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2CC2E719333000BEABE /* Office Notes.ttf */; };
-		BBC2A3312E719333000BEABE /* Satoshi-BoldItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2D12E719333000BEABE /* Satoshi-BoldItalic.otf */; };
-		BBC2A3322E719333000BEABE /* Satoshi-Bold.woff2 in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2E92E719333000BEABE /* Satoshi-Bold.woff2 */; };
-		BBC2A3332E719333000BEABE /* Satoshi-BoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2EB2E719333000BEABE /* Satoshi-BoldItalic.ttf */; };
-		BBC2A3342E719333000BEABE /* Satoshi-Black.woff2 in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2E12E719333000BEABE /* Satoshi-Black.woff2 */; };
-		BBC2A3352E719333000BEABE /* Satoshi-BlackItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2E32E719333000BEABE /* Satoshi-BlackItalic.ttf */; };
-		BBC2A3362E719333000BEABE /* Satoshi-Variable.woff2 in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3092E719333000BEABE /* Satoshi-Variable.woff2 */; };
-		BBC2A3372E719333000BEABE /* Satoshi-Medium.eot in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2FA2E719333000BEABE /* Satoshi-Medium.eot */; };
-		BBC2A3382E719333000BEABE /* Satoshi-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3172E719333000BEABE /* Satoshi-Regular.otf */; };
-		BBC2A3392E719333000BEABE /* Satoshi-Medium.woff in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2FC2E719333000BEABE /* Satoshi-Medium.woff */; };
-		BBC2A33A2E719333000BEABE /* Satoshi-VariableItalic.eot in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A30A2E719333000BEABE /* Satoshi-VariableItalic.eot */; };
-		BBC2A33B2E719333000BEABE /* Satoshi-Black.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2CE2E719333000BEABE /* Satoshi-Black.otf */; };
-		BBC2A33C2E719333000BEABE /* Satoshi-Light.woff in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2F42E719333000BEABE /* Satoshi-Light.woff */; };
-		BBC2A33D2E719333000BEABE /* SharpGrotesk-SemiBold.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3202E719333000BEABE /* SharpGrotesk-SemiBold.otf */; };
-		BBC2A33E2E719333000BEABE /* Satoshi-Variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2D92E719333000BEABE /* Satoshi-Variable.ttf */; };
-		BBC2A33F2E719333000BEABE /* Satoshi-LightItalic.eot in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2F62E719333000BEABE /* Satoshi-LightItalic.eot */; };
-		BBC2A3402E719333000BEABE /* Satoshi-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2FB2E719333000BEABE /* Satoshi-Medium.ttf */; };
-		BBC2A3412E719333000BEABE /* Satoshi-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2D72E719333000BEABE /* Satoshi-Regular.otf */; };
-		BBC2A3422E719333000BEABE /* Satoshi-Regular.woff2 in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3052E719333000BEABE /* Satoshi-Regular.woff2 */; };
-		BBC2A3432E719333000BEABE /* Satoshi-Bold.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2D02E719333000BEABE /* Satoshi-Bold.otf */; };
-		BBC2A3442E719333000BEABE /* Satoshi-MediumItalic.woff in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3002E719333000BEABE /* Satoshi-MediumItalic.woff */; };
-		BBC2A3452E719333000BEABE /* Satoshi-Light.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2D32E719333000BEABE /* Satoshi-Light.otf */; };
-		BBC2A3462E719333000BEABE /* Satoshi-Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2EF2E719333000BEABE /* Satoshi-Italic.ttf */; };
-		BBC2A3472E719333000BEABE /* SharpGrotesk-LightItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A31D2E719333000BEABE /* SharpGrotesk-LightItalic.otf */; };
-		BBC2A3482E719333000BEABE /* Satoshi-Medium.woff2 in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2FD2E719333000BEABE /* Satoshi-Medium.woff2 */; };
-		BBC2A3492E719333000BEABE /* Office Notes.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2CB2E719333000BEABE /* Office Notes.otf */; };
-		BBC2A34A2E719333000BEABE /* Satoshi-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2F32E719333000BEABE /* Satoshi-Light.ttf */; };
-		BBC2A34B2E719333000BEABE /* Satoshi-BlackItalic.woff2 in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2E52E719333000BEABE /* Satoshi-BlackItalic.woff2 */; };
-		BBC2A34C2E719333000BEABE /* SharpGrotesk-BookItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A31B2E719333000BEABE /* SharpGrotesk-BookItalic.otf */; };
-		BBC2A34D2E719333000BEABE /* SharpGrotesk-Book.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A31A2E719333000BEABE /* SharpGrotesk-Book.otf */; };
-		BBC2A34E2E719333000BEABE /* Satoshi-Regular.eot in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3022E719333000BEABE /* Satoshi-Regular.eot */; };
-		BBC2A34F2E719333000BEABE /* Satoshi-BlackItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2CF2E719333000BEABE /* Satoshi-BlackItalic.otf */; };
-		BBC2A3502E719333000BEABE /* satoshi.css in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2DC2E719333000BEABE /* satoshi.css */; };
-		BBC2A3512E719333000BEABE /* Satoshi-VariableItalic.woff in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A30C2E719333000BEABE /* Satoshi-VariableItalic.woff */; };
-		BBC2A3522E719333000BEABE /* Satoshi-Medium.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2D52E719333000BEABE /* Satoshi-Medium.otf */; };
-		BBC2A3532E719333000BEABE /* Satoshi-MediumItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2FF2E719333000BEABE /* Satoshi-MediumItalic.ttf */; };
-		BBC2A3542E719333000BEABE /* Satoshi-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2E72E719333000BEABE /* Satoshi-Bold.ttf */; };
-		BBC2A3552E719333000BEABE /* Satoshi-VariableItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2DA2E719333000BEABE /* Satoshi-VariableItalic.ttf */; };
-		BBC2A3562E719333000BEABE /* Satoshi-MediumItalic.eot in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2FE2E719333000BEABE /* Satoshi-MediumItalic.eot */; };
-		BBC2A3572E719333000BEABE /* SharpGrotesk-Medium.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A31E2E719333000BEABE /* SharpGrotesk-Medium.otf */; };
-		BBC2A3582E719333000BEABE /* Satoshi-Light.woff2 in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2F52E719333000BEABE /* Satoshi-Light.woff2 */; };
-		BBC2A3592E719333000BEABE /* Cloud.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2C72E719333000BEABE /* Cloud.otf */; };
-		BBC2A35A2E719333000BEABE /* Satoshi-Bold.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3152E719333000BEABE /* Satoshi-Bold.otf */; };
-		BBC2A35B2E719333000BEABE /* Satoshi-BoldItalic.woff in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2EC2E719333000BEABE /* Satoshi-BoldItalic.woff */; };
-		BBC2A35C2E719333000BEABE /* Satoshi-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3032E719333000BEABE /* Satoshi-Regular.ttf */; };
-		BBC2A35D2E719333000BEABE /* Satoshi-Regular.woff in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3042E719333000BEABE /* Satoshi-Regular.woff */; };
-		BBC2A35E2E719333000BEABE /* Satoshi-Black.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2DF2E719333000BEABE /* Satoshi-Black.ttf */; };
-		BBC2A35F2E719333000BEABE /* SharpGrotesk-Thin.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3212E719333000BEABE /* SharpGrotesk-Thin.otf */; };
-		BBC2A3602E719333000BEABE /* Satoshi-BoldItalic.eot in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2EA2E719333000BEABE /* Satoshi-BoldItalic.eot */; };
-		BBC2A3612E719333000BEABE /* Satoshi-BlackItalic.woff in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2E42E719333000BEABE /* Satoshi-BlackItalic.woff */; };
-		BBC2A3622E719333000BEABE /* Satoshi-Bold.woff in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2E82E719333000BEABE /* Satoshi-Bold.woff */; };
-		BBC2A3632E719333000BEABE /* Satoshi-Italic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2D22E719333000BEABE /* Satoshi-Italic.otf */; };
-		BBC2A3642E719333000BEABE /* Satoshi-Light.eot in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2F22E719333000BEABE /* Satoshi-Light.eot */; };
-		BBC2A3652E719333000BEABE /* Satoshi-Variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3072E719333000BEABE /* Satoshi-Variable.ttf */; };
-		BBC2A3662E719333000BEABE /* Satoshi-Black.woff in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2E02E719333000BEABE /* Satoshi-Black.woff */; };
-		BBC2A3672E719333000BEABE /* Satoshi-Italic.eot in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2EE2E719333000BEABE /* Satoshi-Italic.eot */; };
-		BBC2A3682E719333000BEABE /* Satoshi-Italic.woff in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2F02E719333000BEABE /* Satoshi-Italic.woff */; };
-		BBC2A3692E719333000BEABE /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A30F2E719333000BEABE /* README.md */; };
-		BBC2A36A2E719333000BEABE /* Satoshi-Medium.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3162E719333000BEABE /* Satoshi-Medium.otf */; };
-		BBC2A36B2E719333000BEABE /* Satoshi-Variable.eot in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3062E719333000BEABE /* Satoshi-Variable.eot */; };
-		BBC2A36C2E719333000BEABE /* Hadley.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2C92E719333000BEABE /* Hadley.otf */; };
-		BBC2A36D2E719333000BEABE /* Satoshi-LightItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2D42E719333000BEABE /* Satoshi-LightItalic.otf */; };
-		BBC2A36E2E719333000BEABE /* Satoshi-Variable.woff in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3082E719333000BEABE /* Satoshi-Variable.woff */; };
-		BBC2A36F2E719333000BEABE /* Satoshi-Bold.eot in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2E62E719333000BEABE /* Satoshi-Bold.eot */; };
-		BBC2A3702E719333000BEABE /* Satoshi-LightItalic.woff2 in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2F92E719333000BEABE /* Satoshi-LightItalic.woff2 */; };
-		BBC2A3712E719333000BEABE /* SharpGrotesk-Light.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A31C2E719333000BEABE /* SharpGrotesk-Light.otf */; };
-		BBC2A3722E719333000BEABE /* SharpGrotesk-ThinItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A3222E719333000BEABE /* SharpGrotesk-ThinItalic.otf */; };
-		BBC2A3732E719333000BEABE /* SharpGrotesk-MediumItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A31F2E719333000BEABE /* SharpGrotesk-MediumItalic.otf */; };
-		BBC2A3742E719333000BEABE /* Satoshi-MediumItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = BBC2A2D62E719333000BEABE /* Satoshi-MediumItalic.otf */; };
+		BB31A2B22E79FD69001D7C46 /* SpaceMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BB31A2B02E79FD69001D7C46 /* SpaceMono-Regular.ttf */; };
+		BB31A2B32E79FD69001D7C46 /* OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = BB31A2AC2E79FD69001D7C46 /* OFL.txt */; };
+		BB31A2B42E79FD69001D7C46 /* SpaceMono-Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BB31A2AF2E79FD69001D7C46 /* SpaceMono-Italic.ttf */; };
+		BB31A2B52E79FD69001D7C46 /* SpaceMono-BoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BB31A2AE2E79FD69001D7C46 /* SpaceMono-BoldItalic.ttf */; };
+		BB31A2B62E79FD69001D7C46 /* SpaceMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BB31A2AD2E79FD69001D7C46 /* SpaceMono-Bold.ttf */; };
+		BB31A2B72E79FD69001D7C46 /* SpaceMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BB31A2B02E79FD69001D7C46 /* SpaceMono-Regular.ttf */; };
+		BB31A2B82E79FD69001D7C46 /* OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = BB31A2AC2E79FD69001D7C46 /* OFL.txt */; };
+		BB31A2B92E79FD69001D7C46 /* SpaceMono-Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BB31A2AF2E79FD69001D7C46 /* SpaceMono-Italic.ttf */; };
+		BB31A2BA2E79FD69001D7C46 /* SpaceMono-BoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BB31A2AE2E79FD69001D7C46 /* SpaceMono-BoldItalic.ttf */; };
+		BB31A2BB2E79FD69001D7C46 /* SpaceMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BB31A2AD2E79FD69001D7C46 /* SpaceMono-Bold.ttf */; };
+		BBEF41E32E744FA00079202D /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BBEF41E22E744FA00079202D /* WidgetKit.framework */; };
+		BBEF41E52E744FA00079202D /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BBEF41E42E744FA00079202D /* SwiftUI.framework */; };
+		BBEF41F62E744FA10079202D /* ScrapWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BBEF41E02E744FA00079202D /* ScrapWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		BBEF426C2E76E0400079202D /* SpaceGrotesk-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBEF42642E76E0400079202D /* SpaceGrotesk-Medium.ttf */; };
+		BBEF426D2E76E0400079202D /* SpaceGrotesk-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBEF42652E76E0400079202D /* SpaceGrotesk-Regular.ttf */; };
+		BBEF426E2E76E0400079202D /* SpaceGrotesk-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBEF42662E76E0400079202D /* SpaceGrotesk-SemiBold.ttf */; };
+		BBEF426F2E76E0400079202D /* SpaceGrotesk-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBEF42622E76E0400079202D /* SpaceGrotesk-Bold.ttf */; };
+		BBEF42702E76E0400079202D /* SpaceGrotesk-VariableFont_wght.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBEF426A2E76E0400079202D /* SpaceGrotesk-VariableFont_wght.ttf */; };
+		BBEF42712E76E0400079202D /* README.txt in Resources */ = {isa = PBXBuildFile; fileRef = BBEF42692E76E0400079202D /* README.txt */; };
+		BBEF42722E76E0400079202D /* SpaceGrotesk-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBEF42632E76E0400079202D /* SpaceGrotesk-Light.ttf */; };
+		BBEF42732E76E0400079202D /* OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = BBEF42682E76E0400079202D /* OFL.txt */; };
+		BBEF42742E76E0400079202D /* SpaceGrotesk-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBEF42642E76E0400079202D /* SpaceGrotesk-Medium.ttf */; };
+		BBEF42752E76E0400079202D /* SpaceGrotesk-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBEF42652E76E0400079202D /* SpaceGrotesk-Regular.ttf */; };
+		BBEF42762E76E0400079202D /* SpaceGrotesk-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBEF42662E76E0400079202D /* SpaceGrotesk-SemiBold.ttf */; };
+		BBEF42772E76E0400079202D /* SpaceGrotesk-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBEF42622E76E0400079202D /* SpaceGrotesk-Bold.ttf */; };
+		BBEF42782E76E0400079202D /* SpaceGrotesk-VariableFont_wght.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBEF426A2E76E0400079202D /* SpaceGrotesk-VariableFont_wght.ttf */; };
+		BBEF42792E76E0400079202D /* README.txt in Resources */ = {isa = PBXBuildFile; fileRef = BBEF42692E76E0400079202D /* README.txt */; };
+		BBEF427A2E76E0400079202D /* SpaceGrotesk-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBEF42632E76E0400079202D /* SpaceGrotesk-Light.ttf */; };
+		BBEF427B2E76E0400079202D /* OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = BBEF42682E76E0400079202D /* OFL.txt */; };
+		CB8B2374A7366A9664FA926D92 /* RichTextCore/CheckboxTextAttachment.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB9C978ACDF7B3C5EE3AA9E274 /* RichTextCore/CheckboxTextAttachment.swift */; };
 		CC304E7B3F6F72990054DD42 /* TestContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC304E7C3F6F72990054DD42 /* TestContentView.swift */; };
 		DD304E862E6FA0000054DD42 /* FirebaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD304E872E6FA0000054DD42 /* FirebaseManager.swift */; };
+		DG37B0B88A72C027323CBED810 /* CoreGraphicsDebug.swift in Sources */ = {isa = PBXBuildFile; fileRef = DGBFEC794D87FF0597FBC1D270 /* CoreGraphicsDebug.swift */; };
 		EE304E882E6FA1000054DD43 /* AuthenticationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE304E892E6FA1000054DD43 /* AuthenticationView.swift */; };
 		FF304E8A2E6FA2000054DD44 /* ChromaService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF304E8B2E6FA2000054DD44 /* ChromaService.swift */; };
+		IA3B9BABEBD65C49F838AA4143 /* RichTextCore/RichTextInputAccessoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = IA0053424B563D671E01D14B43 /* RichTextCore/RichTextInputAccessoryView.swift */; };
+		NEC114F946C8D24C74D23822B8 /* NoteEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = NE5DDCCFCC62BAA7EE7261D21F /* NoteEditor.swift */; };
+		RC7762BA2291946641555033DE /* RichTextCore/RichTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = RC6691F824B3D8177B68116C03 /* RichTextCore/RichTextEditor.swift */; };
+		RC7A674C6B95C322B02410EC74 /* RichTextCore/RichTextCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = RCE4FD307E47D569B669CE633A /* RichTextCore/RichTextCoordinator.swift */; };
+		RCB7600E0A0B026201786F2131 /* RichTextCore/RichTextContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = RCCABB85C9FF0BBEE223B3A7B5 /* RichTextCore/RichTextContext.swift */; };
+		RTB79366E98E99 /* RichTextTransformer.swift in Sources */ = {isa = PBXBuildFile; fileRef = RT6C1C6BFA551F /* RichTextTransformer.swift */; };
+		SM746984E3905E9248F740 /* SparkModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = SM988B63B7218D59C335B7 /* SparkModels.swift */; };
+		SS7CB67F2F072D9CA9AE6D /* SparkServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = SS42E11169D5C6456E0538 /* SparkServices.swift */; };
+		SVF04E28F0BE8081BFE5CDA262 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = SVB8AD07F579355BFEA517EECE /* SettingsView.swift */; };
+		TMF4A47D87D17E986129EC9426 /* ThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = TMC622226271474267E1D8B017 /* ThemeManager.swift */; };
+		VSB265A2C19F0013D2789802D2 /* VectorSearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = VSBB8F96838EAF9CAB96FC412B /* VectorSearchService.swift */; };
+		WV324054AB161F2E7C28E40AB1 /* RichTextCore/WaveformView.swift in Sources */ = {isa = PBXBuildFile; fileRef = WV4D495EF6CFBCA907B22BE841 /* RichTextCore/WaveformView.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		BBEF41F42E744FA10079202D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1D1A2B1E2B1234567890ABCA /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BBEF41DF2E744FA00079202D;
+			remoteInfo = ScrapWidgetExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		BBEF41F72E744FA10079202D /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				BBEF41F62E744FA10079202D /* ScrapWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		1D1A2B262B1234567890ABCC /* Scrap.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Scrap.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -116,91 +104,57 @@
 		AA304E7A2F6F72980054DD41 /* AnalyticsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsManager.swift; sourceTree = "<group>"; };
 		BB304E792E6F9E750054DD40 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		BB304E862E6FA71E0054DD40 /* Scrap.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Scrap.entitlements; sourceTree = "<group>"; };
-		BBC2A2C72E719333000BEABE /* Cloud.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Cloud.otf; sourceTree = "<group>"; };
-		BBC2A2C92E719333000BEABE /* Hadley.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Hadley.otf; sourceTree = "<group>"; };
-		BBC2A2CB2E719333000BEABE /* Office Notes.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Office Notes.otf"; sourceTree = "<group>"; };
-		BBC2A2CC2E719333000BEABE /* Office Notes.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Office Notes.ttf"; sourceTree = "<group>"; };
-		BBC2A2CE2E719333000BEABE /* Satoshi-Black.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Black.otf"; sourceTree = "<group>"; };
-		BBC2A2CF2E719333000BEABE /* Satoshi-BlackItalic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-BlackItalic.otf"; sourceTree = "<group>"; };
-		BBC2A2D02E719333000BEABE /* Satoshi-Bold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Bold.otf"; sourceTree = "<group>"; };
-		BBC2A2D12E719333000BEABE /* Satoshi-BoldItalic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-BoldItalic.otf"; sourceTree = "<group>"; };
-		BBC2A2D22E719333000BEABE /* Satoshi-Italic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Italic.otf"; sourceTree = "<group>"; };
-		BBC2A2D32E719333000BEABE /* Satoshi-Light.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Light.otf"; sourceTree = "<group>"; };
-		BBC2A2D42E719333000BEABE /* Satoshi-LightItalic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-LightItalic.otf"; sourceTree = "<group>"; };
-		BBC2A2D52E719333000BEABE /* Satoshi-Medium.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Medium.otf"; sourceTree = "<group>"; };
-		BBC2A2D62E719333000BEABE /* Satoshi-MediumItalic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-MediumItalic.otf"; sourceTree = "<group>"; };
-		BBC2A2D72E719333000BEABE /* Satoshi-Regular.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Regular.otf"; sourceTree = "<group>"; };
-		BBC2A2D92E719333000BEABE /* Satoshi-Variable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Variable.ttf"; sourceTree = "<group>"; };
-		BBC2A2DA2E719333000BEABE /* Satoshi-VariableItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-VariableItalic.ttf"; sourceTree = "<group>"; };
-		BBC2A2DC2E719333000BEABE /* satoshi.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = satoshi.css; sourceTree = "<group>"; };
-		BBC2A2DE2E719333000BEABE /* Satoshi-Black.eot */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Black.eot"; sourceTree = "<group>"; };
-		BBC2A2DF2E719333000BEABE /* Satoshi-Black.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Black.ttf"; sourceTree = "<group>"; };
-		BBC2A2E02E719333000BEABE /* Satoshi-Black.woff */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Black.woff"; sourceTree = "<group>"; };
-		BBC2A2E12E719333000BEABE /* Satoshi-Black.woff2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Black.woff2"; sourceTree = "<group>"; };
-		BBC2A2E22E719333000BEABE /* Satoshi-BlackItalic.eot */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-BlackItalic.eot"; sourceTree = "<group>"; };
-		BBC2A2E32E719333000BEABE /* Satoshi-BlackItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-BlackItalic.ttf"; sourceTree = "<group>"; };
-		BBC2A2E42E719333000BEABE /* Satoshi-BlackItalic.woff */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-BlackItalic.woff"; sourceTree = "<group>"; };
-		BBC2A2E52E719333000BEABE /* Satoshi-BlackItalic.woff2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-BlackItalic.woff2"; sourceTree = "<group>"; };
-		BBC2A2E62E719333000BEABE /* Satoshi-Bold.eot */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Bold.eot"; sourceTree = "<group>"; };
-		BBC2A2E72E719333000BEABE /* Satoshi-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Bold.ttf"; sourceTree = "<group>"; };
-		BBC2A2E82E719333000BEABE /* Satoshi-Bold.woff */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Bold.woff"; sourceTree = "<group>"; };
-		BBC2A2E92E719333000BEABE /* Satoshi-Bold.woff2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Bold.woff2"; sourceTree = "<group>"; };
-		BBC2A2EA2E719333000BEABE /* Satoshi-BoldItalic.eot */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-BoldItalic.eot"; sourceTree = "<group>"; };
-		BBC2A2EB2E719333000BEABE /* Satoshi-BoldItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-BoldItalic.ttf"; sourceTree = "<group>"; };
-		BBC2A2EC2E719333000BEABE /* Satoshi-BoldItalic.woff */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-BoldItalic.woff"; sourceTree = "<group>"; };
-		BBC2A2ED2E719333000BEABE /* Satoshi-BoldItalic.woff2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-BoldItalic.woff2"; sourceTree = "<group>"; };
-		BBC2A2EE2E719333000BEABE /* Satoshi-Italic.eot */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Italic.eot"; sourceTree = "<group>"; };
-		BBC2A2EF2E719333000BEABE /* Satoshi-Italic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Italic.ttf"; sourceTree = "<group>"; };
-		BBC2A2F02E719333000BEABE /* Satoshi-Italic.woff */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Italic.woff"; sourceTree = "<group>"; };
-		BBC2A2F12E719333000BEABE /* Satoshi-Italic.woff2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Italic.woff2"; sourceTree = "<group>"; };
-		BBC2A2F22E719333000BEABE /* Satoshi-Light.eot */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Light.eot"; sourceTree = "<group>"; };
-		BBC2A2F32E719333000BEABE /* Satoshi-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Light.ttf"; sourceTree = "<group>"; };
-		BBC2A2F42E719333000BEABE /* Satoshi-Light.woff */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Light.woff"; sourceTree = "<group>"; };
-		BBC2A2F52E719333000BEABE /* Satoshi-Light.woff2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Light.woff2"; sourceTree = "<group>"; };
-		BBC2A2F62E719333000BEABE /* Satoshi-LightItalic.eot */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-LightItalic.eot"; sourceTree = "<group>"; };
-		BBC2A2F72E719333000BEABE /* Satoshi-LightItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-LightItalic.ttf"; sourceTree = "<group>"; };
-		BBC2A2F82E719333000BEABE /* Satoshi-LightItalic.woff */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-LightItalic.woff"; sourceTree = "<group>"; };
-		BBC2A2F92E719333000BEABE /* Satoshi-LightItalic.woff2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-LightItalic.woff2"; sourceTree = "<group>"; };
-		BBC2A2FA2E719333000BEABE /* Satoshi-Medium.eot */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Medium.eot"; sourceTree = "<group>"; };
-		BBC2A2FB2E719333000BEABE /* Satoshi-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Medium.ttf"; sourceTree = "<group>"; };
-		BBC2A2FC2E719333000BEABE /* Satoshi-Medium.woff */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Medium.woff"; sourceTree = "<group>"; };
-		BBC2A2FD2E719333000BEABE /* Satoshi-Medium.woff2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Medium.woff2"; sourceTree = "<group>"; };
-		BBC2A2FE2E719333000BEABE /* Satoshi-MediumItalic.eot */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-MediumItalic.eot"; sourceTree = "<group>"; };
-		BBC2A2FF2E719333000BEABE /* Satoshi-MediumItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-MediumItalic.ttf"; sourceTree = "<group>"; };
-		BBC2A3002E719333000BEABE /* Satoshi-MediumItalic.woff */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-MediumItalic.woff"; sourceTree = "<group>"; };
-		BBC2A3012E719333000BEABE /* Satoshi-MediumItalic.woff2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-MediumItalic.woff2"; sourceTree = "<group>"; };
-		BBC2A3022E719333000BEABE /* Satoshi-Regular.eot */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Regular.eot"; sourceTree = "<group>"; };
-		BBC2A3032E719333000BEABE /* Satoshi-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Regular.ttf"; sourceTree = "<group>"; };
-		BBC2A3042E719333000BEABE /* Satoshi-Regular.woff */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Regular.woff"; sourceTree = "<group>"; };
-		BBC2A3052E719333000BEABE /* Satoshi-Regular.woff2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Regular.woff2"; sourceTree = "<group>"; };
-		BBC2A3062E719333000BEABE /* Satoshi-Variable.eot */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Variable.eot"; sourceTree = "<group>"; };
-		BBC2A3072E719333000BEABE /* Satoshi-Variable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Variable.ttf"; sourceTree = "<group>"; };
-		BBC2A3082E719333000BEABE /* Satoshi-Variable.woff */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Variable.woff"; sourceTree = "<group>"; };
-		BBC2A3092E719333000BEABE /* Satoshi-Variable.woff2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Variable.woff2"; sourceTree = "<group>"; };
-		BBC2A30A2E719333000BEABE /* Satoshi-VariableItalic.eot */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-VariableItalic.eot"; sourceTree = "<group>"; };
-		BBC2A30B2E719333000BEABE /* Satoshi-VariableItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-VariableItalic.ttf"; sourceTree = "<group>"; };
-		BBC2A30C2E719333000BEABE /* Satoshi-VariableItalic.woff */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-VariableItalic.woff"; sourceTree = "<group>"; };
-		BBC2A30D2E719333000BEABE /* Satoshi-VariableItalic.woff2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-VariableItalic.woff2"; sourceTree = "<group>"; };
-		BBC2A30F2E719333000BEABE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
-		BBC2A3122E719333000BEABE /* FFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = FFL.txt; sourceTree = "<group>"; };
-		BBC2A3152E719333000BEABE /* Satoshi-Bold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Bold.otf"; sourceTree = "<group>"; };
-		BBC2A3162E719333000BEABE /* Satoshi-Medium.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Medium.otf"; sourceTree = "<group>"; };
-		BBC2A3172E719333000BEABE /* Satoshi-Regular.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Regular.otf"; sourceTree = "<group>"; };
-		BBC2A3182E719333000BEABE /* Satoshi-Variable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Variable.ttf"; sourceTree = "<group>"; };
-		BBC2A31A2E719333000BEABE /* SharpGrotesk-Book.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-Book.otf"; sourceTree = "<group>"; };
-		BBC2A31B2E719333000BEABE /* SharpGrotesk-BookItalic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-BookItalic.otf"; sourceTree = "<group>"; };
-		BBC2A31C2E719333000BEABE /* SharpGrotesk-Light.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-Light.otf"; sourceTree = "<group>"; };
-		BBC2A31D2E719333000BEABE /* SharpGrotesk-LightItalic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-LightItalic.otf"; sourceTree = "<group>"; };
-		BBC2A31E2E719333000BEABE /* SharpGrotesk-Medium.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-Medium.otf"; sourceTree = "<group>"; };
-		BBC2A31F2E719333000BEABE /* SharpGrotesk-MediumItalic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-MediumItalic.otf"; sourceTree = "<group>"; };
-		BBC2A3202E719333000BEABE /* SharpGrotesk-SemiBold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-SemiBold.otf"; sourceTree = "<group>"; };
-		BBC2A3212E719333000BEABE /* SharpGrotesk-Thin.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-Thin.otf"; sourceTree = "<group>"; };
-		BBC2A3222E719333000BEABE /* SharpGrotesk-ThinItalic.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SharpGrotesk-ThinItalic.otf"; sourceTree = "<group>"; };
+		BB31A2AC2E79FD69001D7C46 /* OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = OFL.txt; sourceTree = "<group>"; };
+		BB31A2AD2E79FD69001D7C46 /* SpaceMono-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceMono-Bold.ttf"; sourceTree = "<group>"; };
+		BB31A2AE2E79FD69001D7C46 /* SpaceMono-BoldItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceMono-BoldItalic.ttf"; sourceTree = "<group>"; };
+		BB31A2AF2E79FD69001D7C46 /* SpaceMono-Italic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceMono-Italic.ttf"; sourceTree = "<group>"; };
+		BB31A2B02E79FD69001D7C46 /* SpaceMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceMono-Regular.ttf"; sourceTree = "<group>"; };
+		BBEF41E02E744FA00079202D /* ScrapWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ScrapWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		BBEF41E22E744FA00079202D /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		BBEF41E42E744FA00079202D /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		BBEF41FC2E7450510079202D /* ScrapWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ScrapWidgetExtension.entitlements; sourceTree = "<group>"; };
+		BBEF42622E76E0400079202D /* SpaceGrotesk-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Bold.ttf"; sourceTree = "<group>"; };
+		BBEF42632E76E0400079202D /* SpaceGrotesk-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Light.ttf"; sourceTree = "<group>"; };
+		BBEF42642E76E0400079202D /* SpaceGrotesk-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Medium.ttf"; sourceTree = "<group>"; };
+		BBEF42652E76E0400079202D /* SpaceGrotesk-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Regular.ttf"; sourceTree = "<group>"; };
+		BBEF42662E76E0400079202D /* SpaceGrotesk-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-SemiBold.ttf"; sourceTree = "<group>"; };
+		BBEF42682E76E0400079202D /* OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = OFL.txt; sourceTree = "<group>"; };
+		BBEF42692E76E0400079202D /* README.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = README.txt; sourceTree = "<group>"; };
+		BBEF426A2E76E0400079202D /* SpaceGrotesk-VariableFont_wght.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-VariableFont_wght.ttf"; sourceTree = "<group>"; };
+		CB9C978ACDF7B3C5EE3AA9E274 /* RichTextCore/CheckboxTextAttachment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/CheckboxTextAttachment.swift; sourceTree = "<group>"; };
+		CC123456789012345678901A /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 		CC304E7C3F6F72990054DD42 /* TestContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestContentView.swift; sourceTree = "<group>"; };
 		DD304E872E6FA0000054DD42 /* FirebaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseManager.swift; sourceTree = "<group>"; };
+		DGBFEC794D87FF0597FBC1D270 /* CoreGraphicsDebug.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreGraphicsDebug.swift; sourceTree = "<group>"; };
 		EE304E892E6FA1000054DD43 /* AuthenticationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationView.swift; sourceTree = "<group>"; };
 		FF304E8B2E6FA2000054DD44 /* ChromaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChromaService.swift; sourceTree = "<group>"; };
+		IA0053424B563D671E01D14B43 /* RichTextCore/RichTextInputAccessoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/RichTextInputAccessoryView.swift; sourceTree = "<group>"; };
+		NE5DDCCFCC62BAA7EE7261D21F /* NoteEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteEditor.swift; sourceTree = "<group>"; };
+		RC6691F824B3D8177B68116C03 /* RichTextCore/RichTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/RichTextEditor.swift; sourceTree = "<group>"; };
+		RCCABB85C9FF0BBEE223B3A7B5 /* RichTextCore/RichTextContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/RichTextContext.swift; sourceTree = "<group>"; };
+		RCE4FD307E47D569B669CE633A /* RichTextCore/RichTextCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/RichTextCoordinator.swift; sourceTree = "<group>"; };
+		RT6C1C6BFA551F /* RichTextTransformer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextTransformer.swift; sourceTree = "<group>"; };
+		SM988B63B7218D59C335B7 /* SparkModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparkModels.swift; sourceTree = "<group>"; };
+		SS42E11169D5C6456E0538 /* SparkServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparkServices.swift; sourceTree = "<group>"; };
+		SVB8AD07F579355BFEA517EECE /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		TMC622226271474267E1D8B017 /* ThemeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeManager.swift; sourceTree = "<group>"; };
+		VSBB8F96838EAF9CAB96FC412B /* VectorSearchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VectorSearchService.swift; sourceTree = "<group>"; };
+		WV4D495EF6CFBCA907B22BE841 /* RichTextCore/WaveformView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/WaveformView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		BBEF41FA2E744FA10079202D /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = BBEF41DF2E744FA00079202D /* ScrapWidgetExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		BBEF41E62E744FA00079202D /* ScrapWidget */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (BBEF41FA2E744FA10079202D /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = ScrapWidget; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		1D1A2B232B1234567890ABCB /* Frameworks */ = {
@@ -208,6 +162,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				BB304E782E6F72970054DD40 /* AmplitudeSwift in Frameworks */,
+				BB304E782E6F72970054DD42 /* AmplitudeSwiftSessionReplayPlugin in Frameworks */,
 				BB304E812E6F9EEA0054DD40 /* FirebaseFirestore in Frameworks */,
 				BB304E832E6F9F0A0054DD40 /* FirebaseFunctions in Frameworks */,
 				BB304E8B2E6FA8650054DD40 /* GoogleSignInSwift in Frameworks */,
@@ -218,14 +173,27 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BBEF41DD2E744FA00079202D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BBEF41E52E744FA00079202D /* SwiftUI.framework in Frameworks */,
+				BBEF41E32E744FA00079202D /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		1D1A2B1D2B1234567890ABCA = {
 			isa = PBXGroup;
 			children = (
+				BBEF41FC2E7450510079202D /* ScrapWidgetExtension.entitlements */,
 				1D1A2B282B1234567890ABCC /* Scrap */,
+				BBEF41E62E744FA00079202D /* ScrapWidget */,
+				BBEF41E12E744FA00079202D /* Frameworks */,
 				1D1A2B272B1234567890ABCC /* Products */,
+				BBEF41DB2E744EC30079202D /* Recovered References */,
 			);
 			sourceTree = "<group>";
 		};
@@ -233,6 +201,7 @@
 			isa = PBXGroup;
 			children = (
 				1D1A2B262B1234567890ABCC /* Scrap.app */,
+				BBEF41E02E744FA00079202D /* ScrapWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -245,11 +214,25 @@
 				BB304E792E6F9E750054DD40 /* GoogleService-Info.plist */,
 				1D1A2B292B1234567890ABCD /* ScrapApp.swift */,
 				1D1A2B2B2B1234567890ABCE /* ContentView.swift */,
+				WV4D495EF6CFBCA907B22BE841 /* RichTextCore/WaveformView.swift */,
+				CB9C978ACDF7B3C5EE3AA9E274 /* RichTextCore/CheckboxTextAttachment.swift */,
+				DGBFEC794D87FF0597FBC1D270 /* CoreGraphicsDebug.swift */,
+				NE5DDCCFCC62BAA7EE7261D21F /* NoteEditor.swift */,
+				VSBB8F96838EAF9CAB96FC412B /* VectorSearchService.swift */,
+				RCCABB85C9FF0BBEE223B3A7B5 /* RichTextCore/RichTextContext.swift */,
+				IA0053424B563D671E01D14B43 /* RichTextCore/RichTextInputAccessoryView.swift */,
+				RCE4FD307E47D569B669CE633A /* RichTextCore/RichTextCoordinator.swift */,
+				RC6691F824B3D8177B68116C03 /* RichTextCore/RichTextEditor.swift */,
+				TMC622226271474267E1D8B017 /* ThemeManager.swift */,
+				SVB8AD07F579355BFEA517EECE /* SettingsView.swift */,
 				AA304E7A2F6F72980054DD41 /* AnalyticsManager.swift */,
 				DD304E872E6FA0000054DD42 /* FirebaseManager.swift */,
+				RT6C1C6BFA551F /* RichTextTransformer.swift */,
 				EE304E892E6FA1000054DD43 /* AuthenticationView.swift */,
 				FF304E8B2E6FA2000054DD44 /* ChromaService.swift */,
 				CC304E7C3F6F72990054DD42 /* TestContentView.swift */,
+				SM988B63B7218D59C335B7 /* SparkModels.swift */,
+				SS42E11169D5C6456E0538 /* SparkServices.swift */,
 				1D1A2B2D2B1234567890ABCF /* Assets.xcassets */,
 				1D1A2B2F2B1234567890ABD0 /* Preview Content */,
 			);
@@ -264,195 +247,57 @@
 			path = "Preview Content";
 			sourceTree = "<group>";
 		};
-		BBC2A2C82E719333000BEABE /* Cloud */ = {
+		BB31A2B12E79FD69001D7C46 /* Space_Mono */ = {
 			isa = PBXGroup;
 			children = (
-				BBC2A2C72E719333000BEABE /* Cloud.otf */,
+				BB31A2AC2E79FD69001D7C46 /* OFL.txt */,
+				BB31A2AD2E79FD69001D7C46 /* SpaceMono-Bold.ttf */,
+				BB31A2AE2E79FD69001D7C46 /* SpaceMono-BoldItalic.ttf */,
+				BB31A2AF2E79FD69001D7C46 /* SpaceMono-Italic.ttf */,
+				BB31A2B02E79FD69001D7C46 /* SpaceMono-Regular.ttf */,
 			);
-			path = Cloud;
-			sourceTree = "<group>";
-		};
-		BBC2A2CA2E719333000BEABE /* Hadley */ = {
-			isa = PBXGroup;
-			children = (
-				BBC2A2C92E719333000BEABE /* Hadley.otf */,
-			);
-			path = Hadley;
-			sourceTree = "<group>";
-		};
-		BBC2A2CD2E719333000BEABE /* Office Notes */ = {
-			isa = PBXGroup;
-			children = (
-				BBC2A2CB2E719333000BEABE /* Office Notes.otf */,
-				BBC2A2CC2E719333000BEABE /* Office Notes.ttf */,
-			);
-			path = "Office Notes";
-			sourceTree = "<group>";
-		};
-		BBC2A2D82E719333000BEABE /* OTF */ = {
-			isa = PBXGroup;
-			children = (
-				BBC2A2CE2E719333000BEABE /* Satoshi-Black.otf */,
-				BBC2A2CF2E719333000BEABE /* Satoshi-BlackItalic.otf */,
-				BBC2A2D02E719333000BEABE /* Satoshi-Bold.otf */,
-				BBC2A2D12E719333000BEABE /* Satoshi-BoldItalic.otf */,
-				BBC2A2D22E719333000BEABE /* Satoshi-Italic.otf */,
-				BBC2A2D32E719333000BEABE /* Satoshi-Light.otf */,
-				BBC2A2D42E719333000BEABE /* Satoshi-LightItalic.otf */,
-				BBC2A2D52E719333000BEABE /* Satoshi-Medium.otf */,
-				BBC2A2D62E719333000BEABE /* Satoshi-MediumItalic.otf */,
-				BBC2A2D72E719333000BEABE /* Satoshi-Regular.otf */,
-			);
-			path = OTF;
-			sourceTree = "<group>";
-		};
-		BBC2A2DB2E719333000BEABE /* TTF */ = {
-			isa = PBXGroup;
-			children = (
-				BBC2A2D92E719333000BEABE /* Satoshi-Variable.ttf */,
-				BBC2A2DA2E719333000BEABE /* Satoshi-VariableItalic.ttf */,
-			);
-			path = TTF;
-			sourceTree = "<group>";
-		};
-		BBC2A2DD2E719333000BEABE /* css */ = {
-			isa = PBXGroup;
-			children = (
-				BBC2A2DC2E719333000BEABE /* satoshi.css */,
-			);
-			path = css;
-			sourceTree = "<group>";
-		};
-		BBC2A30E2E719333000BEABE /* fonts */ = {
-			isa = PBXGroup;
-			children = (
-				BBC2A2DE2E719333000BEABE /* Satoshi-Black.eot */,
-				BBC2A2DF2E719333000BEABE /* Satoshi-Black.ttf */,
-				BBC2A2E02E719333000BEABE /* Satoshi-Black.woff */,
-				BBC2A2E12E719333000BEABE /* Satoshi-Black.woff2 */,
-				BBC2A2E22E719333000BEABE /* Satoshi-BlackItalic.eot */,
-				BBC2A2E32E719333000BEABE /* Satoshi-BlackItalic.ttf */,
-				BBC2A2E42E719333000BEABE /* Satoshi-BlackItalic.woff */,
-				BBC2A2E52E719333000BEABE /* Satoshi-BlackItalic.woff2 */,
-				BBC2A2E62E719333000BEABE /* Satoshi-Bold.eot */,
-				BBC2A2E72E719333000BEABE /* Satoshi-Bold.ttf */,
-				BBC2A2E82E719333000BEABE /* Satoshi-Bold.woff */,
-				BBC2A2E92E719333000BEABE /* Satoshi-Bold.woff2 */,
-				BBC2A2EA2E719333000BEABE /* Satoshi-BoldItalic.eot */,
-				BBC2A2EB2E719333000BEABE /* Satoshi-BoldItalic.ttf */,
-				BBC2A2EC2E719333000BEABE /* Satoshi-BoldItalic.woff */,
-				BBC2A2ED2E719333000BEABE /* Satoshi-BoldItalic.woff2 */,
-				BBC2A2EE2E719333000BEABE /* Satoshi-Italic.eot */,
-				BBC2A2EF2E719333000BEABE /* Satoshi-Italic.ttf */,
-				BBC2A2F02E719333000BEABE /* Satoshi-Italic.woff */,
-				BBC2A2F12E719333000BEABE /* Satoshi-Italic.woff2 */,
-				BBC2A2F22E719333000BEABE /* Satoshi-Light.eot */,
-				BBC2A2F32E719333000BEABE /* Satoshi-Light.ttf */,
-				BBC2A2F42E719333000BEABE /* Satoshi-Light.woff */,
-				BBC2A2F52E719333000BEABE /* Satoshi-Light.woff2 */,
-				BBC2A2F62E719333000BEABE /* Satoshi-LightItalic.eot */,
-				BBC2A2F72E719333000BEABE /* Satoshi-LightItalic.ttf */,
-				BBC2A2F82E719333000BEABE /* Satoshi-LightItalic.woff */,
-				BBC2A2F92E719333000BEABE /* Satoshi-LightItalic.woff2 */,
-				BBC2A2FA2E719333000BEABE /* Satoshi-Medium.eot */,
-				BBC2A2FB2E719333000BEABE /* Satoshi-Medium.ttf */,
-				BBC2A2FC2E719333000BEABE /* Satoshi-Medium.woff */,
-				BBC2A2FD2E719333000BEABE /* Satoshi-Medium.woff2 */,
-				BBC2A2FE2E719333000BEABE /* Satoshi-MediumItalic.eot */,
-				BBC2A2FF2E719333000BEABE /* Satoshi-MediumItalic.ttf */,
-				BBC2A3002E719333000BEABE /* Satoshi-MediumItalic.woff */,
-				BBC2A3012E719333000BEABE /* Satoshi-MediumItalic.woff2 */,
-				BBC2A3022E719333000BEABE /* Satoshi-Regular.eot */,
-				BBC2A3032E719333000BEABE /* Satoshi-Regular.ttf */,
-				BBC2A3042E719333000BEABE /* Satoshi-Regular.woff */,
-				BBC2A3052E719333000BEABE /* Satoshi-Regular.woff2 */,
-				BBC2A3062E719333000BEABE /* Satoshi-Variable.eot */,
-				BBC2A3072E719333000BEABE /* Satoshi-Variable.ttf */,
-				BBC2A3082E719333000BEABE /* Satoshi-Variable.woff */,
-				BBC2A3092E719333000BEABE /* Satoshi-Variable.woff2 */,
-				BBC2A30A2E719333000BEABE /* Satoshi-VariableItalic.eot */,
-				BBC2A30B2E719333000BEABE /* Satoshi-VariableItalic.ttf */,
-				BBC2A30C2E719333000BEABE /* Satoshi-VariableItalic.woff */,
-				BBC2A30D2E719333000BEABE /* Satoshi-VariableItalic.woff2 */,
-			);
-			path = fonts;
-			sourceTree = "<group>";
-		};
-		BBC2A3102E719333000BEABE /* WEB */ = {
-			isa = PBXGroup;
-			children = (
-				BBC2A2DD2E719333000BEABE /* css */,
-				BBC2A30E2E719333000BEABE /* fonts */,
-				BBC2A30F2E719333000BEABE /* README.md */,
-			);
-			path = WEB;
-			sourceTree = "<group>";
-		};
-		BBC2A3112E719333000BEABE /* Fonts */ = {
-			isa = PBXGroup;
-			children = (
-				BBC2A2D82E719333000BEABE /* OTF */,
-				BBC2A2DB2E719333000BEABE /* TTF */,
-				BBC2A3102E719333000BEABE /* WEB */,
-			);
-			path = Fonts;
-			sourceTree = "<group>";
-		};
-		BBC2A3132E719333000BEABE /* License */ = {
-			isa = PBXGroup;
-			children = (
-				BBC2A3122E719333000BEABE /* FFL.txt */,
-			);
-			path = License;
-			sourceTree = "<group>";
-		};
-		BBC2A3142E719333000BEABE /* Satoshi_Complete */ = {
-			isa = PBXGroup;
-			children = (
-				BBC2A3112E719333000BEABE /* Fonts */,
-				BBC2A3132E719333000BEABE /* License */,
-			);
-			path = Satoshi_Complete;
-			sourceTree = "<group>";
-		};
-		BBC2A3192E719333000BEABE /* Satoshi */ = {
-			isa = PBXGroup;
-			children = (
-				BBC2A3142E719333000BEABE /* Satoshi_Complete */,
-				BBC2A3152E719333000BEABE /* Satoshi-Bold.otf */,
-				BBC2A3162E719333000BEABE /* Satoshi-Medium.otf */,
-				BBC2A3172E719333000BEABE /* Satoshi-Regular.otf */,
-				BBC2A3182E719333000BEABE /* Satoshi-Variable.ttf */,
-			);
-			path = Satoshi;
-			sourceTree = "<group>";
-		};
-		BBC2A3232E719333000BEABE /* SharpGrotesk */ = {
-			isa = PBXGroup;
-			children = (
-				BBC2A31A2E719333000BEABE /* SharpGrotesk-Book.otf */,
-				BBC2A31B2E719333000BEABE /* SharpGrotesk-BookItalic.otf */,
-				BBC2A31C2E719333000BEABE /* SharpGrotesk-Light.otf */,
-				BBC2A31D2E719333000BEABE /* SharpGrotesk-LightItalic.otf */,
-				BBC2A31E2E719333000BEABE /* SharpGrotesk-Medium.otf */,
-				BBC2A31F2E719333000BEABE /* SharpGrotesk-MediumItalic.otf */,
-				BBC2A3202E719333000BEABE /* SharpGrotesk-SemiBold.otf */,
-				BBC2A3212E719333000BEABE /* SharpGrotesk-Thin.otf */,
-				BBC2A3222E719333000BEABE /* SharpGrotesk-ThinItalic.otf */,
-			);
-			path = SharpGrotesk;
+			path = Space_Mono;
 			sourceTree = "<group>";
 		};
 		BBC2A3242E719333000BEABE /* Fonts */ = {
 			isa = PBXGroup;
 			children = (
-				BBC2A2C82E719333000BEABE /* Cloud */,
-				BBC2A2CA2E719333000BEABE /* Hadley */,
-				BBC2A2CD2E719333000BEABE /* Office Notes */,
-				BBC2A3192E719333000BEABE /* Satoshi */,
-				BBC2A3232E719333000BEABE /* SharpGrotesk */,
+				BB31A2B12E79FD69001D7C46 /* Space_Mono */,
+				BBEF426B2E76E0400079202D /* Space_Grotesk */,
 			);
 			path = Fonts;
+			sourceTree = "<group>";
+		};
+		BBEF41DB2E744EC30079202D /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+				CC123456789012345678901A /* Config.xcconfig */,
+			);
+			name = "Recovered References";
+			sourceTree = "<group>";
+		};
+		BBEF41E12E744FA00079202D /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				BBEF41E22E744FA00079202D /* WidgetKit.framework */,
+				BBEF41E42E744FA00079202D /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		BBEF426B2E76E0400079202D /* Space_Grotesk */ = {
+			isa = PBXGroup;
+			children = (
+				BBEF42682E76E0400079202D /* OFL.txt */,
+				BBEF42692E76E0400079202D /* README.txt */,
+				BBEF426A2E76E0400079202D /* SpaceGrotesk-VariableFont_wght.ttf */,
+				BBEF42622E76E0400079202D /* SpaceGrotesk-Bold.ttf */,
+				BBEF42632E76E0400079202D /* SpaceGrotesk-Light.ttf */,
+				BBEF42642E76E0400079202D /* SpaceGrotesk-Medium.ttf */,
+				BBEF42652E76E0400079202D /* SpaceGrotesk-Regular.ttf */,
+				BBEF42662E76E0400079202D /* SpaceGrotesk-SemiBold.ttf */,
+			);
+			path = Space_Grotesk;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -465,15 +310,50 @@
 				1D1A2B222B1234567890ABC9 /* Sources */,
 				1D1A2B232B1234567890ABCB /* Frameworks */,
 				1D1A2B242B1234567890ABCA /* Resources */,
+				BBEF41F72E744FA10079202D /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				BBEF41F52E744FA10079202D /* PBXTargetDependency */,
+			);
+			name = Scrap;
+			packageProductDependencies = (
+				BB304E772E6F72970054DD40 /* AmplitudeSwift */,
+				BB304E772E6F72970054DD42 /* AmplitudeSwiftSessionReplayPlugin */,
+				BB304E7C2E6F9EEA0054DD40 /* FirebaseAuth */,
+				BB304E7E2E6F9EEA0054DD40 /* FirebaseCore */,
+				BB304E802E6F9EEA0054DD40 /* FirebaseFirestore */,
+				BB304E822E6F9F0A0054DD40 /* FirebaseFunctions */,
+				BB304E842E6F9F0A0054DD40 /* FirebaseStorage */,
+				BB304E882E6FA8650054DD40 /* GoogleSignIn */,
+				BB304E8A2E6FA8650054DD40 /* GoogleSignInSwift */,
+			);
+			productName = Scrap;
+			productReference = 1D1A2B262B1234567890ABCC /* Scrap.app */;
+			productType = "com.apple.product-type.application";
+		};
+		BBEF41DF2E744FA00079202D /* ScrapWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BBEF41FB2E744FA10079202D /* Build configuration list for PBXNativeTarget "ScrapWidgetExtension" */;
+			buildPhases = (
+				BBEF41DC2E744FA00079202D /* Sources */,
+				BBEF41DD2E744FA00079202D /* Frameworks */,
+				BBEF41DE2E744FA00079202D /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
-			name = Scrap;
-			productName = Scrap;
-			productReference = 1D1A2B262B1234567890ABCC /* Scrap.app */;
-			productType = "com.apple.product-type.application";
+			fileSystemSynchronizedGroups = (
+				BBEF41E62E744FA00079202D /* ScrapWidget */,
+			);
+			name = ScrapWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = ScrapWidgetExtension;
+			productReference = BBEF41E02E744FA00079202D /* ScrapWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -482,11 +362,14 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1430;
+				LastSwiftUpdateCheck = 1640;
 				LastUpgradeCheck = 1640;
 				TargetAttributes = {
 					1D1A2B252B1234567890ABCA = {
 						CreatedOnToolsVersion = 14.3;
+					};
+					BBEF41DF2E744FA00079202D = {
+						CreatedOnToolsVersion = 16.4;
 					};
 				};
 			};
@@ -501,6 +384,7 @@
 			mainGroup = 1D1A2B1D2B1234567890ABCA;
 			packageReferences = (
 				BB304E762E6F72970054DD40 /* XCRemoteSwiftPackageReference "Amplitude-Swift" */,
+				BB304E762E6F72970054DD41 /* XCRemoteSwiftPackageReference "AmplitudeSessionReplay-iOS" */,
 				BB304E7B2E6F9EEA0054DD40 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				BB304E872E6FA8650054DD40 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 			);
@@ -509,6 +393,7 @@
 			projectRoot = "";
 			targets = (
 				1D1A2B252B1234567890ABCA /* Scrap */,
+				BBEF41DF2E744FA00079202D /* ScrapWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -518,89 +403,42 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				BBC2A3252E719333000BEABE /* Satoshi-Black.eot in Resources */,
-				BBC2A3262E719333000BEABE /* Satoshi-VariableItalic.ttf in Resources */,
-				BBC2A3272E719333000BEABE /* Satoshi-VariableItalic.woff2 in Resources */,
-				BBC2A3282E719333000BEABE /* Satoshi-LightItalic.woff in Resources */,
-				BBC2A3292E719333000BEABE /* Satoshi-LightItalic.ttf in Resources */,
-				BBC2A32A2E719333000BEABE /* Satoshi-Variable.ttf in Resources */,
-				BBC2A32B2E719333000BEABE /* FFL.txt in Resources */,
-				BBC2A32C2E719333000BEABE /* Satoshi-BlackItalic.eot in Resources */,
-				BBC2A32D2E719333000BEABE /* Satoshi-Italic.woff2 in Resources */,
-				BBC2A32E2E719333000BEABE /* Satoshi-MediumItalic.woff2 in Resources */,
-				BBC2A32F2E719333000BEABE /* Satoshi-BoldItalic.woff2 in Resources */,
-				BBC2A3302E719333000BEABE /* Office Notes.ttf in Resources */,
-				BBC2A3312E719333000BEABE /* Satoshi-BoldItalic.otf in Resources */,
-				BBC2A3322E719333000BEABE /* Satoshi-Bold.woff2 in Resources */,
-				BBC2A3332E719333000BEABE /* Satoshi-BoldItalic.ttf in Resources */,
-				BBC2A3342E719333000BEABE /* Satoshi-Black.woff2 in Resources */,
-				BBC2A3352E719333000BEABE /* Satoshi-BlackItalic.ttf in Resources */,
-				BBC2A3362E719333000BEABE /* Satoshi-Variable.woff2 in Resources */,
-				BBC2A3372E719333000BEABE /* Satoshi-Medium.eot in Resources */,
-				BBC2A3382E719333000BEABE /* Satoshi-Regular.otf in Resources */,
-				BBC2A3392E719333000BEABE /* Satoshi-Medium.woff in Resources */,
-				BBC2A33A2E719333000BEABE /* Satoshi-VariableItalic.eot in Resources */,
-				BBC2A33B2E719333000BEABE /* Satoshi-Black.otf in Resources */,
-				BBC2A33C2E719333000BEABE /* Satoshi-Light.woff in Resources */,
-				BBC2A33D2E719333000BEABE /* SharpGrotesk-SemiBold.otf in Resources */,
-				BBC2A33E2E719333000BEABE /* Satoshi-Variable.ttf in Resources */,
-				BBC2A33F2E719333000BEABE /* Satoshi-LightItalic.eot in Resources */,
-				BBC2A3402E719333000BEABE /* Satoshi-Medium.ttf in Resources */,
-				BBC2A3412E719333000BEABE /* Satoshi-Regular.otf in Resources */,
-				BBC2A3422E719333000BEABE /* Satoshi-Regular.woff2 in Resources */,
-				BBC2A3432E719333000BEABE /* Satoshi-Bold.otf in Resources */,
-				BBC2A3442E719333000BEABE /* Satoshi-MediumItalic.woff in Resources */,
-				BBC2A3452E719333000BEABE /* Satoshi-Light.otf in Resources */,
-				BBC2A3462E719333000BEABE /* Satoshi-Italic.ttf in Resources */,
-				BBC2A3472E719333000BEABE /* SharpGrotesk-LightItalic.otf in Resources */,
-				BBC2A3482E719333000BEABE /* Satoshi-Medium.woff2 in Resources */,
-				BBC2A3492E719333000BEABE /* Office Notes.otf in Resources */,
-				BBC2A34A2E719333000BEABE /* Satoshi-Light.ttf in Resources */,
-				BBC2A34B2E719333000BEABE /* Satoshi-BlackItalic.woff2 in Resources */,
-				BBC2A34C2E719333000BEABE /* SharpGrotesk-BookItalic.otf in Resources */,
-				BBC2A34D2E719333000BEABE /* SharpGrotesk-Book.otf in Resources */,
-				BBC2A34E2E719333000BEABE /* Satoshi-Regular.eot in Resources */,
-				BBC2A34F2E719333000BEABE /* Satoshi-BlackItalic.otf in Resources */,
-				BBC2A3502E719333000BEABE /* satoshi.css in Resources */,
-				BBC2A3512E719333000BEABE /* Satoshi-VariableItalic.woff in Resources */,
-				BBC2A3522E719333000BEABE /* Satoshi-Medium.otf in Resources */,
-				BBC2A3532E719333000BEABE /* Satoshi-MediumItalic.ttf in Resources */,
-				BBC2A3542E719333000BEABE /* Satoshi-Bold.ttf in Resources */,
-				BBC2A3552E719333000BEABE /* Satoshi-VariableItalic.ttf in Resources */,
-				BBC2A3562E719333000BEABE /* Satoshi-MediumItalic.eot in Resources */,
-				BBC2A3572E719333000BEABE /* SharpGrotesk-Medium.otf in Resources */,
-				BBC2A3582E719333000BEABE /* Satoshi-Light.woff2 in Resources */,
-				BBC2A3592E719333000BEABE /* Cloud.otf in Resources */,
-				BBC2A35A2E719333000BEABE /* Satoshi-Bold.otf in Resources */,
-				BBC2A35B2E719333000BEABE /* Satoshi-BoldItalic.woff in Resources */,
-				BBC2A35C2E719333000BEABE /* Satoshi-Regular.ttf in Resources */,
-				BBC2A35D2E719333000BEABE /* Satoshi-Regular.woff in Resources */,
-				BBC2A35E2E719333000BEABE /* Satoshi-Black.ttf in Resources */,
-				BBC2A35F2E719333000BEABE /* SharpGrotesk-Thin.otf in Resources */,
-				BBC2A3602E719333000BEABE /* Satoshi-BoldItalic.eot in Resources */,
-				BBC2A3612E719333000BEABE /* Satoshi-BlackItalic.woff in Resources */,
-				BBC2A3622E719333000BEABE /* Satoshi-Bold.woff in Resources */,
-				BBC2A3632E719333000BEABE /* Satoshi-Italic.otf in Resources */,
-				BBC2A3642E719333000BEABE /* Satoshi-Light.eot in Resources */,
-				BBC2A3652E719333000BEABE /* Satoshi-Variable.ttf in Resources */,
-				BBC2A3662E719333000BEABE /* Satoshi-Black.woff in Resources */,
-				BBC2A3672E719333000BEABE /* Satoshi-Italic.eot in Resources */,
-				BBC2A3682E719333000BEABE /* Satoshi-Italic.woff in Resources */,
-				BBC2A3692E719333000BEABE /* README.md in Resources */,
-				BBC2A36A2E719333000BEABE /* Satoshi-Medium.otf in Resources */,
-				BBC2A36B2E719333000BEABE /* Satoshi-Variable.eot in Resources */,
-				BBC2A36C2E719333000BEABE /* Hadley.otf in Resources */,
-				BBC2A36D2E719333000BEABE /* Satoshi-LightItalic.otf in Resources */,
-				BBC2A36E2E719333000BEABE /* Satoshi-Variable.woff in Resources */,
-				BBC2A36F2E719333000BEABE /* Satoshi-Bold.eot in Resources */,
-				BBC2A3702E719333000BEABE /* Satoshi-LightItalic.woff2 in Resources */,
-				BBC2A3712E719333000BEABE /* SharpGrotesk-Light.otf in Resources */,
-				BBC2A3722E719333000BEABE /* SharpGrotesk-ThinItalic.otf in Resources */,
-				BBC2A3732E719333000BEABE /* SharpGrotesk-MediumItalic.otf in Resources */,
-				BBC2A3742E719333000BEABE /* Satoshi-MediumItalic.otf in Resources */,
+				BBEF42742E76E0400079202D /* SpaceGrotesk-Medium.ttf in Resources */,
+				BBEF42752E76E0400079202D /* SpaceGrotesk-Regular.ttf in Resources */,
+				BBEF42762E76E0400079202D /* SpaceGrotesk-SemiBold.ttf in Resources */,
+				BBEF42772E76E0400079202D /* SpaceGrotesk-Bold.ttf in Resources */,
+				BBEF42782E76E0400079202D /* SpaceGrotesk-VariableFont_wght.ttf in Resources */,
+				BB31A2B72E79FD69001D7C46 /* SpaceMono-Regular.ttf in Resources */,
+				BB31A2B82E79FD69001D7C46 /* OFL.txt in Resources */,
+				BB31A2B92E79FD69001D7C46 /* SpaceMono-Italic.ttf in Resources */,
+				BB31A2BA2E79FD69001D7C46 /* SpaceMono-BoldItalic.ttf in Resources */,
+				BB31A2BB2E79FD69001D7C46 /* SpaceMono-Bold.ttf in Resources */,
+				BBEF42792E76E0400079202D /* README.txt in Resources */,
+				BBEF427A2E76E0400079202D /* SpaceGrotesk-Light.ttf in Resources */,
+				BBEF427B2E76E0400079202D /* OFL.txt in Resources */,
 				1D1A2B312B1234567890ABD0 /* Preview Assets.xcassets in Resources */,
 				1D1A2B2E2B1234567890ABCF /* Assets.xcassets in Resources */,
 				BB304E7A2E6F9E750054DD40 /* GoogleService-Info.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BBEF41DE2E744FA00079202D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BBEF426C2E76E0400079202D /* SpaceGrotesk-Medium.ttf in Resources */,
+				BB31A2B22E79FD69001D7C46 /* SpaceMono-Regular.ttf in Resources */,
+				BB31A2B32E79FD69001D7C46 /* OFL.txt in Resources */,
+				BB31A2B42E79FD69001D7C46 /* SpaceMono-Italic.ttf in Resources */,
+				BB31A2B52E79FD69001D7C46 /* SpaceMono-BoldItalic.ttf in Resources */,
+				BB31A2B62E79FD69001D7C46 /* SpaceMono-Bold.ttf in Resources */,
+				BBEF426D2E76E0400079202D /* SpaceGrotesk-Regular.ttf in Resources */,
+				BBEF426E2E76E0400079202D /* SpaceGrotesk-SemiBold.ttf in Resources */,
+				BBEF426F2E76E0400079202D /* SpaceGrotesk-Bold.ttf in Resources */,
+				BBEF42702E76E0400079202D /* SpaceGrotesk-VariableFont_wght.ttf in Resources */,
+				BBEF42712E76E0400079202D /* README.txt in Resources */,
+				BBEF42722E76E0400079202D /* SpaceGrotesk-Light.ttf in Resources */,
+				BBEF42732E76E0400079202D /* OFL.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -612,16 +450,45 @@
 			buildActionMask = 2147483647;
 			files = (
 				1D1A2B2C2B1234567890ABCE /* ContentView.swift in Sources */,
+				WV324054AB161F2E7C28E40AB1 /* RichTextCore/WaveformView.swift in Sources */,
+				CB8B2374A7366A9664FA926D92 /* RichTextCore/CheckboxTextAttachment.swift in Sources */,
+				DG37B0B88A72C027323CBED810 /* CoreGraphicsDebug.swift in Sources */,
+				NEC114F946C8D24C74D23822B8 /* NoteEditor.swift in Sources */,
+				VSB265A2C19F0013D2789802D2 /* VectorSearchService.swift in Sources */,
+				RCB7600E0A0B026201786F2131 /* RichTextCore/RichTextContext.swift in Sources */,
+				IA3B9BABEBD65C49F838AA4143 /* RichTextCore/RichTextInputAccessoryView.swift in Sources */,
+				RC7A674C6B95C322B02410EC74 /* RichTextCore/RichTextCoordinator.swift in Sources */,
+				RC7762BA2291946641555033DE /* RichTextCore/RichTextEditor.swift in Sources */,
+				TMF4A47D87D17E986129EC9426 /* ThemeManager.swift in Sources */,
+				SVF04E28F0BE8081BFE5CDA262 /* SettingsView.swift in Sources */,
 				AA304E792F6F72980054DD41 /* AnalyticsManager.swift in Sources */,
 				DD304E862E6FA0000054DD42 /* FirebaseManager.swift in Sources */,
+				RTB79366E98E99 /* RichTextTransformer.swift in Sources */,
 				EE304E882E6FA1000054DD43 /* AuthenticationView.swift in Sources */,
 				FF304E8A2E6FA2000054DD44 /* ChromaService.swift in Sources */,
 				CC304E7B3F6F72990054DD42 /* TestContentView.swift in Sources */,
 				1D1A2B2A2B1234567890ABCD /* ScrapApp.swift in Sources */,
+				SM746984E3905E9248F740 /* SparkModels.swift in Sources */,
+				SS7CB67F2F072D9CA9AE6D /* SparkServices.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BBEF41DC2E744FA00079202D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		BBEF41F52E744FA10079202D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BBEF41DF2E744FA00079202D /* ScrapWidgetExtension */;
+			targetProxy = BBEF41F42E744FA10079202D /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		1D1A2B342B1234567890ABD2 /* Debug */ = {
@@ -738,13 +605,15 @@
 		};
 		1D1A2B372B1234567890ABD4 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = CC123456789012345678901A /* Config.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Scrap/Scrap.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_ASSET_PATHS = "\"Scrap/Preview Content\"";
+				DEVELOPMENT_TEAM = K8NAZ76CBQ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Scrap/Info.plist;
@@ -758,7 +627,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.01;
 				PRODUCT_BUNDLE_IDENTIFIER = com.muckstack.scrap;
 				PRODUCT_NAME = Scrap;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -773,13 +642,16 @@
 		};
 		1D1A2B382B1234567890ABD5 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = CC123456789012345678901A /* Config.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Scrap/Scrap.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_ASSET_PATHS = "\"Scrap/Preview Content\"";
+				DEVELOPMENT_TEAM = K8NAZ76CBQ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Scrap/Info.plist;
@@ -793,7 +665,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.01;
 				PRODUCT_BUNDLE_IDENTIFIER = com.muckstack.scrap;
 				PRODUCT_NAME = Scrap;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -803,6 +675,78 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		BBEF41F82E744FA10079202D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CODE_SIGN_ENTITLEMENTS = ScrapWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = K8NAZ76CBQ;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ScrapWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = ScrapWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.01;
+				PRODUCT_BUNDLE_IDENTIFIER = com.muckstack.scrap.ScrapWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		BBEF41F92E744FA10079202D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CODE_SIGN_ENTITLEMENTS = ScrapWidgetExtension.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = K8NAZ76CBQ;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ScrapWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = ScrapWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.01;
+				PRODUCT_BUNDLE_IDENTIFIER = com.muckstack.scrap.ScrapWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -827,12 +771,29 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		BBEF41FB2E744FA10079202D /* Build configuration list for PBXNativeTarget "ScrapWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BBEF41F82E744FA10079202D /* Debug */,
+				BBEF41F92E744FA10079202D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
 		BB304E762E6F72970054DD40 /* XCRemoteSwiftPackageReference "Amplitude-Swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/amplitude/Amplitude-Swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.9.0;
+			};
+		};
+		BB304E762E6F72970054DD41 /* XCRemoteSwiftPackageReference "AmplitudeSessionReplay-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/amplitude/AmplitudeSessionReplay-iOS";
 			requirement = {
 				branch = main;
 				kind = branch;
@@ -861,6 +822,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = BB304E762E6F72970054DD40 /* XCRemoteSwiftPackageReference "Amplitude-Swift" */;
 			productName = AmplitudeSwift;
+		};
+		BB304E772E6F72970054DD42 /* AmplitudeSwiftSessionReplayPlugin */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BB304E762E6F72970054DD41 /* XCRemoteSwiftPackageReference "AmplitudeSessionReplay-iOS" */;
+			productName = AmplitudeSwiftSessionReplayPlugin;
 		};
 		BB304E7C2E6F9EEA0054DD40 /* FirebaseAuth */ = {
 			isa = XCSwiftPackageProductDependency;
