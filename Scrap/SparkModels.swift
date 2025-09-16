@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import FirebaseFirestore
+import UIKit
 
 // MARK: - Spark Item (Main Note Model)
 class SparkItem: ObservableObject, Identifiable, Hashable {
@@ -121,13 +122,14 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
     // Prepare attributed string for RTF saving by ensuring system fonts with proper traits
     static func prepareForRTFSave(_ attributedString: NSAttributedString) -> NSAttributedString {
         let mutableString = NSMutableAttributedString(attributedString: attributedString)
-        let range = NSRange(location: 0, length: mutableString.length)
         
-        // Since we're now using Unicode checkboxes, no conversion needed for RTF persistence
+        // First, convert NSTextAttachment checkboxes to Unicode characters for RTF persistence
+        let processedString = CheckboxManager.convertAttachmentsToUnicodeCheckboxes(mutableString)
+        let finalMutableString = NSMutableAttributedString(attributedString: processedString)
         
         // Then convert fonts to system fonts for RTF compatibility
-        let newRange = NSRange(location: 0, length: mutableString.length)
-        mutableString.enumerateAttribute(.font, in: newRange, options: []) { value, _, _ in
+        let range = NSRange(location: 0, length: finalMutableString.length)
+        finalMutableString.enumerateAttribute(.font, in: range, options: []) { value, fontRange, _ in
             guard let font = value as? UIFont else { return }
             
             let size = safeFontSize(font.pointSize)
@@ -159,22 +161,24 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
                 systemFont = UIFont.systemFont(ofSize: size)
             }
             
-            mutableString.addAttribute(.font, value: systemFont, range: range)
+            finalMutableString.addAttribute(.font, value: systemFont, range: fontRange)
         }
         
-        return mutableString
+        return finalMutableString
     }
     
     // Convert system fonts back to SpaceGrotesk fonts while preserving formatting traits
     static func prepareForDisplay(_ attributedString: NSAttributedString) -> NSAttributedString {
         let mutableString = NSMutableAttributedString(attributedString: attributedString)
         
-        // Keep Unicode checkboxes as-is - no conversion to attachments needed
+        // First, convert Unicode checkboxes to NSTextAttachment for better display
+        let processedString = CheckboxManager.convertUnicodeCheckboxesToAttachments(mutableString)
+        let finalMutableString = NSMutableAttributedString(attributedString: processedString)
         
         // Then get the range after potential length changes from checkbox conversion
-        let updatedRange = NSRange(location: 0, length: mutableString.length)
+        let updatedRange = NSRange(location: 0, length: finalMutableString.length)
         
-        mutableString.enumerateAttribute(.font, in: updatedRange, options: []) { value, range, _ in
+        finalMutableString.enumerateAttribute(.font, in: updatedRange, options: []) { value, range, _ in
             guard let font = value as? UIFont else { return }
             
             let size = safeFontSize(font.pointSize)
@@ -224,10 +228,10 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
                 }
             }
             
-            mutableString.addAttribute(.font, value: spaceGroteskFont, range: range)
+            finalMutableString.addAttribute(.font, value: spaceGroteskFont, range: range)
         }
         
-        return mutableString
+        return finalMutableString
     }
     
 }
@@ -359,3 +363,4 @@ extension View {
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 }
+

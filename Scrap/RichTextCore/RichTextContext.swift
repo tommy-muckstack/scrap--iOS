@@ -8,6 +8,7 @@
 
 import SwiftUI
 import Combine
+import UIKit
 
 /**
  This observable context manages the state of a rich text editor
@@ -391,20 +392,32 @@ public class RichTextContext: ObservableObject {
         // Check for list markers and formatting
         let bulletActive = trimmedLine.hasPrefix("•")
         
-        // Check for checkbox formatting - Unicode checkboxes
+        // Check for checkbox formatting - both Unicode and NSTextAttachment checkboxes
         var checkboxActive = trimmedLine.hasPrefix("☐") || trimmedLine.hasPrefix("☑")
         
-        // Also check for Unicode checkboxes at the beginning of the line
+        // Also check for checkboxes at the beginning of the line (Unicode and NSTextAttachment)
         if !checkboxActive && attributedString.length > 0 {
             let lineStart = lineRange.location
             let leadingWhitespace = lineText.count - lineText.ltrimmed().count
             let checkboxPosition = lineStart + leadingWhitespace
             
             if checkboxPosition < attributedString.length {
-                let character = (attributedString.string as NSString).character(at: checkboxPosition)
-                // Check for Unicode checkbox characters ☐ ☑
-                if character == 0x2610 || character == 0x2611 {
-                    checkboxActive = true
+                // First check for NSTextAttachment checkboxes (preferred)
+                let searchRange = NSRange(location: checkboxPosition, length: min(3, attributedString.length - checkboxPosition))
+                attributedString.enumerateAttribute(.attachment, in: searchRange, options: []) { value, range, stop in
+                    if value is CheckboxTextAttachment {
+                        checkboxActive = true
+                        stop.pointee = true
+                    }
+                }
+                
+                // If no NSTextAttachment found, check for Unicode checkboxes
+                if !checkboxActive {
+                    let character = (attributedString.string as NSString).character(at: checkboxPosition)
+                    // Check for Unicode checkbox characters ☐ ☑
+                    if character == 0x2610 || character == 0x2611 {
+                        checkboxActive = true
+                    }
                 }
             }
         }

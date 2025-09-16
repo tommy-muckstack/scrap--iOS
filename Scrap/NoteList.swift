@@ -11,10 +11,8 @@ struct NoteList: View {
                 NoteRow(item: item, dataManager: dataManager) {
                     navigationPath.append(item)
                 }
-                .transition(.asymmetric(
-                    insertion: .move(edge: .top).combined(with: .opacity),
-                    removal: .move(edge: .leading).combined(with: .opacity)
-                ))
+                .id(item.id) // Use stable ID for better performance
+                .animation(.default, value: item.id)
             }
         }
     }
@@ -73,62 +71,23 @@ struct NoteRow: View {
 // MARK: - Category Pills Display
 struct CategoryPills: View {
     let categoryIds: [String]
-    @State private var categories: [Category] = []
-    @State private var isLoading = false
     
     var body: some View {
-        HStack(spacing: 6) {
-            ForEach(categories, id: \.id) { category in
-                HStack(spacing: 4) {
-                    Circle()
-                        .fill(category.uiColor)
-                        .frame(width: 6, height: 6)
-                    
-                    Text(category.name)
-                        .font(GentleLightning.Typography.metadata)
-                        .foregroundColor(GentleLightning.Colors.textSecondary)
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(
-                    Capsule()
-                        .fill(category.uiColor.opacity(0.1))
-                )
-            }
-            Spacer()
-        }
-        .onAppear {
-            loadCategories()
-        }
-        .onChange(of: categoryIds) { _ in
-            loadCategories()
-        }
-    }
-    
-    private func loadCategories() {
-        guard !categoryIds.isEmpty else {
-            categories = []
-            return
-        }
-        
-        isLoading = true
-        Task {
-            do {
-                let allCategories = try await CategoryService.shared.getUserCategories()
-                let filteredCategories = allCategories.filter { category in
-                    categoryIds.contains(category.firebaseId ?? category.id)
-                }
-                
-                await MainActor.run {
-                    categories = filteredCategories
-                    isLoading = false
-                }
-            } catch {
-                await MainActor.run {
-                    categories = []
-                    isLoading = false
-                }
-                print("Failed to load categories: \(error)")
+        if categoryIds.isEmpty {
+            EmptyView()
+        } else {
+            HStack(spacing: 6) {
+                // For now, just show category count to avoid async loading
+                Text("\(categoryIds.count) categor\(categoryIds.count == 1 ? "y" : "ies")")
+                    .font(GentleLightning.Typography.metadata)
+                    .foregroundColor(GentleLightning.Colors.textSecondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(
+                        Capsule()
+                            .fill(GentleLightning.Colors.accentNeutral.opacity(0.1))
+                    )
+                Spacer()
             }
         }
     }

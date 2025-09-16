@@ -644,9 +644,11 @@ public class RichTextCoordinator: NSObject {
         
         // Don't process lines that are only whitespace/newlines
         if trimmedLine.isEmpty {
-            // Add Unicode checkbox to empty line
-            let checkboxString = createUnicodeCheckbox(isChecked: false)
+            // Add NSTextAttachment checkbox for reliable tap detection and consistent sizing
+            let attachment = CheckboxTextAttachment(isChecked: false)
+            let checkboxString = NSAttributedString(attachment: attachment)
             let spaceString = NSAttributedString(string: " ")
+            
             let checkboxWithSpace = NSMutableAttributedString()
             checkboxWithSpace.append(checkboxString)
             checkboxWithSpace.append(spaceString)
@@ -661,35 +663,75 @@ public class RichTextCoordinator: NSObject {
             let newCursorPosition = lineRange.location + 2 // Position after checkbox + space
             let safePosition = min(newCursorPosition, mutableText.length)
             textView.selectedRange = NSRange(location: safePosition, length: 0)
-            print("🔸 RichTextCoordinator: Added custom checkbox to empty line, cursor at position \(safePosition)")
+            print("🔸 RichTextCoordinator: Added NSTextAttachment checkbox to empty line, cursor at position \(safePosition)")
             return
         }
         
-        // For now, keep using Unicode characters for existing checkboxes to maintain compatibility
-        // TODO: Convert all existing checkboxes to custom attachments gradually
-        let mutableLineText: String
-        let newCursorPosition: Int
-        
-        // Check if line already has a checkbox (prevent duplicates)
-        if trimmedLine.hasPrefix("☐ ") || trimmedLine.hasPrefix("☑ ") {
-            // Remove checkbox - cursor goes to start of text content
-            mutableLineText = String(trimmedLine.dropFirst(2))
-            newCursorPosition = lineRange.location + mutableLineText.count
-            print("🔸 RichTextCoordinator: Removing checkbox from line")
-        } else if trimmedLine.hasPrefix("☐") || trimmedLine.hasPrefix("☑") {
-            // Line starts with checkbox (but no space) - remove it completely but preserve trailing spaces
-            var withoutCheckbox = String(trimmedLine.dropFirst(1))
-            // Only trim leading whitespace, preserve trailing spaces
-            while withoutCheckbox.hasPrefix(" ") {
-                withoutCheckbox = String(withoutCheckbox.dropFirst())
+        // Check for existing NSTextAttachment checkboxes first
+        var hasCheckboxAttachment = false
+        mutableText.enumerateAttribute(.attachment, in: lineRange, options: []) { value, _, _ in
+            if value is CheckboxTextAttachment {
+                hasCheckboxAttachment = true
             }
-            mutableLineText = withoutCheckbox
-            newCursorPosition = lineRange.location + mutableLineText.count
-            print("🔸 RichTextCoordinator: Removing checkbox (no space) from line")
+        }
+        
+        if hasCheckboxAttachment {
+            // Remove existing checkbox attachment
+            let mutableLine = NSMutableAttributedString(attributedString: mutableText.attributedSubstring(from: lineRange))
+            mutableLine.enumerateAttribute(.attachment, in: NSRange(location: 0, length: mutableLine.length), options: [.reverse]) { value, range, _ in
+                if value is CheckboxTextAttachment {
+                    mutableLine.deleteCharacters(in: range)
+                }
+            }
+            
+            // Also remove the space after checkbox if present
+            if mutableLine.length > 0 && mutableLine.string.hasPrefix(" ") {
+                mutableLine.deleteCharacters(in: NSRange(location: 0, length: 1))
+            }
+            
+            mutableText.replaceCharacters(in: lineRange, with: mutableLine)
+            textView.attributedText = mutableText
+            
+            let newCursorPosition = lineRange.location
+            textView.selectedRange = NSRange(location: newCursorPosition, length: 0)
+            print("🔸 RichTextCoordinator: Removed NSTextAttachment checkbox from line")
+            updateBindingFromTextView()
+            updateContextFromTextView()
+            return
+        }
+        
+        // Check for legacy Unicode checkboxes (for backward compatibility)
+        if trimmedLine.hasPrefix("☐ ") || trimmedLine.hasPrefix("☑ ") {
+            // TODO: Remove Unicode checkbox and replace with NSTextAttachment when CheckboxTextAttachment.swift is added
+            // For now, keep the Unicode checkbox as is
+            let contentAfterCheckbox = String(trimmedLine.dropFirst(2))
+            let checkboxString = NSAttributedString(string: trimmedLine.hasPrefix("☑") ? "☑ " : "☐ ")
+            let contentString = NSAttributedString(string: contentAfterCheckbox)
+            
+            let checkboxWithContent = NSMutableAttributedString()
+            checkboxWithContent.append(checkboxString)
+            checkboxWithContent.append(contentString)
+            
+            if lineText.hasSuffix("\n") {
+                checkboxWithContent.append(NSAttributedString(string: "\n"))
+            }
+            
+            mutableText.replaceCharacters(in: lineRange, with: checkboxWithContent)
+            textView.attributedText = mutableText
+            
+            let newCursorPosition = lineRange.location + 2 // Position after checkbox + space
+            let safePosition = min(newCursorPosition, mutableText.length)
+            textView.selectedRange = NSRange(location: safePosition, length: 0)
+            
+            print("🔸 RichTextCoordinator: Converted Unicode checkbox to NSTextAttachment")
+            updateBindingFromTextView()
+            updateContextFromTextView()
+            return
         } else if trimmedLine.hasPrefix("• ") {
-            // Replace bullet with Unicode checkbox
+            // Replace bullet with NSTextAttachment checkbox
             let contentAfterBullet = String(trimmedLine.dropFirst(2))
-            let checkboxString = createUnicodeCheckbox(isChecked: false)
+            let attachment = CheckboxTextAttachment(isChecked: false)
+            let checkboxString = NSAttributedString(attachment: attachment)
             let spaceString = NSAttributedString(string: " ")
             let contentString = NSAttributedString(string: contentAfterBullet)
             
@@ -709,13 +751,14 @@ public class RichTextCoordinator: NSObject {
             let safePosition = min(newCursorPosition, mutableText.length)
             textView.selectedRange = NSRange(location: safePosition, length: 0)
             
-            print("🔸 RichTextCoordinator: Replaced bullet with custom checkbox")
+            print("🔸 RichTextCoordinator: Replaced bullet with NSTextAttachment checkbox")
             updateBindingFromTextView()
             updateContextFromTextView()
             return
         } else if !trimmedLine.contains("☐") && !trimmedLine.contains("☑") {
-            // Add Unicode checkbox with space
-            let checkboxString = createUnicodeCheckbox(isChecked: false)
+            // Add NSTextAttachment checkbox to line with content
+            let attachment = CheckboxTextAttachment(isChecked: false)
+            let checkboxString = NSAttributedString(attachment: attachment)
             let spaceString = NSAttributedString(string: " ")
             let contentString = NSAttributedString(string: trimmedLine)
             
@@ -735,32 +778,15 @@ public class RichTextCoordinator: NSObject {
             let safePosition = min(newCursorPosition, mutableText.length)
             textView.selectedRange = NSRange(location: safePosition, length: 0)
             
-            print("🔸 RichTextCoordinator: Added Unicode checkbox to line")
+            print("🔸 RichTextCoordinator: Added NSTextAttachment checkbox to line")
             updateBindingFromTextView()
             updateContextFromTextView()
             return
         } else {
-            // Line already contains checkboxes somewhere - don't add another
-            print("🚫 RichTextCoordinator: Line already contains checkboxes - not adding another")
+            // Line already contains legacy checkboxes - don't add another
+            print("🚫 RichTextCoordinator: Line already contains legacy checkboxes - not adding another")
             return
         }
-        
-        // Legacy fallback for Unicode checkbox removal (for existing checkboxes)
-        // This handles removal of existing Unicode checkboxes while maintaining the spacing fix
-        let newLine = mutableLineText + (lineText.hasSuffix("\n") ? "\n" : "")
-        mutableText.replaceCharacters(in: lineRange, with: newLine)
-        
-        // Update text view with correct cursor position  
-        textView.attributedText = mutableText
-        
-        // Ensure cursor position is valid for the new text length
-        let safePosition = min(newCursorPosition, mutableText.length)
-        textView.selectedRange = NSRange(location: safePosition, length: 0)
-        
-        updateBindingFromTextView()
-        updateContextFromTextView()
-        
-        print("🎯 RichTextCoordinator: Legacy checkbox format applied - cursor at position \(safePosition)")
     }
     
     private func applyCodeBlockFormat(_ mutableText: NSMutableAttributedString, _ lineRange: NSRange, _ lineText: String) {
@@ -1830,9 +1856,10 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
                 isHandlingNewlineInsertion = true
                 let mutableText = NSMutableAttributedString(attributedString: textView.attributedText)
                 
-                // Create new checkbox with newline prefix
+                // Create new checkbox with newline prefix using NSTextAttachment
                 let newlineString = NSAttributedString(string: "\n")
-                let checkboxString = createUnicodeCheckbox(isChecked: false)
+                let attachment = CheckboxTextAttachment(isChecked: false)
+                let checkboxString = NSAttributedString(attachment: attachment)
                 let spaceString = NSAttributedString(string: " ")
                 
                 let newCheckboxLine = NSMutableAttributedString()
@@ -2046,11 +2073,19 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
     private func createUnicodeCheckbox(isChecked: Bool) -> NSAttributedString {
         let checkboxChar = isChecked ? "☑" : "☐"
         
-        // Use larger font size for better tap targets and visibility
-        let safeCheckboxSize = safeFontSize(24.0) // Larger for better tap targets
+        // Use slightly larger font size than text for better tap targets (Apple Notes style)
+        // Apple Notes checkboxes are about 1.2x the text size for better usability
+        let contextFontSize = context.fontSize
+        print("🔍 createUnicodeCheckbox: context.fontSize = \(contextFontSize)")
         
-        // Use regular system font with heavier weight for better visibility
-        let checkboxFont = UIFont.systemFont(ofSize: safeCheckboxSize, weight: .semibold)
+        let textFontSize = safeFontSize(contextFontSize)
+        print("🔍 createUnicodeCheckbox: safeFontSize = \(textFontSize)")
+        
+        let checkboxSize = textFontSize * 1.2 // Slightly larger than text for better tapping
+        print("🔍 createUnicodeCheckbox: checkboxSize = \(checkboxSize)")
+        
+        // Use system font with medium weight to match Apple Notes style
+        let checkboxFont = UIFont.systemFont(ofSize: checkboxSize, weight: .medium)
         
         let checkboxColor = UIColor.label
         
@@ -2095,7 +2130,7 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
             }
         }
         
-        print("✅ createUnicodeCheckbox: Created \(isChecked ? "checked" : "unchecked") checkbox with size \(actualSize)")
+        print("✅ createUnicodeCheckbox: Created \(isChecked ? "checked" : "unchecked") checkbox with size \(actualSize) (1.2x text size for better tapping)")
         
         return checkboxString
     }
@@ -2176,51 +2211,50 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
             return
         }
         
+        // First check for new NSTextAttachment checkboxes
+        if let (attachment, range) = CheckboxManager.findCheckboxAtLocation(location, in: textView) {
+            print("✅ handleTap: Found NSTextAttachment checkbox at location \(location)")
+            CheckboxManager.toggleCheckbox(attachment, in: textView, at: range)
+            print("🎯 RichTextCoordinator: Toggled NSTextAttachment checkbox")
+            return
+        }
+        
         guard let attributedText = textView.attributedText else { return }
         
-        // Simplified checkbox detection for Unicode characters
+        // Fallback: Check for legacy Unicode checkbox characters for backward compatibility
         if let tapPosition = textView.closestPosition(to: location) {
             let tapIndex = textView.offset(from: textView.beginningOfDocument, to: tapPosition)
             print("📍 handleTap: Tap index calculated as \(tapIndex), text length: \(attributedText.length)")
             
             if tapIndex >= 0 && tapIndex < attributedText.length {
                 // Check around the tap position for checkbox Unicode characters
-                let tapTolerance = 20 // Increased tap area for better mobile usability
+                let tapTolerance = 15 // Reduced tolerance since NSTextAttachment has better hit detection
                 let checkStartRange = max(0, tapIndex - tapTolerance)
                 let checkEndRange = min(attributedText.length - 1, tapIndex + tapTolerance)
-                print("🔍 handleTap: Checking range \(checkStartRange) to \(checkEndRange) for checkboxes")
+                print("🔍 handleTap: Checking range \(checkStartRange) to \(checkEndRange) for legacy Unicode checkboxes")
                 
                 for checkIndex in checkStartRange...checkEndRange {
                     if checkIndex < attributedText.length {
                         let character = (attributedText.string as NSString).character(at: checkIndex)
-                        let charString = String(Character(UnicodeScalar(character)!))
                         
-                        // Check for Unicode checkbox characters
+                        // Check for Unicode checkbox characters (legacy support)
                         if character == 0x2610 { // ☐ unchecked
-                            print("✅ handleTap: Found unchecked checkbox '☐' at position \(checkIndex)")
+                            print("✅ handleTap: Found legacy unchecked checkbox '☐' at position \(checkIndex)")
                             toggleUnicodeCheckboxAtPosition(checkIndex, isCurrentlyChecked: false)
-                            print("🎯 RichTextCoordinator: Toggled unchecked Unicode checkbox at position \(checkIndex)")
+                            print("🎯 RichTextCoordinator: Toggled legacy Unicode checkbox at position \(checkIndex)")
                             return
                         } else if character == 0x2611 { // ☑ checked
-                            print("✅ handleTap: Found checked checkbox '☑' at position \(checkIndex)")
+                            print("✅ handleTap: Found legacy checked checkbox '☑' at position \(checkIndex)")
                             toggleUnicodeCheckboxAtPosition(checkIndex, isCurrentlyChecked: true)
-                            print("🎯 RichTextCoordinator: Toggled checked Unicode checkbox at position \(checkIndex)")
+                            print("🎯 RichTextCoordinator: Toggled legacy Unicode checkbox at position \(checkIndex)")
                             return
-                        } else if checkIndex == tapIndex {
-                            // Log the character at the exact tap position for debugging
-                            print("🔤 handleTap: Character at tap position \(tapIndex): '\(charString)' (Unicode: \(character))")
                         }
                     }
                 }
             }
         }
         
-        print("📍 handleTap: No Unicode checkbox found at tap location \(location)")
-        
-        // Debug: Let's see if there are ANY checkboxes in the entire text
-        let fullText = attributedText.string
-        let checkboxCount = fullText.filter { $0 == "☐" || $0 == "☑" }.count
-        print("📊 handleTap: Total checkboxes in text: \(checkboxCount)")
+        print("📍 handleTap: No checkbox found at tap location \(location)")
     }
     
     /// Toggle a Unicode checkbox between checked and unchecked state
@@ -2324,16 +2358,31 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
     
     // MARK: - Helper Methods
     
-    /// Check if a line starts with a Unicode checkbox
+    /// Check if a line starts with a checkbox (either NSTextAttachment or Unicode)
     private func checkForCheckboxAtLineStart(mutableText: NSMutableAttributedString, lineRange: NSRange, lineText: String) -> Bool {
         // Calculate the position where a checkbox would be (after leading whitespace)
         let trimmedLine = lineText.trimmingCharacters(in: .whitespaces)
         let leadingWhitespace = lineText.count - trimmedLine.count
         let checkboxStartPosition = lineRange.location + leadingWhitespace
         
-        // Check first few positions of the line for Unicode checkboxes
+        // First check for NSTextAttachment checkboxes (preferred)
         let searchRange = NSRange(location: checkboxStartPosition, length: min(3, max(0, lineRange.location + lineRange.length - checkboxStartPosition)))
         
+        // Check for NSTextAttachment checkboxes first
+        var foundCheckbox = false
+        mutableText.enumerateAttribute(.attachment, in: searchRange, options: []) { value, range, stop in
+            if value is CheckboxTextAttachment {
+                print("✅ checkForCheckboxAtLineStart: Found NSTextAttachment checkbox at position \(range.location)")
+                foundCheckbox = true
+                stop.pointee = true
+            }
+        }
+        
+        if foundCheckbox {
+            return true
+        }
+        
+        // Fallback: Check for legacy Unicode checkboxes
         for i in 0..<searchRange.length {
             let checkPosition = searchRange.location + i
             if checkPosition < mutableText.length {

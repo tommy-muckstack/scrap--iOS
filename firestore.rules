@@ -64,7 +64,7 @@ function validateNoteData(data) {
     && data.createdAt is timestamp
     && data.updatedAt is timestamp
     && data.creationType is string
-    && data.creationType in ['voice', 'text'];
+    && data.creationType in ['voice', 'text', 'rich_text'];
 }
 
 // Validate category data structure
@@ -82,7 +82,16 @@ function validateCategoryData(data) {
 
 // Validate archived note data structure
 function validateArchivedNoteData(data) {
-  return data.keys().hasAll(['userId', 'content', 'isTask', 'categories', 'createdAt', 'updatedAt', 'creationType', 'archivedAt', 'originalId'])
+  // Required fields check
+  let hasRequiredFields = data.keys().hasAll(['userId', 'content', 'isTask', 'categories', 'createdAt', 'updatedAt', 'creationType', 'archivedAt', 'originalId']);
+  
+  // All allowed fields (required + optional)
+  let allowedFields = ['userId', 'content', 'isTask', 'categories', 'createdAt', 'updatedAt', 'creationType', 'archivedAt', 'originalId', 'title', 'categoryIds', 'pineconeId', 'rtfContent', 'id'];
+  
+  // Check that all fields in data are allowed
+  let hasOnlyAllowedFields = data.keys().hasOnly(allowedFields);
+  
+  return hasRequiredFields && hasOnlyAllowedFields
     && data.userId is string
     && data.content is string
     && data.content.size() <= 10000  // Max 10k characters
@@ -92,7 +101,13 @@ function validateArchivedNoteData(data) {
     && data.createdAt is timestamp
     && data.updatedAt is timestamp
     && data.creationType is string
-    && data.creationType in ['voice', 'text']
+    && data.creationType in ['voice', 'text', 'rich_text']
     && data.archivedAt is timestamp
-    && data.originalId is string;
+    && data.originalId is string
+    // Optional fields validation
+    && (!('title' in data.keys()) || data.title is string)
+    && (!('categoryIds' in data.keys()) || (data.categoryIds is list && data.categoryIds.size() <= 10))
+    && (!('pineconeId' in data.keys()) || data.pineconeId is string)
+    && (!('rtfContent' in data.keys()) || data.rtfContent is string)
+    && (!('id' in data.keys()) || data.id is string);
 }

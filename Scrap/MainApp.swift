@@ -199,8 +199,8 @@ struct InputField: View {
                         onSave(text)
                     }
                 }
-                .onChange(of: isFocused) { focused in
-                    if focused {
+                .onChange(of: isFocused) { oldValue, newValue in
+                    if newValue {
                         // Track when user starts typing a new note
                         AnalyticsManager.shared.trackEvent("input_field_focused")
                     }
@@ -235,13 +235,25 @@ struct InputField: View {
             }
         }
         .padding(.horizontal, 16)
-        .onChange(of: voiceRecorder.transcribedText) { transcription in
-            if voiceRecorder.isRecording {
+        .onChange(of: voiceRecorder.transcribedText) { oldValue, newValue in
+            if voiceRecorder.isRecording && !newValue.isEmpty {
                 // Update text field in real-time during recording
-                text = transcription
-            } else if !transcription.isEmpty {
-                // Recording has stopped, create the note
-                onVoiceNote(transcription)
+                print("🎤 Live transcription update: '\(newValue)' (was: '\(oldValue)')")
+                print("🎤 Current text field value: '\(text)'")
+                print("🎤 TextField is focused: \(isFocused)")
+                
+                // Update text immediately without unfocusing
+                text = newValue
+            }
+        }
+        .onChange(of: voiceRecorder.isRecording) { oldValue, newValue in
+            if oldValue == true && newValue == false && !voiceRecorder.transcribedText.isEmpty {
+                // Recording just stopped and we have text
+                print("🎤 Voice recording stopped, creating note: '\(voiceRecorder.transcribedText)'")
+                let transcribedText = voiceRecorder.transcribedText
+                voiceRecorder.transcribedText = "" // Clear immediately
+                text = "" // Clear text field
+                onVoiceNote(transcribedText)
             }
         }
     }
@@ -267,6 +279,10 @@ struct InputField: View {
             // Track voice recording toggle
             if !voiceRecorder.isRecording {
                 AnalyticsManager.shared.trackVoiceRecordingStarted()
+                // Clear text field and unfocus when starting voice recording
+                text = ""
+                isFocused = false
+                print("🎤 Starting voice recording - cleared text field and unfocused")
             }
             voiceRecorder.toggleRecording()
         }
@@ -335,9 +351,16 @@ class FirebaseDataManager: ObservableObject {
                 await MainActor.run {
                     newItem.firebaseId = firebaseId
                     newItem.title = title ?? ""
+                    print("✅ DataManager: Successfully synced note to Firebase with ID: \(firebaseId)")
                 }
             } catch {
-                print("Failed to save note: \(error)")
+                await MainActor.run {
+                    // Even if Firebase sync fails, keep the note locally with the generated title
+                    if let title = title {
+                        newItem.title = title
+                    }
+                    print("⚠️ DataManager: Firebase sync failed but note preserved locally: \(error)")
+                }
             }
         }
     }
@@ -399,7 +422,13 @@ class FirebaseDataManager: ObservableObject {
                 
                 print("✅ Successfully saved formatted note to Firebase")
             } catch {
-                print("❌ Failed to save note: \(error)")
+                await MainActor.run {
+                    // Even if Firebase sync fails, keep the note locally with the generated title
+                    if let title = title {
+                        newItem.title = title
+                    }
+                }
+                print("⚠️ DataManager: Firebase sync failed but formatted note preserved locally: \(error)")
             }
         }
     }
@@ -453,8 +482,27 @@ class FirebaseDataManager: ObservableObject {
     
     private func startListening() {
         firebaseManager.startListening { [weak self] firebaseNotes in
-            let sparkItems = firebaseNotes.map(SparkItem.init)
-            self?.items = sparkItems
+            guard let self = self else { return }
+            
+            // Convert Firebase notes to SparkItems
+            let firebaseSparkItems = firebaseNotes.map(SparkItem.init)
+            
+            // Merge with existing local items that haven't been synced yet
+            var allItems = firebaseSparkItems
+            
+            // Add any local items that don't have Firebase IDs (haven't been synced yet)
+            for localItem in self.items {
+                if localItem.firebaseId == nil {
+                    // This is a local-only item that hasn't been synced to Firebase yet
+                    allItems.insert(localItem, at: 0) // Add at beginning since it's newest
+                    print("📱 DataManager: Preserving local item: '\(localItem.displayTitle)'")
+                }
+            }
+            
+            // Sort by creation date to maintain proper order
+            allItems.sort { $0.createdAt > $1.createdAt }
+            
+            self.items = allItems
             
             // Index existing notes for vector search
             Task {

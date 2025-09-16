@@ -234,18 +234,14 @@ struct NoteEditor: View {
                 noteOpenTime = Date()
             }
             
-            // Start with immediate basic setup (defer categories to reduce lag)
+            // Load content immediately without delay for better performance
             Task {
-                try? await Task.sleep(nanoseconds: 500_000_000) // 500ms delay
                 loadCategories()
             }
             
-            // Show skeleton for visible duration, then load content
+            // Load content immediately for snappy performance
             Task { @MainActor in
-                // Show skeleton for longer to be visible
-                try? await Task.sleep(nanoseconds: 200_000_000) // 200ms
-                
-                // Load RTF data synchronously but after skeleton delay
+                // Load RTF data immediately without delays
                 var finalText = editedText
                 if let rtfData = item.rtfData {
                     do {
@@ -260,20 +256,16 @@ struct NoteEditor: View {
                     }
                 }
                 
-                // Update with the properly loaded text
+                // Update text and context immediately
                 editedText = finalText
-                
-                // Delay setting rich text context to reduce coordinator updates
-                try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
                 richTextContext.setAttributedString(finalText)
                 
-                // Hide skeleton with smooth animation
-                withAnimation(.easeOut(duration: 0.3)) {
+                // Hide skeleton immediately
+                withAnimation(.easeOut(duration: 0.1)) {
                     showingSkeleton = false
                 }
                 
-                // Focus after content is fully loaded
-                try? await Task.sleep(nanoseconds: 200_000_000) // 200ms
+                // Focus text field without delay
                 isTextFocused = true
             }
         }

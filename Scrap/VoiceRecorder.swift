@@ -68,10 +68,15 @@ class VoiceRecorder: ObservableObject {
             recognitionTask = speechRecognizer.recognitionTask(with: recognitionRequest) { [weak self] result, error in
                 DispatchQueue.main.async {
                     if let result = result {
-                        self?.transcribedText = result.bestTranscription.formattedString
+                        let newText = result.bestTranscription.formattedString
+                        print("🎙️ VoiceRecorder: Updating transcribedText to: '\(newText)' (isFinal: \(result.isFinal))")
+                        self?.transcribedText = newText
                     }
                     
                     if error != nil || result?.isFinal == true {
+                        if let error = error {
+                            print("🎙️ VoiceRecorder: Recognition error: \(error)")
+                        }
                         self?.stopRecording()
                     }
                 }
