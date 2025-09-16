@@ -109,7 +109,34 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
         let mutableString = NSMutableAttributedString(attributedString: attributedString)
         let range = NSRange(location: 0, length: mutableString.length)
         
-        mutableString.enumerateAttribute(.font, in: range, options: []) { value, range, _ in
+        // First, convert checkbox attachments to Unicode characters for RTF persistence
+        var attachmentRanges: [(NSRange, Bool)] = []
+        
+        mutableString.enumerateAttribute(.attachment, in: range, options: []) { value, range, _ in
+            if let attachment = value as? NSTextAttachment {
+                // Determine if this attachment is a checkbox by checking accessibility label
+                let isChecked = attachment.accessibilityLabel == "checked"
+                let isUnchecked = attachment.accessibilityLabel == "unchecked"
+                
+                if isChecked || isUnchecked {
+                    attachmentRanges.append((range, isChecked))
+                }
+            }
+        }
+        
+        // Replace checkbox attachments with Unicode characters (in reverse order to maintain ranges)
+        for (range, isChecked) in attachmentRanges.reversed() {
+            let unicodeCheckbox = isChecked ? "☑" : "☐" // Unicode checked/unchecked box
+            let checkboxString = NSAttributedString(string: unicodeCheckbox, attributes: [
+                .font: UIFont.systemFont(ofSize: 16),
+                .foregroundColor: UIColor.label
+            ])
+            mutableString.replaceCharacters(in: range, with: checkboxString)
+        }
+        
+        // Then convert fonts to system fonts for RTF compatibility
+        let newRange = NSRange(location: 0, length: mutableString.length)
+        mutableString.enumerateAttribute(.font, in: newRange, options: []) { value, range, _ in
             guard let font = value as? UIFont else { return }
             
             let size = font.pointSize
@@ -150,9 +177,14 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
     // Convert system fonts back to SpaceGrotesk fonts while preserving formatting traits
     static func prepareForDisplay(_ attributedString: NSAttributedString) -> NSAttributedString {
         let mutableString = NSMutableAttributedString(attributedString: attributedString)
-        let range = NSRange(location: 0, length: mutableString.length)
         
-        mutableString.enumerateAttribute(.font, in: range, options: []) { value, range, _ in
+        // First, convert Unicode checkbox characters back to NSTextAttachment objects
+        convertUnicodeCheckboxesToAttachments(mutableString)
+        
+        // Then get the range after potential length changes from checkbox conversion
+        let updatedRange = NSRange(location: 0, length: mutableString.length)
+        
+        mutableString.enumerateAttribute(.font, in: updatedRange, options: []) { value, range, _ in
             guard let font = value as? UIFont else { return }
             
             let size = font.pointSize
@@ -206,6 +238,70 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
         }
         
         return mutableString
+    }
+    
+    // Convert Unicode checkbox characters (☑/☐) back to NSTextAttachment objects
+    private static func convertUnicodeCheckboxesToAttachments(_ mutableString: NSMutableAttributedString) {
+        let text = mutableString.string
+        var replacements: [(NSRange, NSTextAttachment)] = []
+        
+        // Find all Unicode checkbox characters
+        for (index, character) in text.enumerated() {
+            if character == "☑" || character == "☐" {
+                let isChecked = character == "☑"
+                let range = NSRange(location: index, length: 1)
+                
+                // Create NSTextAttachment for the checkbox
+                let attachment = NSTextAttachment()
+                
+                // Generate the checkbox image (using same logic as RichTextCoordinator)
+                let symbolName = isChecked ? "checkmark.circle.fill" : "circle"
+                let config = UIImage.SymbolConfiguration(pointSize: 16, weight: .medium)
+                
+                if let symbolImage = UIImage(systemName: symbolName, withConfiguration: config) {
+                    let color = isChecked ? UIColor.label : UIColor.systemGray2
+                    let tintedImage = symbolImage.withTintColor(color, renderingMode: .alwaysOriginal)
+                    attachment.image = tintedImage
+                } else {
+                    // Fallback image if SF Symbols are not available
+                    attachment.image = createFallbackCheckboxImage(isChecked: isChecked)
+                }
+                
+                // Set accessibility label for state tracking
+                attachment.accessibilityLabel = isChecked ? "checked" : "unchecked"
+                
+                // Set bounds for proper display
+                attachment.bounds = CGRect(x: 0, y: -2, width: 16, height: 16)
+                
+                replacements.append((range, attachment))
+            }
+        }
+        
+        // Replace Unicode characters with attachments (in reverse order to maintain ranges)
+        for (range, attachment) in replacements.reversed() {
+            let attachmentString = NSAttributedString(attachment: attachment)
+            mutableString.replaceCharacters(in: range, with: attachmentString)
+        }
+    }
+    
+    // Create fallback checkbox image when SF Symbols are not available
+    private static func createFallbackCheckboxImage(isChecked: Bool) -> UIImage {
+        // Use system-provided images as absolute fallback to avoid any CoreGraphics issues
+        if isChecked {
+            // Use a simple system checkmark image
+            if let systemImage = UIImage(systemName: "checkmark.square.fill") {
+                return systemImage.withTintColor(.label, renderingMode: .alwaysOriginal)
+            }
+            // Ultra-simple fallback - just a black square
+            return UIImage(systemName: "square.fill")?.withTintColor(.label, renderingMode: .alwaysOriginal) ?? UIImage()
+        } else {
+            // Use a simple system square image
+            if let systemImage = UIImage(systemName: "square") {
+                return systemImage.withTintColor(.systemGray2, renderingMode: .alwaysOriginal)
+            }
+            // Ultra-simple fallback
+            return UIImage(systemName: "square")?.withTintColor(.systemGray2, renderingMode: .alwaysOriginal) ?? UIImage()
+        }
     }
 }
 

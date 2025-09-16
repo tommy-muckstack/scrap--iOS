@@ -20,6 +20,8 @@ struct NoteEditor: View {
     @State private var isContentLoaded = false
     @State private var showingSkeleton = true
     @State private var autoSaveTimer: Timer?
+    @State private var noteOpenTime = Date()
+    @State private var hasTrackedOpen = false
     
     init(item: SparkItem, dataManager: FirebaseDataManager) {
         self.item = item
@@ -66,6 +68,9 @@ struct NoteEditor: View {
                             .frame(minHeight: 60, maxHeight: 120) // Accommodate ~3 lines at 28pt font
                             .focused($isTitleFocused)
                             .onChange(of: editedTitle) { newTitle in
+                                // Track title changes
+                                AnalyticsManager.shared.trackTitleChanged(noteId: item.firebaseId ?? item.id, titleLength: newTitle.count)
+                                
                                 // Debounce title updates for better performance  
                                 autoSaveTimer?.invalidate()
                                 autoSaveTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { _ in
@@ -115,6 +120,9 @@ struct NoteEditor: View {
                         .onEnded { value in
                             // Dismiss keyboard when user drags down
                             if value.translation.height > 50 && value.velocity.height > 0 {
+                                // Track keyboard dismissal
+                                AnalyticsManager.shared.trackKeyboardDismissed(method: "drag")
+                                
                                 isTextFocused = false
                                 isTitleFocused = false
                                 print("🔽 NoteEditor: Dismissed keyboard via pull-down gesture")
@@ -128,6 +136,13 @@ struct NoteEditor: View {
         .navigationBarBackButtonHidden(true)
         .navigationBarItems(
             leading: Button(action: { 
+                // Track back button
+                AnalyticsManager.shared.trackBackButtonTapped(fromScreen: "note_editor")
+                
+                // Track note closed with time spent
+                let timeSpent = Date().timeIntervalSince(noteOpenTime)
+                AnalyticsManager.shared.trackNoteClosed(noteId: item.firebaseId ?? item.id, timeSpent: timeSpent)
+                
                 // Provide immediate feedback and dismiss
                 withAnimation(.easeInOut(duration: 0.2)) {
                     showingSkeleton = false
@@ -146,7 +161,11 @@ struct NoteEditor: View {
                     .font(.system(size: 20, weight: .medium))
                     .foregroundColor(.black)
             },
-            trailing: Button(action: { showingOptions = true }) {
+            trailing: Button(action: { 
+                // Track options menu opened
+                AnalyticsManager.shared.trackOptionsMenuOpened(noteId: item.firebaseId ?? item.id)
+                showingOptions = true 
+            }) {
                 VStack(spacing: 2) {
                     Circle()
                         .fill(Color.black)
@@ -163,16 +182,38 @@ struct NoteEditor: View {
         )
         .confirmationDialog("Note Options", isPresented: $showingOptions) {
             Button("Add Tag") { 
+                // Track category manager opened
+                AnalyticsManager.shared.trackCategoryManagerOpened()
                 showingCategoryManager = true 
                 loadCategories()
             }
             Button("Share") { shareNote() }
-            Button("Delete", role: .destructive) { showingDelete = true }
-            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) { 
+                // Track delete confirmation shown
+                AnalyticsManager.shared.trackDeleteConfirmationShown(noteId: item.firebaseId ?? item.id)
+                showingDelete = true 
+            }
+            Button("Cancel", role: .cancel) { 
+                // Track options menu closed
+                AnalyticsManager.shared.trackOptionsMenuClosed(noteId: item.firebaseId ?? item.id)
+            }
+        }
+        .onChange(of: showingOptions) { isShowing in
+            if !isShowing {
+                // Track options menu closed when dismissed
+                AnalyticsManager.shared.trackOptionsMenuClosed(noteId: item.firebaseId ?? item.id)
+            }
         }
         .alert("Delete Note?", isPresented: $showingDelete) {
-            Button("Delete", role: .destructive) { deleteNote() }
-            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) { 
+                // Track delete confirmed
+                AnalyticsManager.shared.trackDeleteConfirmed(noteId: item.firebaseId ?? item.id)
+                deleteNote() 
+            }
+            Button("Cancel", role: .cancel) { 
+                // Track delete cancelled
+                AnalyticsManager.shared.trackDeleteCancelled(noteId: item.firebaseId ?? item.id)
+            }
         }
         .sheet(isPresented: $showingCategoryManager) {
             CategoryManagerView(
@@ -186,6 +227,13 @@ struct NoteEditor: View {
         }
         .dismissKeyboardOnDrag()
         .onAppear {
+            // Track note opened (only once)
+            if !hasTrackedOpen {
+                AnalyticsManager.shared.trackNoteOpened(noteId: item.firebaseId ?? item.id, openMethod: "list_tap")
+                hasTrackedOpen = true
+                noteOpenTime = Date()
+            }
+            
             // Start with immediate basic setup (defer categories to reduce lag)
             Task {
                 try? await Task.sleep(nanoseconds: 500_000_000) // 500ms delay
@@ -257,6 +305,9 @@ struct NoteEditor: View {
         let plainText = attributedText.string.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !plainText.isEmpty else { return }
         
+        // Track content changes
+        AnalyticsManager.shared.trackContentChanged(noteId: item.firebaseId ?? item.id, contentLength: plainText.count, changeType: "editing")
+        
         // Convert the attributed string to RTF data to preserve formatting
         do {
             // Use trait preservation method for better RTF compatibility
@@ -266,8 +317,14 @@ struct NoteEditor: View {
                 documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
             )
             
+            // Track RTF save
+            AnalyticsManager.shared.trackRTFContentSaved(noteId: item.firebaseId ?? item.id, rtfDataSize: rtfData.count)
+            
             dataManager.updateItemWithRTF(item, rtfData: rtfData)
         } catch {
+            // Track content load failure
+            AnalyticsManager.shared.trackContentLoadFailed(noteId: item.firebaseId ?? item.id, errorType: "rtf_conversion_failed")
+            
             print("❌ NoteEditor: Failed to convert to RTF, falling back to plain text: \(error)")
             dataManager.updateItem(item, newContent: plainText)
         }
@@ -286,6 +343,9 @@ struct NoteEditor: View {
     }
     
     private func shareNote() {
+        // Track note sharing
+        AnalyticsManager.shared.trackNoteShared(noteId: item.firebaseId ?? item.id)
+        
         let shareText = item.title.isEmpty ? item.content : "\(item.title)\n\n\(item.content)"
         let activityController = UIActivityViewController(activityItems: [shareText], applicationActivities: nil)
         
@@ -325,117 +385,128 @@ struct RichFormattingToolbar: View {
     @ObservedObject var context: RichTextContext
     
     var body: some View {
-        HStack(spacing: 0) {
-            // Bold button
-            Button(action: { context.toggleBold() }) {
-                Text("B")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(context.isBoldActive ? .white : .primary)
-                    .frame(maxWidth: .infinity, minHeight: 32)
-                    .background(
-                        context.isBoldActive 
-                            ? Color.black
-                            : Color.clear
-                    )
-                    .cornerRadius(8)
-            }
-            .animation(.easeInOut(duration: 0.1), value: context.isBoldActive)
+        GeometryReader { geometry in
+            let availableWidth = geometry.size.width
+            let safeWidth = availableWidth.isFinite && availableWidth > 0 ? availableWidth : 320
             
-            // Italic button
-            Button(action: { context.toggleItalic() }) {
-                Text("I")
-                    .font(.system(size: 16, weight: .medium))
-                    .italic()
-                    .foregroundColor(context.isItalicActive ? .white : .primary)
-                    .frame(maxWidth: .infinity, minHeight: 32)
-                    .background(
-                        context.isItalicActive 
-                            ? Color.black
-                            : Color.clear
-                    )
-                    .cornerRadius(8)
-            }
-            .animation(.easeInOut(duration: 0.1), value: context.isItalicActive)
+            // Calculate equal spacing for all buttons including dismiss
+            let totalPadding: CGFloat = 32 // 16pt on each side
+            let totalButtons: CGFloat = 9 // 8 formatting buttons + 1 dismiss button
+            let totalSpacing = totalButtons - 1 // spaces between buttons
+            let buttonSpacing: CGFloat = 6 // Consistent spacing between all buttons
+            let usedSpacing = totalSpacing * buttonSpacing
+            let availableForButtons = safeWidth - totalPadding - usedSpacing
+            let buttonWidth = max(32, availableForButtons / totalButtons)
             
-            // Strikethrough button
-            Button(action: { context.toggleStrikethrough() }) {
-                Text("S")
-                    .font(.system(size: 16, weight: .medium))
-                    .strikethrough()
-                    .foregroundColor(context.isStrikethroughActive ? .white : .primary)
-                    .frame(maxWidth: .infinity, minHeight: 32)
-                    .background(
-                        context.isStrikethroughActive 
-                            ? Color.black
-                            : Color.clear
-                    )
-                    .cornerRadius(8)
+            HStack(spacing: buttonSpacing) {
+                // Bold button
+                Button(action: { context.toggleBold() }) {
+                    Text("B")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(context.isBoldActive ? .white : .primary)
+                        .frame(width: buttonWidth, height: 32)
+                        .background(context.isBoldActive ? Color.black : Color.clear)
+                        .cornerRadius(8)
+                }
+                .animation(.easeInOut(duration: 0.1), value: context.isBoldActive)
+                
+                // Italic button
+                Button(action: { context.toggleItalic() }) {
+                    Text("I")
+                        .font(.system(size: 16, weight: .medium))
+                        .italic()
+                        .foregroundColor(context.isItalicActive ? .white : .primary)
+                        .frame(width: buttonWidth, height: 32)
+                        .background(context.isItalicActive ? Color.black : Color.clear)
+                        .cornerRadius(8)
+                }
+                .animation(.easeInOut(duration: 0.1), value: context.isItalicActive)
+                
+                // Strikethrough button
+                Button(action: { context.toggleStrikethrough() }) {
+                    Text("S")
+                        .font(.system(size: 16, weight: .medium))
+                        .strikethrough()
+                        .foregroundColor(context.isStrikethroughActive ? .white : .primary)
+                        .frame(width: buttonWidth, height: 32)
+                        .background(context.isStrikethroughActive ? Color.black : Color.clear)
+                        .cornerRadius(8)
+                }
+                .animation(.easeInOut(duration: 0.1), value: context.isStrikethroughActive)
+                
+                // Code button
+                Button(action: { context.toggleCodeBlock() }) {
+                    Text("</>")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(context.isCodeBlockActive ? .white : .primary)
+                        .frame(width: buttonWidth, height: 32)
+                        .background(context.isCodeBlockActive ? Color.black : Color.clear)
+                        .cornerRadius(8)
+                }
+                .animation(.easeInOut(duration: 0.1), value: context.isCodeBlockActive)
+                
+                // List button
+                Button(action: { context.toggleBulletList() }) {
+                    Image(systemName: GentleLightning.Icons.formatList)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(context.isBulletListActive ? .white : .primary)
+                        .frame(width: buttonWidth, height: 32)
+                        .background(context.isBulletListActive ? Color.black : Color.clear)
+                        .cornerRadius(8)
+                }
+                .animation(.easeInOut(duration: 0.1), value: context.isBulletListActive)
+                
+                // Checkbox button
+                Button(action: { context.toggleCheckbox() }) {
+                    Image(systemName: GentleLightning.Icons.formatChecklist)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(context.isCheckboxActive ? .white : .primary)
+                        .frame(width: buttonWidth, height: 32)
+                        .background(context.isCheckboxActive ? Color.black : Color.clear)
+                        .cornerRadius(8)
+                }
+                .animation(.easeInOut(duration: 0.1), value: context.isCheckboxActive)
+                
+                // Indent Out button
+                Button(action: { context.indentOut() }) {
+                    Image(systemName: "decrease.indent")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.primary)
+                        .frame(width: buttonWidth, height: 32)
+                        .background(Color.clear)
+                        .cornerRadius(8)
+                }
+                
+                // Indent In button
+                Button(action: { context.indentIn() }) {
+                    Image(systemName: "increase.indent")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.primary)
+                        .frame(width: buttonWidth, height: 32)
+                        .background(Color.clear)
+                        .cornerRadius(8)
+                }
+                
+                // Dismiss keyboard button
+                Button(action: { 
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                }) {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.primary)
+                        .frame(width: buttonWidth, height: 32)
+                        .background(Color.clear)
+                        .cornerRadius(8)
+                }
             }
-            .animation(.easeInOut(duration: 0.1), value: context.isStrikethroughActive)
-            
-            // Code button
-            Button(action: { context.toggleCodeBlock() }) {
-                Text("</>")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(context.isCodeBlockActive ? .white : .primary)
-                    .frame(maxWidth: .infinity, minHeight: 32)
-                    .background(
-                        context.isCodeBlockActive 
-                            ? Color.black
-                            : Color.clear
-                    )
-                    .cornerRadius(8)
-            }
-            .animation(.easeInOut(duration: 0.1), value: context.isCodeBlockActive)
-            
-            // List button
-            Button(action: { context.toggleBulletList() }) {
-                Image(systemName: GentleLightning.Icons.formatList)
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(context.isBulletListActive ? .white : .primary)
-                    .frame(maxWidth: .infinity, minHeight: 32)
-                    .background(
-                        context.isBulletListActive 
-                            ? Color.black
-                            : Color.clear
-                    )
-                    .cornerRadius(8)
-            }
-            .animation(.easeInOut(duration: 0.1), value: context.isBulletListActive)
-            
-            // Checkbox button
-            Button(action: { context.toggleCheckbox() }) {
-                Image(systemName: GentleLightning.Icons.formatChecklist)
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(context.isCheckboxActive ? .white : .primary)
-                    .frame(maxWidth: .infinity, minHeight: 32)
-                    .background(
-                        context.isCheckboxActive 
-                            ? Color.black
-                            : Color.clear
-                    )
-                    .cornerRadius(8)
-            }
-            .animation(.easeInOut(duration: 0.1), value: context.isCheckboxActive)
-            
-            // Dismiss keyboard button (chevron down)
-            Button(action: { 
-                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-            }) {
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.primary)
-                    .frame(maxWidth: .infinity, minHeight: 32)
-                    .background(Color.clear)
-            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(
+                Rectangle()
+                    .fill(Color(UIColor.systemBackground))
+                    .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: -1)
+            )
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(
-            Rectangle()
-                .fill(Color(UIColor.systemBackground))
-                .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: -1)
-        )
     }
 }
 
@@ -568,8 +639,12 @@ struct CategoryManagerView: View {
         let categoryId = category.firebaseId ?? category.id
         
         if selectedCategories.contains(categoryId) {
+            // Track category deselection
+            AnalyticsManager.shared.trackCategoryDeselected(categoryId: categoryId, categoryName: category.name)
             selectedCategories.removeAll { $0 == categoryId }
         } else {
+            // Track category selection
+            AnalyticsManager.shared.trackCategorySelected(categoryId: categoryId, categoryName: category.name)
             selectedCategories.append(categoryId)
         }
         
@@ -585,11 +660,11 @@ struct CategoryManagerView: View {
                     selectedColorKey = availableColors.first?.key ?? ""
                 }
             } catch {
-                // Fallback to all available colors if there's an error
+                // Fallback to all available colors if there's an error (e.g., permissions)
+                // Don't show error to user since CategoryService already handles this gracefully
                 await MainActor.run {
                     availableColors = CategoryService.availableColors
                     selectedColorKey = availableColors.first?.key ?? ""
-                    print("Warning: Using fallback colors due to error: \(error)")
                 }
             }
         }
@@ -600,6 +675,9 @@ struct CategoryManagerView: View {
         Task {
             do {
                 let newCategory = try await CategoryService.shared.createCustomCategory(name: name, colorKey: colorKey)
+                
+                // Track category creation
+                AnalyticsManager.shared.trackCategoryCreated(categoryName: name, colorKey: colorKey)
                 
                 await MainActor.run {
                     userCategories.append(newCategory)
@@ -716,10 +794,9 @@ struct CreateTagInlineView: View {
                 }
             }
             .padding(.horizontal, 20)
+            .padding(.bottom, 24)
             
-            Spacer()
-            
-            // Create Button
+            // Create Button - positioned higher, closer to keyboard
             Button(action: {
                 onCreate(categoryName, selectedColorKey)
             }) {
@@ -737,7 +814,9 @@ struct CreateTagInlineView: View {
             }
             .disabled(categoryName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || selectedColorKey.isEmpty)
             .padding(.horizontal, 20)
-            .padding(.bottom, 20)
+            
+            // Add spacer to push content up, closer to keyboard
+            Spacer()
         }
     }
 }
@@ -811,7 +890,11 @@ struct SkeletonLine: View {
                             )
                         )
                 )
-                .frame(width: geometry.size.width * width, height: height)
+                .frame(width: {
+                    let availableWidth = geometry.size.width
+                    let safeWidth = availableWidth.isFinite && availableWidth > 0 ? availableWidth : 320
+                    return safeWidth * width
+                }(), height: height)
         }
         .frame(height: height)
         .onAppear {

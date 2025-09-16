@@ -765,20 +765,49 @@ public class RichTextCoordinator: NSObject {
         
         print("🔍 applyCodeBlockFormat: cursor at \(cursorPosition), isInCodeBlock: \(isInCodeBlock), context.isCodeBlockActive: \(context.isCodeBlockActive)")
         
+        var newCursorPosition: Int? = nil
+        
         if isInCodeBlock {
-            // Turn OFF code formatting - exit code block and move cursor below
-            exitCodeBlockAndMoveCursor(at: cursorPosition, in: mutableText)
-            print("🔸 RichTextCoordinator: Exiting code block, moving cursor below")
+            // Turn OFF code formatting - implement behavior for toggling off
+            if context.isCodeBlockActive {
+                // Exit code block and move to next line
+                exitCodeBlockAndMoveToNextLine(at: cursorPosition, in: mutableText)
+                print("🔸 RichTextCoordinator: Exiting code mode and moving to next line")
+                
+                // Update text view with changes
+                textView.attributedText = mutableText
+                updateBindingFromTextView()
+            } else {
+                // Just turn off without moving cursor (fallback)
+                exitCodeBlockInPlace(at: cursorPosition)
+                print("🔸 RichTextCoordinator: Exiting code mode in place without moving cursor")
+            }
         } else {
             // Turn ON code formatting - create new code block with cursor inside
-            createCodeBlockAndMoveCursor(at: cursorPosition, in: mutableText)
+            newCursorPosition = createCodeBlockAndMoveCursor(at: cursorPosition, in: mutableText)
             print("🔸 RichTextCoordinator: Creating new code block with cursor inside")
+            
+            // Update text view and set cursor position
+            textView.attributedText = mutableText
+            
+            // Set cursor position AFTER updating the text view to prevent UIKit from resetting it
+            if let targetPosition = newCursorPosition {
+                textView.selectedRange = NSRange(location: targetPosition, length: 0)
+                print("🎯 Set cursor position to \(targetPosition) AFTER text view update")
+            }
+            
+            // Immediately set the context state to show button as active
+            // This prevents the race condition where the button doesn't appear selected
+            DispatchQueue.main.async {
+                self.context.isCodeBlockActive = true
+                print("✅ applyCodeBlockFormat: Immediately set context.isCodeBlockActive = true")
+            }
+            
+            updateBindingFromTextView()
         }
         
-        // Update the text view with the modified content
-        textView.attributedText = mutableText
-        
-        updateBindingFromTextView()
+        // Always update context to reflect the current state
+        // This will be called after the immediate state update above for creation
         updateContextFromTextView()
         
         print("🎯 RichTextCoordinator: Code block format applied")
@@ -815,7 +844,8 @@ public class RichTextCoordinator: NSObject {
     }
     
     /// Create a new code block and position cursor inside it
-    private func createCodeBlockAndMoveCursor(at position: Int, in mutableText: NSMutableAttributedString) {
+    /// Returns the desired cursor position for after the text view is updated
+    private func createCodeBlockAndMoveCursor(at position: Int, in mutableText: NSMutableAttributedString) -> Int {
         // Create code block text - start directly with spaces, no leading newline
         let codeBlockText = "    "  // Just padding spaces, no newlines
         
@@ -850,11 +880,11 @@ public class RichTextCoordinator: NSObject {
         paragraphStyle.tailIndent = -16         // Right padding (negative value)
         mutableText.addAttribute(.paragraphStyle, value: paragraphStyle, range: codeBlockRange)
         
-        // Position cursor at the end of the code block (after the spaces)
+        // Calculate cursor position at the end of the code block (after the spaces)
         let cursorPosition = position + codeBlockText.count
-        textView.selectedRange = NSRange(location: cursorPosition, length: 0)
         
-        print("📦 Created code block with padding at position \(position), cursor at \(cursorPosition)")
+        print("📦 Created code block with padding at position \(position), will set cursor at \(cursorPosition)")
+        return cursorPosition
     }
     
     /// Exit code block and move cursor to line below
@@ -990,13 +1020,21 @@ public class RichTextCoordinator: NSObject {
     
     /// Exit code block on Enter key while preserving existing code block formatting
     private func exitCodeBlockOnEnterKey(at position: Int, in mutableText: NSMutableAttributedString) {
+        // Create a completely clean paragraph style with no indentation
+        let normalParagraphStyle = NSMutableParagraphStyle()
+        normalParagraphStyle.lineSpacing = 0
+        normalParagraphStyle.paragraphSpacing = 0
+        normalParagraphStyle.firstLineHeadIndent = 0
+        normalParagraphStyle.headIndent = 0
+        normalParagraphStyle.tailIndent = 0
+        
         // Insert a newline with normal formatting at the current position
         let normalFont = UIFont(name: context.fontName, size: context.fontSize) ?? UIFont.systemFont(ofSize: context.fontSize)
         let normalAttributes: [NSAttributedString.Key: Any] = [
             .font: normalFont,
             .foregroundColor: UIColor.label,
             .backgroundColor: UIColor.clear,
-            .paragraphStyle: NSParagraphStyle.default
+            .paragraphStyle: normalParagraphStyle
         ]
         
         let newlineString = NSAttributedString(string: "\n", attributes: normalAttributes)
@@ -1015,6 +1053,73 @@ public class RichTextCoordinator: NSObject {
         }
         
         print("✅ exitCodeBlockOnEnterKey: Added newline at position \(position), cursor moved to \(newCursorPosition), code mode disabled for future typing")
+    }
+    
+    /// Exit code block formatting at current cursor position without moving cursor (for button toggle)
+    private func exitCodeBlockInPlace(at position: Int) {
+        // Create normal formatting attributes for future typing
+        let normalFont = UIFont(name: context.fontName, size: context.fontSize) ?? UIFont.systemFont(ofSize: context.fontSize)
+        let normalParagraphStyle = NSMutableParagraphStyle()
+        normalParagraphStyle.lineSpacing = 0
+        normalParagraphStyle.paragraphSpacing = 0
+        normalParagraphStyle.firstLineHeadIndent = 0
+        normalParagraphStyle.headIndent = 0
+        normalParagraphStyle.tailIndent = 0
+        
+        let normalAttributes: [NSAttributedString.Key: Any] = [
+            .font: normalFont,
+            .foregroundColor: UIColor.label,
+            .backgroundColor: UIColor.clear,
+            .paragraphStyle: normalParagraphStyle
+        ]
+        
+        // Update typing attributes for future typing (don't modify existing text)
+        textView.typingAttributes = normalAttributes
+        
+        // Update context to indicate code mode is now off
+        DispatchQueue.main.async {
+            self.context.isCodeBlockActive = false
+        }
+        
+        print("✅ exitCodeBlockInPlace: Set normal typing attributes at position \(position), code mode disabled for future typing")
+    }
+    
+    /// Exit code block formatting and move cursor to next line (for button toggle when in code block)
+    private func exitCodeBlockAndMoveToNextLine(at position: Int, in mutableText: NSMutableAttributedString) {
+        // Create a completely clean paragraph style with no indentation
+        let normalParagraphStyle = NSMutableParagraphStyle()
+        normalParagraphStyle.lineSpacing = 0
+        normalParagraphStyle.paragraphSpacing = 0
+        normalParagraphStyle.firstLineHeadIndent = 0
+        normalParagraphStyle.headIndent = 0
+        normalParagraphStyle.tailIndent = 0
+        
+        // Insert a newline with normal formatting at the current position
+        let normalFont = UIFont(name: context.fontName, size: context.fontSize) ?? UIFont.systemFont(ofSize: context.fontSize)
+        
+        let normalAttributes: [NSAttributedString.Key: Any] = [
+            .font: normalFont,
+            .foregroundColor: UIColor.label, // Use system label color
+            .paragraphStyle: normalParagraphStyle
+            // Explicitly omit .backgroundColor to ensure no grey background
+        ]
+        
+        let newlineText = NSAttributedString(string: "\n", attributes: normalAttributes)
+        
+        // Insert the newline at current position
+        mutableText.insert(newlineText, at: position)
+        
+        // Set cursor position after the newline (position + 1)
+        let newCursorPosition = position + 1
+        
+        // Set normal typing attributes for the new position
+        DispatchQueue.main.async {
+            self.textView.selectedRange = NSRange(location: newCursorPosition, length: 0)
+            self.textView.typingAttributes = normalAttributes
+            self.context.isCodeBlockActive = false
+        }
+        
+        print("✅ exitCodeBlockAndMoveToNextLine: Added newline at position \(position), cursor moved to \(newCursorPosition), code mode disabled")
     }
     
     // MARK: - Indentation
@@ -1148,19 +1253,32 @@ public class RichTextCoordinator: NSObject {
         let cursorPosition = textView.selectedRange.location
         let isActuallyInCodeBlock = checkIfPositionIsInCodeBlock(cursorPosition)
         
-        print("🔍 updateFormattingStateWithCodeBlockProtection: cursor at \(cursorPosition), isActuallyInCodeBlock: \(isActuallyInCodeBlock), context.isCodeBlockActive: \(context.isCodeBlockActive)")
+        // Debug: cursor position and code block state
         
-        // If we're currently showing code block as active AND we detect we're actually in a code block,
-        // preserve the active state to prevent flickering
-        if context.isCodeBlockActive && isActuallyInCodeBlock {
-            print("🔒 updateFormattingStateWithCodeBlockProtection: Preserving code block active state to prevent flicker")
+        // If we detect we're actually in a code block, ensure the context shows active state
+        // This prevents flickering when typing in code blocks
+        if isActuallyInCodeBlock {
+            // In code block - ensure active state
+            
+            // Ensure code block state is active - defer to avoid SwiftUI update warnings
+            DispatchQueue.main.async {
+                self.context.isCodeBlockActive = true
+            }
             
             // Update other formatting states but preserve code block state
             updateNonCodeBlockFormattingState()
             return
         }
         
-        // Otherwise, use the standard formatting state update
+        // If we're not in a code block but context shows active, reset it
+        if !isActuallyInCodeBlock && context.isCodeBlockActive {
+            // Not in code block but context active - reset state
+            DispatchQueue.main.async {
+                self.context.isCodeBlockActive = false
+            }
+        }
+        
+        // Update all formatting states normally when not in code block
         context.updateFormattingState()
     }
     
@@ -1224,13 +1342,13 @@ public class RichTextCoordinator: NSObject {
         // Build typing attributes based on current context state and selection
         var typingAttributes = textView.typingAttributes
         
-        print("🔧 updateTypingAttributes: Starting - context.isCodeBlockActive: \(context.isCodeBlockActive)")
+        // Update typing attributes based on code block state
         
         // Check if we're ACTUALLY in a code block by examining the text attributes at cursor position
         let cursorPosition = textView.selectedRange.location
         let isActuallyInCodeBlock = checkIfPositionIsInCodeBlock(cursorPosition)
         
-        print("🔍 updateTypingAttributes: Cursor at \(cursorPosition), isActuallyInCodeBlock: \(isActuallyInCodeBlock)")
+        // Check if cursor is actually in code block
         
         // Check if we're in a code block first - this overrides other font formatting
         // Use ACTUAL code block detection, not just context state
@@ -1238,7 +1356,7 @@ public class RichTextCoordinator: NSObject {
         if isActuallyInCodeBlock || context.isCodeBlockActive {
             // Use monospaced font for code blocks (Monaco equivalent on iOS)
             font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
-            print("✅ updateTypingAttributes: Using monospaced system font for code block:")
+            // Using monospaced font for code block
             print("   - Font name: \(font.fontName)")
             print("   - Font family: \(font.familyName)")
             print("   - Symbolic traits: \(font.fontDescriptor.symbolicTraits.rawValue)")
@@ -1259,7 +1377,7 @@ public class RichTextCoordinator: NSObject {
             
             // Force context to stay in code block mode if we detect we're actually in one
             if isActuallyInCodeBlock && !context.isCodeBlockActive {
-                print("🔧 updateTypingAttributes: Forcing context.isCodeBlockActive = true based on text attributes")
+                // Force code block active state based on attributes
                 DispatchQueue.main.async {
                     self.context.isCodeBlockActive = true
                 }
@@ -1861,9 +1979,38 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
                 mutableText.replaceCharacters(in: NSRange(location: checkboxStartPosition, length: 1), 
                                             with: NSAttributedString(attachment: newAttachment))
                 
+                // Store the current selection to restore after update
+                let currentSelection = textView.selectedRange
+                
+                // Update the text view with the new content
                 textView.attributedText = mutableText
+                
+                // Force comprehensive visual refresh without clearing the content
+                DispatchQueue.main.async {
+                    // Restore selection first
+                    if currentSelection.location <= mutableText.length {
+                        self.textView.selectedRange = currentSelection
+                    }
+                    
+                    // Multiple refresh strategies to force visual update
+                    self.textView.layoutManager.invalidateLayout(forCharacterRange: NSRange(location: checkboxStartPosition, length: 1), actualCharacterRange: nil)
+                    self.textView.layoutManager.invalidateDisplay(forCharacterRange: NSRange(location: checkboxStartPosition, length: 1))
+                    self.textView.setNeedsDisplay()
+                    self.textView.setNeedsLayout()
+                    self.textView.layoutIfNeeded()
+                    
+                    // Force text container to recalculate
+                    let textRange = NSRange(location: 0, length: self.textView.attributedText.length)
+                    self.textView.layoutManager.invalidateLayout(forCharacterRange: textRange, actualCharacterRange: nil)
+                    self.textView.layoutManager.ensureLayout(for: self.textView.textContainer)
+                }
+                
                 updateBindingFromTextView()
                 updateContextFromTextView()
+                
+                // Track analytics
+                AnalyticsManager.shared.trackCheckboxClicked(isChecked: !isCurrentlyChecked, checkboxType: "attachment")
+                
                 print("🔄 RichTextCoordinator: Toggled custom checkbox to \(isCurrentlyChecked ? "unchecked" : "checked")")
                 return
             }
@@ -1875,18 +2022,78 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
             guard checkboxStartPosition < mutableText.length else { return }
             let checkboxCharRange = NSRange(location: checkboxStartPosition, length: 1)
             mutableText.replaceCharacters(in: checkboxCharRange, with: "●")
+            
+            // Store the current selection to restore after update
+            let currentSelection = textView.selectedRange
+            
+            // Update the text view with the new content
             textView.attributedText = mutableText
+            
+            // Force comprehensive visual refresh
+            DispatchQueue.main.async {
+                // Restore selection first
+                if currentSelection.location <= mutableText.length {
+                    self.textView.selectedRange = currentSelection
+                }
+                
+                // Multiple refresh strategies to force visual update
+                self.textView.layoutManager.invalidateLayout(forCharacterRange: NSRange(location: checkboxStartPosition, length: 1), actualCharacterRange: nil)
+                self.textView.layoutManager.invalidateDisplay(forCharacterRange: NSRange(location: checkboxStartPosition, length: 1))
+                self.textView.setNeedsDisplay()
+                self.textView.setNeedsLayout()
+                self.textView.layoutIfNeeded()
+                
+                // Force text container to recalculate
+                let textRange = NSRange(location: 0, length: self.textView.attributedText.length)
+                self.textView.layoutManager.invalidateLayout(forCharacterRange: textRange, actualCharacterRange: nil)
+                self.textView.layoutManager.ensureLayout(for: self.textView.textContainer)
+            }
+            
             updateBindingFromTextView()
             updateContextFromTextView()
+            
+            // Track analytics
+            AnalyticsManager.shared.trackCheckboxClicked(isChecked: true, checkboxType: "unicode")
+            
             print("🔄 RichTextCoordinator: Toggled Unicode checkbox to checked")
         } else if trimmedLine.hasPrefix("● ") {
             // Change checked to unchecked - replace just the checkbox character, preserve the space
             guard checkboxStartPosition < mutableText.length else { return }
             let checkboxCharRange = NSRange(location: checkboxStartPosition, length: 1)
             mutableText.replaceCharacters(in: checkboxCharRange, with: "○")
+            
+            // Store the current selection to restore after update
+            let currentSelection = textView.selectedRange
+            
+            // Update the text view with the new content
             textView.attributedText = mutableText
+            
+            // Force comprehensive visual refresh
+            DispatchQueue.main.async {
+                // Restore selection first
+                if currentSelection.location <= mutableText.length {
+                    self.textView.selectedRange = currentSelection
+                }
+                
+                // Multiple refresh strategies to force visual update
+                self.textView.layoutManager.invalidateLayout(forCharacterRange: NSRange(location: checkboxStartPosition, length: 1), actualCharacterRange: nil)
+                self.textView.layoutManager.invalidateDisplay(forCharacterRange: NSRange(location: checkboxStartPosition, length: 1))
+                self.textView.setNeedsDisplay()
+                self.textView.setNeedsLayout()
+                self.textView.layoutIfNeeded()
+                
+                // Force text container to recalculate
+                let textRange = NSRange(location: 0, length: self.textView.attributedText.length)
+                self.textView.layoutManager.invalidateLayout(forCharacterRange: textRange, actualCharacterRange: nil)
+                self.textView.layoutManager.ensureLayout(for: self.textView.textContainer)
+            }
+            
             updateBindingFromTextView()
             updateContextFromTextView()
+            
+            // Track analytics
+            AnalyticsManager.shared.trackCheckboxClicked(isChecked: false, checkboxType: "unicode")
+            
             print("🔄 RichTextCoordinator: Toggled Unicode checkbox to unchecked")
         }
     }
@@ -1902,12 +2109,12 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         // Set accessibility label to track checkbox state
         attachment.accessibilityLabel = isChecked ? "checked" : "unchecked"
         
-        // Use a fixed, smaller size that aligns better with text
-        let checkboxSize: CGFloat = 14 // Fixed size that works well with most text sizes
+        // Use a larger size for better tap interaction (Apple Notes style)
+        let checkboxSize: CGFloat = 20 // Larger size for easier tapping
         
-        // Simple baseline alignment - position checkbox to align with text baseline
-        // Negative Y value moves the checkbox down to align with text
-        let yOffset: CGFloat = -2 // Slight downward offset to align with text baseline
+        // Adjust baseline alignment for larger checkbox
+        // Negative Y value moves the checkbox down to align with text baseline
+        let yOffset: CGFloat = -3 // Adjusted offset for larger checkbox
         
         attachment.bounds = CGRect(
             origin: CGPoint(x: 0, y: yOffset), 
@@ -1917,75 +2124,43 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         return attachment
     }
     
-    /// Generate a custom checkbox image programmatically
+    /// Generate Apple Notes-style checkbox using SF Symbols (no custom drawing)
     private func generateCheckboxImage(isChecked: Bool) -> UIImage {
-        let size = CGSize(width: 14, height: 14) // Smaller size to match text better
+        // Use SF Symbols like Apple Notes actually does - clean and simple
+        let symbolName = isChecked ? "checkmark.circle.fill" : "circle"
+        let config = UIImage.SymbolConfiguration(pointSize: 16, weight: .medium)
         
-        // Validate size to prevent NaN errors
-        guard size.width > 0 && size.height > 0 && size.width.isFinite && size.height.isFinite else {
-            print("⚠️ RichTextCoordinator: Invalid size for checkbox image, using fallback")
-            return UIImage() // Return empty image as fallback
+        // Try to create the SF Symbol image with proper tinting
+        if let symbolImage = UIImage(systemName: symbolName, withConfiguration: config) {
+            // For checked state, render in black. For unchecked, render in gray
+            let color = isChecked ? UIColor.label : UIColor.systemGray2
+            
+            // Use withTintColor for clean, simple rendering (no custom graphics context)
+            let tintedImage = symbolImage.withTintColor(color, renderingMode: .alwaysOriginal)
+            return tintedImage
+        } else {
+            // Fallback to simple colored square if SF Symbol fails
+            return createFallbackCheckboxImage(isChecked: isChecked)
         }
-        
-        let renderer = UIGraphicsImageRenderer(size: size)
-        
-        return renderer.image { context in
-            let cgContext = context.cgContext
-            let rect = CGRect(origin: .zero, size: size)
-            
-            // Ensure all coordinates are valid
-            let insetValue: CGFloat = 1.5
-            let insetRect = rect.insetBy(dx: insetValue, dy: insetValue)
-            
-            // Validate rect dimensions
-            guard insetRect.width > 0 && insetRect.height > 0 else {
-                print("⚠️ RichTextCoordinator: Invalid inset rect for checkbox")
-                return
+    }
+    
+    /// Create a simple fallback checkbox image when regular generation fails
+    private func createFallbackCheckboxImage(isChecked: Bool) -> UIImage {
+        // Use system-provided images as absolute fallback to avoid any CoreGraphics issues
+        if isChecked {
+            // Use a simple system checkmark image
+            if let systemImage = UIImage(systemName: "checkmark.square.fill") {
+                return systemImage.withTintColor(.label, renderingMode: .alwaysOriginal)
             }
-            
-            // Draw circle outline with better styling
-            cgContext.setStrokeColor(UIColor.systemGray.cgColor)
-            cgContext.setLineWidth(1.8)
-            cgContext.addEllipse(in: insetRect)
-            cgContext.strokePath()
-            
-            // Fill background if checked
-            if isChecked {
-                cgContext.setFillColor(UIColor.systemGreen.withAlphaComponent(0.15).cgColor)
-                cgContext.addEllipse(in: insetRect)
-                cgContext.fillPath()
+            // Ultra-simple fallback - just a black square
+            return UIImage(systemName: "square.fill")?.withTintColor(.label, renderingMode: .alwaysOriginal) ?? UIImage()
+        } else {
+            // Use a simple system square image
+            if let systemImage = UIImage(systemName: "square") {
+                return systemImage.withTintColor(.systemGray2, renderingMode: .alwaysOriginal)
             }
-            
-            // Draw green checkmark if checked
-            if isChecked {
-                cgContext.setStrokeColor(UIColor.systemGreen.cgColor)
-                cgContext.setLineWidth(1.8) // Thinner line for smaller checkbox
-                cgContext.setLineCap(.round)
-                cgContext.setLineJoin(.round)
-                
-                // Draw checkmark path with coordinates adjusted for 14x14 size
-                let checkmarkPath = UIBezierPath()
-                let startX: CGFloat = 3.5
-                let startY: CGFloat = 7.0
-                let midX: CGFloat = 6.0
-                let midY: CGFloat = 9.5
-                let endX: CGFloat = 10.5
-                let endY: CGFloat = 4.5
-                
-                // Validate all coordinates
-                let points = [startX, startY, midX, midY, endX, endY]
-                guard points.allSatisfy({ $0.isFinite && !$0.isNaN }) else {
-                    print("⚠️ RichTextCoordinator: Invalid checkmark coordinates")
-                    return
-                }
-                
-                checkmarkPath.move(to: CGPoint(x: startX, y: startY))
-                checkmarkPath.addLine(to: CGPoint(x: midX, y: midY))
-                checkmarkPath.addLine(to: CGPoint(x: endX, y: endY))
-                
-                cgContext.addPath(checkmarkPath.cgPath)
-                cgContext.strokePath()
-            }
+            // Ultra-simple fallback
+            return UIImage(systemName: "square")?.withTintColor(.systemGray2, renderingMode: .alwaysOriginal) ?? UIImage()
         }
     }
     
@@ -2002,13 +2177,18 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         guard let attributedText = textView.attributedText else { return }
         guard tapIndex < attributedText.length else { return }
         
-        // Check for NSTextAttachment (custom checkbox)
-        if let attachment = attributedText.attribute(.attachment, at: tapIndex, effectiveRange: nil) as? NSTextAttachment,
-           attachment.image != nil {
-            // This is a custom checkbox attachment - toggle it using the unified method
-            toggleCheckboxAtPosition(tapIndex)
-            print("🎯 RichTextCoordinator: Toggled custom checkbox attachment at position \(tapIndex)")
-            return
+        // Check for NSTextAttachment (custom checkbox) with expanded tap area
+        // Check a range around the tap position to make checkboxes easier to tap
+        let checkRange = max(0, tapIndex - 2)...min(attributedText.length - 1, tapIndex + 2)
+        
+        for checkIndex in checkRange {
+            if let attachment = attributedText.attribute(.attachment, at: checkIndex, effectiveRange: nil) as? NSTextAttachment,
+               attachment.image != nil {
+                // This is a custom checkbox attachment - toggle it using the unified method
+                toggleCheckboxAtPosition(checkIndex)
+                print("🎯 RichTextCoordinator: Toggled custom checkbox attachment at position \(checkIndex) (tapped at \(tapIndex))")
+                return
+            }
         }
         
         // Check for Unicode checkbox characters (fallback for existing checkboxes)
@@ -2070,17 +2250,21 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
             return label == "checked"
         }
         
-        // Fallback: analyze the image for green pixels (checkmark detection)
+        // Fallback: analyze the image for filled/dark pixels (filled circle detection)
         guard let image = attachment.image else { return false }
         
-        // Simple pixel analysis to detect green checkmark
+        // Simple pixel analysis to detect filled checkbox (black circle)
         guard let cgImage = image.cgImage else { return false }
         
         // Check a few key pixels where the checkmark would be
         let width = cgImage.width
         let height = cgImage.height
         
-        guard width > 0 && height > 0 else { return false }
+        // Add extra safety checks to prevent NaN errors in calculations
+        guard width > 0 && height > 0 && width < 10000 && height < 10000 else { 
+            print("⚠️ isCheckboxAttachmentChecked: Invalid image dimensions (\(width)x\(height)), skipping pixel analysis")
+            return false 
+        }
         
         // Sample the center area where a checkmark would appear
         let colorSpace = CGColorSpaceCreateDeviceRGB()
@@ -2088,7 +2272,14 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         let bytesPerRow = bytesPerPixel * width
         let bitsPerComponent = 8
         
-        var pixelData = [UInt8](repeating: 0, count: width * height * bytesPerPixel)
+        // Validate pixel array size to prevent overflow and NaN errors
+        let pixelDataSize = width * height * bytesPerPixel
+        guard pixelDataSize > 0 && pixelDataSize < 1_000_000 else {
+            print("⚠️ isCheckboxAttachmentChecked: Pixel data size too large (\(pixelDataSize)), skipping")
+            return false
+        }
+        
+        var pixelData = [UInt8](repeating: 0, count: pixelDataSize)
         
         guard let context = CGContext(
             data: &pixelData,
@@ -2102,17 +2293,27 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         
         context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
         
-        // Check for green pixels in the checkmark area
-        for y in height/4..<3*height/4 {
-            for x in width/4..<3*width/4 {
+        // Check for green pixels in the checkmark area with safe bounds
+        let yStart = max(0, height/4)
+        let yEnd = min(height, 3*height/4)
+        let xStart = max(0, width/4)
+        let xEnd = min(width, 3*width/4)
+        
+        for y in yStart..<yEnd {
+            for x in xStart..<xEnd {
                 let pixelIndex = ((width * y) + x) * bytesPerPixel
+                
+                // Bounds check for pixel array access
+                guard pixelIndex + 3 < pixelData.count else { continue }
                 let red = pixelData[pixelIndex]
                 let green = pixelData[pixelIndex + 1]
                 let blue = pixelData[pixelIndex + 2]
                 let alpha = pixelData[pixelIndex + 3]
                 
-                // Check for green-ish pixels (checkmark color)
-                if alpha > 128 && green > red && green > blue && green > 128 {
+                // Check for dark pixels (filled checkbox - black circle)
+                // Dark pixels have low RGB values and high alpha
+                let pixelBrightness = (Int(red) + Int(green) + Int(blue)) / 3
+                if alpha > 128 && pixelBrightness < 100 { // Dark pixel
                     return true
                 }
             }
@@ -2178,7 +2379,7 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
                     let hasAppleSystemMonospace = font.fontName.contains(".AppleSystemUIFontMonospaced")
                     
                     if hasMonaco || hasMonospaceTrait || hasSystemMonospace || hasAppleSystemMonospace {
-                        print("✅ checkIfPositionIsInCodeBlock: Found monospaced font '\(font.fontName)' at position \(pos)")
+                        // Found monospaced font indicating code block
                         return true
                     }
                 }
@@ -2186,14 +2387,14 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
                 // Also check for grey background color
                 if let backgroundColor = attributes[.backgroundColor] as? UIColor {
                     if backgroundColor == UIColor.systemGray6 {
-                        print("✅ checkIfPositionIsInCodeBlock: Found code background at position \(pos)")
+                        // Found code background color
                         return true
                     }
                 }
             }
         }
         
-        print("❌ checkIfPositionIsInCodeBlock: No code block detected at position \(position)")
+        // No code block detected at this position
         return false
     }
     
@@ -2201,7 +2402,7 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
 
 // MARK: - String Extensions
 
-private extension String {
+extension String {
     func ltrimmed() -> String {
         guard let index = firstIndex(where: { !$0.isWhitespace }) else {
             return ""
