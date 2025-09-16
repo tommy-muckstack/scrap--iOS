@@ -18,6 +18,22 @@ service cloud.firestore {
         && request.auth.uid == request.resource.data.userId;
     }
     
+    // Security rules for user-specific categories subcollection
+    match /users/{userId}/categories/{categoryId} {
+      // Users can only access their own categories
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow creating categories with proper validation
+      allow create: if request.auth != null 
+        && request.auth.uid == userId
+        && validateCategoryData(request.resource.data);
+    }
+    
+    // Security rules for user documents (if needed for other user data)
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
     // Deny all other access
     match /{document=**} {
       allow read, write: if false;
@@ -38,4 +54,17 @@ function validateNoteData(data) {
     && data.updatedAt is timestamp
     && data.creationType is string
     && data.creationType in ['voice', 'text'];
+}
+
+// Validate category data structure
+function validateCategoryData(data) {
+  return data.keys().hasAll(['name', 'color', 'created_at', 'usageCount'])
+    && data.name is string
+    && data.name.size() > 0
+    && data.name.size() <= 50  // Max 50 characters for category name
+    && data.color is string
+    && data.color.matches('^#[0-9A-Fa-f]{6}$')  // Valid hex color
+    && data.created_at is timestamp
+    && data.usageCount is number
+    && data.usageCount >= 0;
 }

@@ -104,6 +104,20 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
     
     // MARK: - RTF Font Trait Preservation
     
+    /// Ensure font size is safe (not NaN, infinite, or too small/large)
+    private static func safeFontSize(_ size: CGFloat) -> CGFloat {
+        // Check for NaN, infinity, or invalid values
+        guard size.isFinite && size > 0 else {
+            print("⚠️ SparkItem: Invalid font size \(size), using default 17")
+            return 17.0 // Default font size
+        }
+        
+        // Clamp to reasonable bounds
+        let minSize: CGFloat = 8.0
+        let maxSize: CGFloat = 72.0
+        return max(minSize, min(maxSize, size))
+    }
+    
     // Prepare attributed string for RTF saving by ensuring system fonts with proper traits
     static func prepareForRTFSave(_ attributedString: NSAttributedString) -> NSAttributedString {
         let mutableString = NSMutableAttributedString(attributedString: attributedString)
@@ -116,7 +130,7 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
         mutableString.enumerateAttribute(.font, in: newRange, options: []) { value, _, _ in
             guard let font = value as? UIFont else { return }
             
-            let size = font.pointSize
+            let size = safeFontSize(font.pointSize)
             let isBold = font.fontName.contains("Bold") || font.fontDescriptor.symbolicTraits.contains(.traitBold)
             let isItalic = font.fontDescriptor.symbolicTraits.contains(.traitItalic)
             
@@ -163,7 +177,7 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
         mutableString.enumerateAttribute(.font, in: updatedRange, options: []) { value, range, _ in
             guard let font = value as? UIFont else { return }
             
-            let size = font.pointSize
+            let size = safeFontSize(font.pointSize)
             let isBold = font.fontDescriptor.symbolicTraits.contains(.traitBold)
             let isItalic = font.fontDescriptor.symbolicTraits.contains(.traitItalic)
             

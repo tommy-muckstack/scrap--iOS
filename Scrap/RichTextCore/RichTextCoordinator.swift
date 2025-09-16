@@ -70,7 +70,7 @@ public class RichTextCoordinator: NSObject {
         
         // Configure for rich text editing
         textView.typingAttributes = [
-            .font: UIFont(name: context.fontName, size: context.fontSize) ?? UIFont.systemFont(ofSize: context.fontSize),
+            .font: UIFont(name: context.fontName, size: safeFontSize(context.fontSize)) ?? UIFont.systemFont(ofSize: safeFontSize(context.fontSize)),
             .foregroundColor: UIColor.label
         ]
         
@@ -274,24 +274,25 @@ public class RichTextCoordinator: NSObject {
             mutableText.enumerateAttribute(.font, in: range) { value, subRange, _ in
                 if let font = value as? UIFont {
                     let newFont: UIFont
+                    let safeSize = safeFontSize(font.pointSize)
                     if shouldAddBold {
                         // Add bold - use specific SpaceGrotesk-Bold font
-                        if let boldFont = UIFont(name: "SpaceGrotesk-Bold", size: font.pointSize) {
+                        if let boldFont = UIFont(name: "SpaceGrotesk-Bold", size: safeSize) {
                             newFont = boldFont
-                            print("✅ Applied SpaceGrotesk-Bold font at size \(font.pointSize)")
+                            print("✅ Applied SpaceGrotesk-Bold font at size \(safeSize)")
                         } else {
                             // Fallback to system bold font if custom font not available
-                            newFont = UIFont.boldSystemFont(ofSize: font.pointSize)
+                            newFont = UIFont.boldSystemFont(ofSize: safeSize)
                             print("⚠️ SpaceGrotesk-Bold not available, using system bold font")
                         }
                     } else {
                         // Remove bold - revert to regular SpaceGrotesk font
-                        if let regularFont = UIFont(name: "SpaceGrotesk-Regular", size: font.pointSize) {
+                        if let regularFont = UIFont(name: "SpaceGrotesk-Regular", size: safeSize) {
                             newFont = regularFont
-                            print("✅ Applied SpaceGrotesk-Regular font at size \(font.pointSize)")
+                            print("✅ Applied SpaceGrotesk-Regular font at size \(safeSize)")
                         } else {
                             // Fallback to system regular font
-                            newFont = UIFont.systemFont(ofSize: font.pointSize)
+                            newFont = UIFont.systemFont(ofSize: safeSize)
                             print("⚠️ SpaceGrotesk-Regular not available, using system regular font")
                         }
                     }
@@ -344,17 +345,17 @@ public class RichTextCoordinator: NSObject {
                         // Add italic
                         let traits = font.fontDescriptor.symbolicTraits.union(.traitItalic)
                         if let descriptor = font.fontDescriptor.withSymbolicTraits(traits) {
-                            newFont = UIFont(descriptor: descriptor, size: font.pointSize)
+                            newFont = UIFont(descriptor: descriptor, size: safeFontSize(font.pointSize))
                         } else {
-                            newFont = UIFont.italicSystemFont(ofSize: font.pointSize)
+                            newFont = UIFont.italicSystemFont(ofSize: safeFontSize(font.pointSize))
                         }
                     } else {
                         // Remove italic
                         let traits = font.fontDescriptor.symbolicTraits.subtracting(.traitItalic)
                         if let descriptor = font.fontDescriptor.withSymbolicTraits(traits) {
-                            newFont = UIFont(descriptor: descriptor, size: font.pointSize)
+                            newFont = UIFont(descriptor: descriptor, size: safeFontSize(font.pointSize))
                         } else {
-                            newFont = UIFont(name: context.fontName, size: font.pointSize) ?? font
+                            newFont = UIFont(name: context.fontName, size: safeFontSize(font.pointSize)) ?? font
                         }
                     }
                     mutableText.addAttribute(.font, value: newFont, range: subRange)
@@ -942,7 +943,7 @@ public class RichTextCoordinator: NSObject {
             let codeBlockText = mutableText.attributedSubstring(from: codeBlockRange).string
             
             // Create new attributed string with normal formatting
-            let normalFont = UIFont(name: context.fontName, size: context.fontSize) ?? UIFont.systemFont(ofSize: context.fontSize)
+            let normalFont = UIFont(name: context.fontName, size: safeFontSize(context.fontSize)) ?? UIFont.systemFont(ofSize: safeFontSize(context.fontSize))
             let normalAttributes: [NSAttributedString.Key: Any] = [
                 .font: normalFont,
                 .foregroundColor: UIColor.label,
@@ -961,7 +962,7 @@ public class RichTextCoordinator: NSObject {
         
         // Add a newline with normal formatting after the text to ensure clean transition
         let newlineString = NSAttributedString(string: "\n", attributes: [
-            .font: UIFont(name: context.fontName, size: context.fontSize) ?? UIFont.systemFont(ofSize: context.fontSize),
+            .font: UIFont(name: context.fontName, size: safeFontSize(context.fontSize)) ?? UIFont.systemFont(ofSize: safeFontSize(context.fontSize)),
             .foregroundColor: UIColor.label,
             .backgroundColor: UIColor.clear,
             .paragraphStyle: NSParagraphStyle.default
@@ -974,7 +975,7 @@ public class RichTextCoordinator: NSObject {
         
         // Force update of typing attributes to normal before updating context
         let normalTypingAttributes: [NSAttributedString.Key: Any] = [
-            .font: UIFont(name: context.fontName, size: context.fontSize) ?? UIFont.systemFont(ofSize: context.fontSize),
+            .font: UIFont(name: context.fontName, size: safeFontSize(context.fontSize)) ?? UIFont.systemFont(ofSize: safeFontSize(context.fontSize)),
             .foregroundColor: UIColor.label,
             .backgroundColor: UIColor.clear,
             .paragraphStyle: NSParagraphStyle.default
@@ -1026,7 +1027,7 @@ public class RichTextCoordinator: NSObject {
         normalParagraphStyle.tailIndent = 0
         
         // Insert a newline with normal formatting at the current position
-        let normalFont = UIFont(name: context.fontName, size: context.fontSize) ?? UIFont.systemFont(ofSize: context.fontSize)
+        let normalFont = UIFont(name: context.fontName, size: safeFontSize(context.fontSize)) ?? UIFont.systemFont(ofSize: safeFontSize(context.fontSize))
         let normalAttributes: [NSAttributedString.Key: Any] = [
             .font: normalFont,
             .foregroundColor: UIColor.label,
@@ -1055,7 +1056,7 @@ public class RichTextCoordinator: NSObject {
     /// Exit code block formatting at current cursor position without moving cursor (for button toggle)
     private func exitCodeBlockInPlace(at position: Int) {
         // Create normal formatting attributes for future typing
-        let normalFont = UIFont(name: context.fontName, size: context.fontSize) ?? UIFont.systemFont(ofSize: context.fontSize)
+        let normalFont = UIFont(name: context.fontName, size: safeFontSize(context.fontSize)) ?? UIFont.systemFont(ofSize: safeFontSize(context.fontSize))
         let normalParagraphStyle = NSMutableParagraphStyle()
         normalParagraphStyle.lineSpacing = 0
         normalParagraphStyle.paragraphSpacing = 0
@@ -1092,7 +1093,7 @@ public class RichTextCoordinator: NSObject {
         normalParagraphStyle.tailIndent = 0
         
         // Insert a newline with normal formatting at the current position
-        let normalFont = UIFont(name: context.fontName, size: context.fontSize) ?? UIFont.systemFont(ofSize: context.fontSize)
+        let normalFont = UIFont(name: context.fontName, size: safeFontSize(context.fontSize)) ?? UIFont.systemFont(ofSize: safeFontSize(context.fontSize))
         
         let normalAttributes: [NSAttributedString.Key: Any] = [
             .font: normalFont,
@@ -1381,7 +1382,7 @@ public class RichTextCoordinator: NSObject {
             }
         } else {
             // Get base font for regular text
-            let baseFont = UIFont(name: context.fontName, size: context.fontSize) ?? UIFont.systemFont(ofSize: context.fontSize)
+            let baseFont = UIFont(name: context.fontName, size: safeFontSize(context.fontSize)) ?? UIFont.systemFont(ofSize: safeFontSize(context.fontSize))
             
             // Apply formatting based on current context state
             font = baseFont
@@ -1425,24 +1426,26 @@ public class RichTextCoordinator: NSObject {
     }
     
     private func applyBoldToFont(_ font: UIFont) -> UIFont {
+        let safeSize = safeFontSize(font.pointSize)
         // Use specific SpaceGrotesk-Bold font for bold formatting
-        if let boldFont = UIFont(name: "SpaceGrotesk-Bold", size: font.pointSize) {
-            print("✅ applyBoldToFont: Using SpaceGrotesk-Bold at size \(font.pointSize)")
+        if let boldFont = UIFont(name: "SpaceGrotesk-Bold", size: safeSize) {
+            print("✅ applyBoldToFont: Using SpaceGrotesk-Bold at size \(safeSize)")
             return boldFont
         } else {
             // Fallback to system bold font
-            let boldSystemFont = UIFont.boldSystemFont(ofSize: font.pointSize)
+            let boldSystemFont = UIFont.boldSystemFont(ofSize: safeSize)
             print("⚠️ applyBoldToFont: SpaceGrotesk-Bold not available, using system bold font: \(boldSystemFont.fontName)")
             return boldSystemFont
         }
     }
     
     private func applyItalicToFont(_ font: UIFont) -> UIFont {
+        let safeSize = safeFontSize(font.pointSize)
         let traits = font.fontDescriptor.symbolicTraits.union(.traitItalic)
         if let descriptor = font.fontDescriptor.withSymbolicTraits(traits) {
-            return UIFont(descriptor: descriptor, size: font.pointSize)
+            return UIFont(descriptor: descriptor, size: safeSize)
         } else {
-            return UIFont.italicSystemFont(ofSize: font.pointSize)
+            return UIFont.italicSystemFont(ofSize: safeSize)
         }
     }
 }
@@ -1973,6 +1976,22 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         }
     }
     
+    // MARK: - Helper Functions
+    
+    /// Ensure font size is safe (not NaN, infinite, or too small/large)
+    private func safeFontSize(_ size: CGFloat) -> CGFloat {
+        // Check for NaN, infinity, or invalid values
+        guard size.isFinite && size > 0 else {
+            print("⚠️ RichTextCoordinator: Invalid font size \(size), using default 17")
+            return 17.0 // Default font size
+        }
+        
+        // Clamp to reasonable bounds
+        let minSize: CGFloat = 8.0
+        let maxSize: CGFloat = 72.0
+        return max(minSize, min(maxSize, size))
+    }
+    
     // MARK: - Checkbox Customization (Easy to modify for future visual changes)
     
     /// Create simple Unicode checkbox - much simpler than NSTextAttachment
@@ -1986,8 +2005,7 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         
         let attributes: [NSAttributedString.Key: Any] = [
             .font: checkboxFont,
-            .foregroundColor: checkboxColor,
-            .baselineOffset: -1 // Slight adjustment for better text alignment
+            .foregroundColor: checkboxColor
         ]
         
         return NSAttributedString(string: checkboxChar, attributes: attributes)
