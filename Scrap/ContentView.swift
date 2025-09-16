@@ -1920,14 +1920,9 @@ struct ContentView: View {
             await VectorSearchService.shared.reindexAllNotes(firebaseNotes)
             print("✅ ContentView: Reindexing completed!")
             
-            // Run semantic search debugging test after reindexing
-            print("🧪 ContentView: Running semantic search debug test...")
-            await VectorSearchService.shared.testSemanticSearchDebug()
-            
             // Show success feedback
             await MainActor.run {
-                // Could show a toast or alert here
-                print("💡 ContentView: Reindexing and debugging finished - check console for results!")
+                print("✅ ContentView: Reindexing completed successfully!")
             }
         }
     }

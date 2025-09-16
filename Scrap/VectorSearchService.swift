@@ -80,6 +80,8 @@ class VectorSearchService: ObservableObject {
         isSearching = true
         searchError = nil
         
+        print("🔍 VectorSearchService: Searching for '\(query)' (limit: \(limit))")
+        
         defer { 
             isSearching = false
         }
@@ -233,51 +235,6 @@ class VectorSearchService: ObservableObject {
         print("🎉 VectorSearchService: Re-indexing complete!")
     }
     
-    /// Test semantic search with different terms to debug "foliage" vs "leaves" issue
-    func testSemanticSearchDebug() async {
-        print("🧪 VectorSearchService: Testing semantic search with various terms...")
-        print("🧪 This test will help diagnose why 'foliage' might not find notes containing 'leaves'")
-        
-        let testTerms = [
-            ("foliage", "Should find notes about leaves, plants, greenery"),
-            ("leaves", "Should find notes with direct 'leaves' mentions"), 
-            ("plants", "Should find botanical content"),
-            ("nature", "Should find outdoor/natural content"),
-            ("green", "Should find color or nature references"),
-            ("trees", "Should find forestry content"),
-            ("garden", "Should find gardening/plant content"),
-            ("botanical", "Should find plant science content")
-        ]
-        
-        for (term, expectation) in testTerms {
-            print("\n🧪 Testing search term: '\(term)'")
-            print("   Expected: \(expectation)")
-            do {
-                let results = try await semanticSearch(query: term, limit: 5)
-                print("   Results found: \(results.count)")
-                
-                if results.isEmpty {
-                    print("   ❌ No results found - might indicate indexing issue")
-                } else {
-                    for (i, result) in results.enumerated() {
-                        let preview = String(result.content.prefix(80)).replacingOccurrences(of: "\n", with: " ")
-                        print("   [\(i+1)] \(Int(result.similarity * 100))% match - \(preview)...")
-                        
-                        // Special check for foliage -> leaves connection
-                        if term == "foliage" && result.content.lowercased().contains("leaves") {
-                            print("       ✅ Found semantic connection: foliage query found 'leaves' content!")
-                        } else if term == "leaves" && result.content.lowercased().contains("foliage") {
-                            print("       ✅ Found semantic connection: leaves query found 'foliage' content!")
-                        }
-                    }
-                }
-            } catch {
-                print("   ❌ Error: \(error)")
-            }
-        }
-        
-        print("\n🧪 Semantic search debug test complete!")
-    }
     
     // MARK: - Private Helper Methods
     
@@ -286,34 +243,15 @@ class VectorSearchService: ObservableObject {
         
         
         for i in 0..<chromaResults.ids[0].count {
-            let id = chromaResults.ids[0][i]
+            let _ = chromaResults.ids[0][i]
             let content = chromaResults.documents[0][i]
             let distance = chromaResults.distances[0][i]
             let metadata = chromaResults.metadatas[0][i]
             
             // Convert distance to similarity score (0-1, higher is better)
-            print("   - ID: \(id)")
-            print("   - Content preview: \(String(content.prefix(60)))...")
-            print("   - Raw distance: \(distance)")
-            
             // Use inverse relationship for all distances since ChromaDB returns euclidean-style distances
             // Scale to give meaningful percentages: smaller distances = higher similarity
             let similarity = 1.0 / (1.0 + distance)
-            
-            print("   - Calculated similarity: \(similarity) (\(Int(similarity * 100))%)")
-            
-            // Log semantic quality assessment
-            if similarity > 0.85 {
-                print("   - Quality: EXCELLENT match")
-            } else if similarity > 0.70 {
-                print("   - Quality: GOOD match") 
-            } else if similarity > 0.50 {
-                print("   - Quality: MODERATE match")
-            } else if similarity > 0.30 {
-                print("   - Quality: WEAK match")
-            } else {
-                print("   - Quality: VERY WEAK match")
-            }
             
             let result = SearchResult(
                 firebaseId: metadata.firebaseId,
@@ -330,16 +268,7 @@ class VectorSearchService: ObservableObject {
         // Sort by similarity (highest first) for better user experience
         results.sort { $0.similarity > $1.similarity }
         
-        print("   - Total results before filtering: \(results.count)")
-        if let bestMatch = results.first {
-            print("   - Best match similarity: \(Int(bestMatch.similarity * 100))%")
-        }
-        if let worstMatch = results.last {
-            print("   - Worst match similarity: \(Int(worstMatch.similarity * 100))%")
-        }
-        
         // Apply minimum similarity threshold to filter out very weak results
-        // This may be why "foliage" -> "leaves" isn't showing up if the similarity is too low
         let minimumSimilarityThreshold = 0.15 // 15% - fairly permissive threshold
         let filteredResults = results.filter { $0.similarity >= minimumSimilarityThreshold }
         

@@ -360,19 +360,19 @@ public class RichTextContext: ObservableObject {
         // Check for list markers and formatting
         let bulletActive = trimmedLine.hasPrefix("•")
         
-        // Check for checkbox formatting - both Unicode and NSTextAttachment
+        // Check for checkbox formatting - Unicode checkboxes
         var checkboxActive = trimmedLine.hasPrefix("○") || trimmedLine.hasPrefix("●")
         
-        // Also check for NSTextAttachment checkboxes at the beginning of the line
+        // Also check for Unicode checkboxes at the beginning of the line
         if !checkboxActive && attributedString.length > 0 {
             let lineStart = lineRange.location
             let leadingWhitespace = lineText.count - lineText.ltrimmed().count
             let checkboxPosition = lineStart + leadingWhitespace
             
             if checkboxPosition < attributedString.length {
-                if let attachment = attributedString.attribute(.attachment, at: checkboxPosition, effectiveRange: nil) as? NSTextAttachment,
-                   attachment.image != nil {
-                    // Found a custom checkbox attachment at start of line
+                let character = (attributedString.string as NSString).character(at: checkboxPosition)
+                // Check for Unicode checkbox characters ☐ ☑
+                if character == 0x2610 || character == 0x2611 {
                     checkboxActive = true
                 }
             }
