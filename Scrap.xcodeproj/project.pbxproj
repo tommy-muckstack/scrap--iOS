@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		NEC114F946C8D24C74D23822B8 /* NoteEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = NE5DDCCFCC62BAA7EE7261D21F /* NoteEditor.swift */; };
+	DG37B0B88A72C027323CBED810 /* CoreGraphicsDebug.swift in Sources */ = {isa = PBXBuildFile; fileRef = DGBFEC794D87FF0597FBC1D270 /* CoreGraphicsDebug.swift */; };
 		1D1A2B2A2B1234567890ABCD /* ScrapApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1A2B292B1234567890ABCD /* ScrapApp.swift */; };
 		1D1A2B2C2B1234567890ABCE /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1A2B2B2B1234567890ABCE /* ContentView.swift */; };
 		1D1A2B2E2B1234567890ABCF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1D1A2B2D2B1234567890ABCF /* Assets.xcassets */; };
@@ -86,6 +87,7 @@
 		1D1A2B262B1234567890ABCC /* Scrap.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Scrap.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1D1A2B292B1234567890ABCD /* ScrapApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrapApp.swift; sourceTree = "<group>"; };
 		1D1A2B2B2B1234567890ABCE /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+	DGBFEC794D87FF0597FBC1D270 /* CoreGraphicsDebug.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreGraphicsDebug.swift; sourceTree = "<group>"; };
 		NE5DDCCFCC62BAA7EE7261D21F /* NoteEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteEditor.swift; sourceTree = "<group>"; };
 		1D1A2B2D2B1234567890ABCF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1D1A2B302B1234567890ABD0 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
@@ -193,6 +195,7 @@
 				BB304E792E6F9E750054DD40 /* GoogleService-Info.plist */,
 				1D1A2B292B1234567890ABCD /* ScrapApp.swift */,
 				1D1A2B2B2B1234567890ABCE /* ContentView.swift */,
+			DGBFEC794D87FF0597FBC1D270 /* CoreGraphicsDebug.swift */,
 				NE5DDCCFCC62BAA7EE7261D21F /* NoteEditor.swift */,
 				VSBB8F96838EAF9CAB96FC412B /* VectorSearchService.swift */,
 				RCCABB85C9FF0BBEE223B3A7B5 /* RichTextCore/RichTextContext.swift */,
@@ -403,6 +406,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1D1A2B2C2B1234567890ABCE /* ContentView.swift in Sources */,
+			DG37B0B88A72C027323CBED810 /* CoreGraphicsDebug.swift in Sources */,
 				NEC114F946C8D24C74D23822B8 /* NoteEditor.swift in Sources */,
 				VSB265A2C19F0013D2789802D2 /* VectorSearchService.swift in Sources */,
 				RCB7600E0A0B026201786F2131 /* RichTextCore/RichTextContext.swift in Sources */,
