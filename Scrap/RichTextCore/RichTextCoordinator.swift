@@ -2245,80 +2245,15 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
     
     /// Determine if a checkbox attachment is currently in checked state
     private func isCheckboxAttachmentChecked(_ attachment: NSTextAttachment) -> Bool {
-        // Use the attachment's accessibilityLabel to track state
+        // Use the attachment's accessibilityLabel to track state - this is the primary method
         if let label = attachment.accessibilityLabel {
             return label == "checked"
         }
         
-        // Fallback: analyze the image for filled/dark pixels (filled circle detection)
-        guard let image = attachment.image else { return false }
-        
-        // Simple pixel analysis to detect filled checkbox (black circle)
-        guard let cgImage = image.cgImage else { return false }
-        
-        // Check a few key pixels where the checkmark would be
-        let width = cgImage.width
-        let height = cgImage.height
-        
-        // Add extra safety checks to prevent NaN errors in calculations
-        guard width > 0 && height > 0 && width < 10000 && height < 10000 else { 
-            print("⚠️ isCheckboxAttachmentChecked: Invalid image dimensions (\(width)x\(height)), skipping pixel analysis")
-            return false 
-        }
-        
-        // Sample the center area where a checkmark would appear
-        let colorSpace = CGColorSpaceCreateDeviceRGB()
-        let bytesPerPixel = 4
-        let bytesPerRow = bytesPerPixel * width
-        let bitsPerComponent = 8
-        
-        // Validate pixel array size to prevent overflow and NaN errors
-        let pixelDataSize = width * height * bytesPerPixel
-        guard pixelDataSize > 0 && pixelDataSize < 1_000_000 else {
-            print("⚠️ isCheckboxAttachmentChecked: Pixel data size too large (\(pixelDataSize)), skipping")
-            return false
-        }
-        
-        var pixelData = [UInt8](repeating: 0, count: pixelDataSize)
-        
-        guard let context = CGContext(
-            data: &pixelData,
-            width: width,
-            height: height,
-            bitsPerComponent: bitsPerComponent,
-            bytesPerRow: bytesPerRow,
-            space: colorSpace,
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else { return false }
-        
-        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
-        
-        // Check for green pixels in the checkmark area with safe bounds
-        let yStart = max(0, height/4)
-        let yEnd = min(height, 3*height/4)
-        let xStart = max(0, width/4)
-        let xEnd = min(width, 3*width/4)
-        
-        for y in yStart..<yEnd {
-            for x in xStart..<xEnd {
-                let pixelIndex = ((width * y) + x) * bytesPerPixel
-                
-                // Bounds check for pixel array access
-                guard pixelIndex + 3 < pixelData.count else { continue }
-                let red = pixelData[pixelIndex]
-                let green = pixelData[pixelIndex + 1]
-                let blue = pixelData[pixelIndex + 2]
-                let alpha = pixelData[pixelIndex + 3]
-                
-                // Check for dark pixels (filled checkbox - black circle)
-                // Dark pixels have low RGB values and high alpha
-                let pixelBrightness = (Int(red) + Int(green) + Int(blue)) / 3
-                if alpha > 128 && pixelBrightness < 100 { // Dark pixel
-                    return true
-                }
-            }
-        }
-        
+        // Simple fallback without pixel analysis to avoid CoreGraphics NaN errors
+        // If no accessibility label is set, assume unchecked state
+        // This avoids complex pixel analysis that can cause CoreGraphics issues
+        print("⚠️ isCheckboxAttachmentChecked: No accessibility label found, assuming unchecked")
         return false
     }
     
