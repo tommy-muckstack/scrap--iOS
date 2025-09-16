@@ -2109,37 +2109,24 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         // Set accessibility label to track checkbox state
         attachment.accessibilityLabel = isChecked ? "checked" : "unchecked"
         
-        // Use a larger size for better tap interaction (Apple Notes style)
-        let checkboxSize: CGFloat = 20 // Larger size for easier tapping
-        
-        // Adjust baseline alignment for larger checkbox
-        // Negative Y value moves the checkbox down to align with text baseline
-        let yOffset: CGFloat = -3 // Adjusted offset for larger checkbox
-        
-        attachment.bounds = CGRect(
-            origin: CGPoint(x: 0, y: yOffset), 
-            size: CGSize(width: checkboxSize, height: checkboxSize)
-        )
+        // Use simple fixed bounds to avoid any CoreGraphics NaN issues
+        // Keep it simple - let the image size determine the bounds naturally
+        attachment.bounds = CGRect(x: 0, y: -2, width: 16, height: 16)
         
         return attachment
     }
     
-    /// Generate Apple Notes-style checkbox using SF Symbols (no custom drawing)
+    /// Generate simple checkbox using SF Symbols (simplified to avoid NaN issues)
     private func generateCheckboxImage(isChecked: Bool) -> UIImage {
-        // Use SF Symbols like Apple Notes actually does - clean and simple
+        // Use the simplest possible approach to avoid any CoreGraphics issues
         let symbolName = isChecked ? "checkmark.circle.fill" : "circle"
-        let config = UIImage.SymbolConfiguration(pointSize: 16, weight: .medium)
         
-        // Try to create the SF Symbol image with proper tinting
-        if let symbolImage = UIImage(systemName: symbolName, withConfiguration: config) {
-            // For checked state, render in black. For unchecked, render in gray
+        // Create image without any complex configuration to eliminate potential NaN sources
+        if let symbolImage = UIImage(systemName: symbolName) {
             let color = isChecked ? UIColor.label : UIColor.systemGray2
-            
-            // Use withTintColor for clean, simple rendering (no custom graphics context)
-            let tintedImage = symbolImage.withTintColor(color, renderingMode: .alwaysOriginal)
-            return tintedImage
+            return symbolImage.withTintColor(color, renderingMode: .alwaysOriginal)
         } else {
-            // Fallback to simple colored square if SF Symbol fails
+            // Ultra-simple fallback
             return createFallbackCheckboxImage(isChecked: isChecked)
         }
     }
@@ -2168,10 +2155,23 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
     
     @objc func handleTap(_ gesture: UITapGestureRecognizer) {
         let location = gesture.location(in: textView)
-        let tapPosition = textView.closestPosition(to: location)
         
+        // Validate tap location is within bounds
+        guard location.x.isFinite && location.y.isFinite else {
+            print("⚠️ handleTap: Invalid tap location \(location)")
+            return
+        }
+        
+        let tapPosition = textView.closestPosition(to: location)
         guard let tapPosition = tapPosition else { return }
+        
         let tapIndex = textView.offset(from: textView.beginningOfDocument, to: tapPosition)
+        
+        // Validate calculated index
+        guard tapIndex >= 0 && tapIndex <= textView.attributedText?.length ?? 0 else {
+            print("⚠️ handleTap: Invalid tap index \(tapIndex) for text length \(textView.attributedText?.length ?? 0)")
+            return
+        }
         
         // Check if we tapped on a checkbox character or attachment
         guard let attributedText = textView.attributedText else { return }
@@ -2195,7 +2195,19 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         let text = textView.text ?? ""
         guard tapIndex < text.count else { return }
         
-        let lineRange = (text as NSString).lineRange(for: NSRange(location: tapIndex, length: 0))
+        // Safe line range calculation with bounds checking
+        let tapRange = NSRange(location: tapIndex, length: 0)
+        guard tapRange.location >= 0 && tapRange.location < text.count else {
+            print("⚠️ handleTap: Invalid tap range \(tapRange) for text count \(text.count)")
+            return
+        }
+        
+        let lineRange = (text as NSString).lineRange(for: tapRange)
+        guard lineRange.location >= 0 && NSMaxRange(lineRange) <= text.count else {
+            print("⚠️ handleTap: Invalid line range \(lineRange) for text count \(text.count)")
+            return
+        }
+        
         let lineText = (text as NSString).substring(with: lineRange)
         let trimmedLine = lineText.trimmingCharacters(in: .whitespaces)
         
@@ -2223,7 +2235,12 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
     private func toggleCustomCheckboxAtPosition(_ position: Int) {
         guard let attributedText = textView.attributedText else { return }
         let mutableText = NSMutableAttributedString(attributedString: attributedText)
-        guard position < mutableText.length else { return }
+        
+        // Add comprehensive bounds checking to prevent NaN issues
+        guard position >= 0 && position < mutableText.length else { 
+            print("⚠️ toggleCustomCheckboxAtPosition: Invalid position \(position) for text length \(mutableText.length)")
+            return 
+        }
         
         // Get the current attachment
         if let currentAttachment = mutableText.attribute(.attachment, at: position, effectiveRange: nil) as? NSTextAttachment {
@@ -2232,8 +2249,13 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
             let isCurrentlyChecked = isCheckboxAttachmentChecked(currentAttachment)
             let newAttachment = createCustomCheckboxAttachment(isChecked: !isCurrentlyChecked)
             
-            // Replace the attachment
-            mutableText.replaceCharacters(in: NSRange(location: position, length: 1), with: NSAttributedString(attachment: newAttachment))
+            // Replace the attachment with safe bounds checking
+            let replaceRange = NSRange(location: position, length: 1)
+            guard replaceRange.location >= 0 && NSMaxRange(replaceRange) <= mutableText.length else {
+                print("⚠️ toggleCustomCheckboxAtPosition: Invalid replace range \(replaceRange) for text length \(mutableText.length)")
+                return
+            }
+            mutableText.replaceCharacters(in: replaceRange, with: NSAttributedString(attachment: newAttachment))
             
             textView.attributedText = mutableText
             updateBindingFromTextView()

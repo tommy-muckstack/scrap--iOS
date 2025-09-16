@@ -11,6 +11,7 @@ class VoiceRecorder: ObservableObject {
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
+    private var recordingStartTime: Date?
     
     init() {
         requestPermissions()
@@ -27,13 +28,17 @@ class VoiceRecorder: ObservableObject {
     private func requestPermissions() {
         SFSpeechRecognizer.requestAuthorization { status in
             DispatchQueue.main.async {
-                // Handle authorization status if needed
+                if status == .denied {
+                    AnalyticsManager.shared.trackVoicePermissionDenied()
+                }
             }
         }
         
         AVAudioSession.sharedInstance().requestRecordPermission { granted in
             DispatchQueue.main.async {
-                // Handle permission result if needed
+                if !granted {
+                    AnalyticsManager.shared.trackVoicePermissionDenied()
+                }
             }
         }
     }
@@ -84,6 +89,7 @@ class VoiceRecorder: ObservableObject {
             
             isRecording = true
             transcribedText = ""
+            recordingStartTime = Date()
             
         } catch {
             print("Failed to start recording: \(error)")
@@ -92,6 +98,12 @@ class VoiceRecorder: ObservableObject {
     }
     
     private func stopRecording() {
+        // Track voice recording completion
+        if let startTime = recordingStartTime {
+            let duration = Date().timeIntervalSince(startTime)
+            AnalyticsManager.shared.trackVoiceRecordingStopped(duration: duration, textLength: transcribedText.count)
+        }
+        
         audioEngine?.stop()
         audioEngine?.inputNode.removeTap(onBus: 0)
         
@@ -102,6 +114,7 @@ class VoiceRecorder: ObservableObject {
         recognitionTask = nil
         
         isRecording = false
+        recordingStartTime = nil
         
         // Deactivate audio session
         try? AVAudioSession.sharedInstance().setActive(false)

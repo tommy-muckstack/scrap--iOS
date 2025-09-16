@@ -1880,6 +1880,9 @@ struct ContentView: View {
                 searchResults = results
                 hasSearched = true
                 isSearching = false
+                
+                // Track search analytics
+                AnalyticsManager.shared.trackSearch(query: searchText, resultCount: results.count)
             } catch {
                 print("Search failed: \(error)")
                 hasSearched = true
@@ -1930,6 +1933,9 @@ struct ContentView: View {
     }
     
     private func handleSearchResultTap(_ result: SearchResult) {
+        // Track search result tap
+        AnalyticsManager.shared.trackNoteOpened(noteId: result.firebaseId, openMethod: "search_result")
+        
         // Find the matching item in dataManager.items and navigate to it
         if let item = dataManager.items.first(where: { $0.id == result.firebaseId }) {
             navigationPath.append(item)

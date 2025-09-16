@@ -142,6 +142,62 @@ class AnalyticsManager: ObservableObject {
         ])
     }
     
+    // MARK: - Rich Text Formatting Events
+    func trackFormattingToggled(format: String, isActive: Bool) {
+        trackEvent("formatting_toggled", properties: [
+            "format_type": format,
+            "new_state": isActive ? "active" : "inactive"
+        ])
+    }
+    
+    func trackBoldToggled(isActive: Bool) {
+        trackFormattingToggled(format: "bold", isActive: isActive)
+    }
+    
+    func trackItalicToggled(isActive: Bool) {
+        trackFormattingToggled(format: "italic", isActive: isActive)
+    }
+    
+    func trackUnderlineToggled(isActive: Bool) {
+        trackFormattingToggled(format: "underline", isActive: isActive)
+    }
+    
+    func trackStrikethroughToggled(isActive: Bool) {
+        trackFormattingToggled(format: "strikethrough", isActive: isActive)
+    }
+    
+    func trackBulletListToggled(isActive: Bool) {
+        trackFormattingToggled(format: "bullet_list", isActive: isActive)
+    }
+    
+    func trackCheckboxToggled(isActive: Bool) {
+        trackFormattingToggled(format: "checkbox", isActive: isActive)
+    }
+    
+    func trackCodeBlockToggled(isActive: Bool) {
+        trackFormattingToggled(format: "code_block", isActive: isActive)
+    }
+    
+    func trackIndentChanged(direction: String) {
+        trackEvent("indent_changed", properties: [
+            "direction": direction // "in" or "out"
+        ])
+    }
+    
+    // MARK: - Checkbox Interaction Events
+    func trackCheckboxClicked(isChecked: Bool, checkboxType: String) {
+        trackEvent("checkbox_clicked", properties: [
+            "new_state": isChecked ? "checked" : "unchecked",
+            "checkbox_type": checkboxType // "unicode" or "attachment"
+        ])
+    }
+    
+    func trackCheckboxVisualUpdateFailed(reason: String) {
+        trackEvent("checkbox_visual_update_failed", properties: [
+            "failure_reason": reason
+        ])
+    }
+    
     // MARK: - Text Processing Events
     func trackArrowConversion() {
         trackEvent("text_arrow_converted")
@@ -149,6 +205,93 @@ class AnalyticsManager: ObservableObject {
     
     func trackBulletPointCreated() {
         trackEvent("text_bullet_created")
+    }
+    
+    // MARK: - Category/Tag Events
+    func trackCategoryCreated(categoryName: String, colorKey: String) {
+        trackEvent("category_created", properties: [
+            "category_name_length": categoryName.count,
+            "color_key": colorKey
+        ])
+    }
+    
+    func trackCategorySelected(categoryId: String, categoryName: String) {
+        trackEvent("category_selected", properties: [
+            "category_id": categoryId,
+            "category_name_length": categoryName.count
+        ])
+    }
+    
+    func trackCategoryDeselected(categoryId: String, categoryName: String) {
+        trackEvent("category_deselected", properties: [
+            "category_id": categoryId,
+            "category_name_length": categoryName.count
+        ])
+    }
+    
+    func trackCategoryManagerOpened() {
+        trackEvent("category_manager_opened")
+    }
+    
+    func trackCategoryManagerClosed() {
+        trackEvent("category_manager_closed")
+    }
+    
+    // MARK: - Navigation Events
+    func trackNoteOpened(noteId: String, openMethod: String) {
+        trackEvent("note_opened", properties: [
+            "note_id": noteId,
+            "open_method": openMethod // "list_tap", "search_result", etc.
+        ])
+    }
+    
+    func trackNoteClosed(noteId: String, timeSpent: TimeInterval) {
+        trackEvent("note_closed", properties: [
+            "note_id": noteId,
+            "time_spent_seconds": Int(timeSpent)
+        ])
+    }
+    
+    func trackBackButtonTapped(fromScreen: String) {
+        trackEvent("back_button_tapped", properties: [
+            "from_screen": fromScreen
+        ])
+    }
+    
+    func trackKeyboardDismissed(method: String) {
+        trackEvent("keyboard_dismissed", properties: [
+            "dismiss_method": method // "drag", "button", "tap_outside", etc.
+        ])
+    }
+    
+    // MARK: - Content Creation Events
+    func trackTitleChanged(noteId: String, titleLength: Int) {
+        trackEvent("title_changed", properties: [
+            "note_id": noteId,
+            "title_length": titleLength
+        ])
+    }
+    
+    func trackContentChanged(noteId: String, contentLength: Int, changeType: String) {
+        trackEvent("content_changed", properties: [
+            "note_id": noteId,
+            "content_length": contentLength,
+            "change_type": changeType // "typing", "formatting", "paste", etc.
+        ])
+    }
+    
+    func trackRTFContentSaved(noteId: String, rtfDataSize: Int) {
+        trackEvent("rtf_content_saved", properties: [
+            "note_id": noteId,
+            "rtf_data_size_bytes": rtfDataSize
+        ])
+    }
+    
+    func trackContentLoadFailed(noteId: String, errorType: String) {
+        trackEvent("content_load_failed", properties: [
+            "note_id": noteId,
+            "error_type": errorType
+        ])
     }
     
     // MARK: - UI Interaction Events
@@ -170,6 +313,36 @@ class AnalyticsManager: ObservableObject {
         trackEvent("note_saved", properties: [
             "method": method, // "button" or "auto"
             "content_length": contentLength
+        ])
+    }
+    
+    func trackOptionsMenuOpened(noteId: String) {
+        trackEvent("options_menu_opened", properties: [
+            "note_id": noteId
+        ])
+    }
+    
+    func trackOptionsMenuClosed(noteId: String) {
+        trackEvent("options_menu_closed", properties: [
+            "note_id": noteId
+        ])
+    }
+    
+    func trackDeleteConfirmationShown(noteId: String) {
+        trackEvent("delete_confirmation_shown", properties: [
+            "note_id": noteId
+        ])
+    }
+    
+    func trackDeleteConfirmed(noteId: String) {
+        trackEvent("delete_confirmed", properties: [
+            "note_id": noteId
+        ])
+    }
+    
+    func trackDeleteCancelled(noteId: String) {
+        trackEvent("delete_cancelled", properties: [
+            "note_id": noteId
         ])
     }
     

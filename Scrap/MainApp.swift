@@ -110,10 +110,14 @@ struct MainApp: View {
                     voiceRecorder: voiceRecorder,
                     isFocused: $isInputFocused,
                     onSave: { text in
+                        // Track new note started with text method
+                        AnalyticsManager.shared.trackNewNoteStarted(method: "text")
                         dataManager.createItem(from: text, creationType: "text")
                         inputText = ""
                     },
                     onVoiceNote: { text in
+                        // Track new note started with voice method
+                        AnalyticsManager.shared.trackNewNoteStarted(method: "voice")
                         dataManager.createItem(from: text, creationType: "voice")
                     }
                 )
@@ -135,6 +139,9 @@ struct MainApp: View {
                     .onEnded { value in
                         // Dismiss keyboard when user drags down
                         if value.translation.height > 50 && value.velocity.height > 0 {
+                            // Track keyboard dismissal
+                            AnalyticsManager.shared.trackKeyboardDismissed(method: "drag")
+                            
                             isInputFocused = false
                             print("🔽 MainApp: Dismissed keyboard via pull-down gesture")
                         }
@@ -186,7 +193,15 @@ struct InputField: View {
                 .focused($isFocused)
                 .onSubmit {
                     if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        // Track note saved via keyboard submission
+                        AnalyticsManager.shared.trackNoteSaved(method: "keyboard", contentLength: text.count)
                         onSave(text)
+                    }
+                }
+                .onChange(of: isFocused) { focused in
+                    if focused {
+                        // Track when user starts typing a new note
+                        AnalyticsManager.shared.trackEvent("input_field_focused")
                     }
                 }
             
@@ -240,8 +255,14 @@ struct InputField: View {
     
     private func handleButtonTap() {
         if hasText && !voiceRecorder.isRecording {
+            // Track note saved via button tap
+            AnalyticsManager.shared.trackNoteSaved(method: "button", contentLength: text.count)
             onSave(text)
         } else {
+            // Track voice recording toggle
+            if !voiceRecorder.isRecording {
+                AnalyticsManager.shared.trackVoiceRecordingStarted()
+            }
             voiceRecorder.toggleRecording()
         }
     }

@@ -112,32 +112,46 @@ public class RichTextContext: ObservableObject {
     
     /// Toggle bold formatting
     public func toggleBold() {
+        // Track analytics before toggling
+        AnalyticsManager.shared.trackBoldToggled(isActive: !isBoldActive)
+        
         // Don't immediately toggle UI state - let the coordinator determine the correct action
         // based on the actual text selection and current formatting
         actionPublisher.send(.toggleStyle(.bold))
-        
     }
     
     /// Toggle italic formatting
     public func toggleItalic() {
+        // Track analytics before toggling
+        AnalyticsManager.shared.trackItalicToggled(isActive: !isItalicActive)
+        
         // Don't immediately toggle UI state - let the coordinator determine the correct action
         actionPublisher.send(.toggleStyle(.italic))
     }
     
     /// Toggle underline formatting
     public func toggleUnderline() {
+        // Track analytics before toggling
+        AnalyticsManager.shared.trackUnderlineToggled(isActive: !isUnderlineActive)
+        
         // Don't immediately toggle UI state - let the coordinator determine the correct action
         actionPublisher.send(.toggleStyle(.underline))
     }
     
     /// Toggle strikethrough formatting
     public func toggleStrikethrough() {
+        // Track analytics before toggling
+        AnalyticsManager.shared.trackStrikethroughToggled(isActive: !isStrikethroughActive)
+        
         // Don't immediately toggle UI state - let the coordinator determine the correct action
         actionPublisher.send(.toggleStyle(.strikethrough))
     }
     
     /// Toggle bullet list formatting
     public func toggleBulletList() {
+        // Track analytics before toggling
+        AnalyticsManager.shared.trackBulletListToggled(isActive: !isBulletListActive)
+        
         isBulletListActive.toggle()
         isCheckboxActive = false // Exclusive with checkbox
         actionPublisher.send(.toggleBlockFormat(.bulletList))
@@ -145,6 +159,9 @@ public class RichTextContext: ObservableObject {
     
     /// Toggle checkbox formatting
     public func toggleCheckbox() {
+        // Track analytics before toggling
+        AnalyticsManager.shared.trackCheckboxToggled(isActive: !isCheckboxActive)
+        
         isCheckboxActive.toggle()
         isBulletListActive = false // Exclusive with bullet list
         actionPublisher.send(.toggleBlockFormat(.checkbox))
@@ -152,7 +169,11 @@ public class RichTextContext: ObservableObject {
     
     /// Toggle code block formatting
     public func toggleCodeBlock() {
-        isCodeBlockActive.toggle()
+        // Track analytics before toggling
+        AnalyticsManager.shared.trackCodeBlockToggled(isActive: !isCodeBlockActive)
+        
+        // Don't immediately toggle state - let the coordinator determine the correct action
+        // based on the actual text selection and current formatting
         // Code blocks are exclusive with lists
         isBulletListActive = false
         isCheckboxActive = false
@@ -161,11 +182,17 @@ public class RichTextContext: ObservableObject {
     
     /// Increase indentation
     public func indentIn() {
+        // Track analytics
+        AnalyticsManager.shared.trackIndentChanged(direction: "in")
+        
         actionPublisher.send(.indentIn)
     }
     
     /// Decrease indentation
     public func indentOut() {
+        // Track analytics
+        AnalyticsManager.shared.trackIndentChanged(direction: "out")
+        
         actionPublisher.send(.indentOut)
     }
     
@@ -332,7 +359,24 @@ public class RichTextContext: ObservableObject {
         
         // Check for list markers and formatting
         let bulletActive = trimmedLine.hasPrefix("•")
-        let checkboxActive = trimmedLine.hasPrefix("○") || trimmedLine.hasPrefix("●")
+        
+        // Check for checkbox formatting - both Unicode and NSTextAttachment
+        var checkboxActive = trimmedLine.hasPrefix("○") || trimmedLine.hasPrefix("●")
+        
+        // Also check for NSTextAttachment checkboxes at the beginning of the line
+        if !checkboxActive && attributedString.length > 0 {
+            let lineStart = lineRange.location
+            let leadingWhitespace = lineText.count - lineText.ltrimmed().count
+            let checkboxPosition = lineStart + leadingWhitespace
+            
+            if checkboxPosition < attributedString.length {
+                if let attachment = attributedString.attribute(.attachment, at: checkboxPosition, effectiveRange: nil) as? NSTextAttachment,
+                   attachment.image != nil {
+                    // Found a custom checkbox attachment at start of line
+                    checkboxActive = true
+                }
+            }
+        }
         
         // Check for code block formatting by looking at font attributes and surrounding context
         let codeBlockActive: Bool
@@ -351,6 +395,11 @@ public class RichTextContext: ObservableObject {
         } else {
             codeBlockActive = false
             print("🔍 RichTextContext: updateBlockFormatState - empty text, isCodeBlockActive: false")
+        }
+        
+        // Add logging for checkbox state detection
+        if checkboxActive != self.isCheckboxActive {
+            print("📋 RichTextContext: Checkbox state changing from \(self.isCheckboxActive) to \(checkboxActive) at position \(selectedRange.location)")
         }
         
         // Direct update since we're already in async context from updateFormattingState

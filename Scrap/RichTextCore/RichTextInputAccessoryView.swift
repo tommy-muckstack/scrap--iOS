@@ -16,7 +16,12 @@ class RichTextInputAccessoryView: UIView {
     
     init(context: RichTextContext) {
         self.context = context
-        super.init(frame: CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width, height: 44))
+        
+        // Safely get screen width with fallback to prevent NaN issues
+        let screenWidth = UIScreen.main.bounds.width
+        let safeWidth = screenWidth.isFinite && screenWidth > 0 ? screenWidth : 320 // iPhone SE fallback
+        
+        super.init(frame: CGRect(x: 0, y: 0, width: safeWidth, height: 44))
         setupView()
     }
     
