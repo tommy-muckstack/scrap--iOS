@@ -101,9 +101,10 @@ class DrawingTextAttachment: NSTextAttachment, NSCopying {
         // Add padding for the options button and border
         let totalHeight = canvasHeight + 40 // 20pt top padding + 20pt bottom padding
         
-        // CRITICAL FIX: Use small negative Y offset to align properly with text baseline
-        // Too large negative offset can push drawing outside visible area
-        let yOffset: CGFloat = -5 // Small negative offset to align with text baseline
+        // CRITICAL FIX: Use zero Y offset to prevent text from flowing underneath
+        // The attachment should sit on the baseline and take up its full height
+        // This ensures text flows around it properly and cursor positioning works correctly
+        let yOffset: CGFloat = 0 // Align with text baseline to prevent text underneath
         
         return CGRect(x: 0, y: yOffset, width: width, height: totalHeight)
     }
@@ -456,8 +457,35 @@ class DrawingManager {
                 
                 let attachmentString = NSAttributedString(attachment: attachment)
                 
-                // Replace marker with attachment
-                mutableString.replaceCharacters(in: match.range, with: attachmentString)
+                // CRITICAL FIX: Ensure proper spacing around restored drawings
+                // Add newlines before and after the attachment to prevent text flow issues
+                let beforeText = match.range.location > 0 ? 
+                    (text as NSString).substring(with: NSRange(location: match.range.location - 1, length: 1)) : ""
+                let afterLocation = match.range.location + match.range.length
+                let afterText = afterLocation < text.count ? 
+                    (text as NSString).substring(with: NSRange(location: afterLocation, length: 1)) : ""
+                
+                var finalAttachmentString = attachmentString
+                
+                // Add newline before if not already present and not at start
+                if match.range.location > 0 && beforeText != "\n" {
+                    let beforeNewline = NSAttributedString(string: "\n")
+                    let mutableAttachment = NSMutableAttributedString()
+                    mutableAttachment.append(beforeNewline)
+                    mutableAttachment.append(attachmentString)
+                    finalAttachmentString = mutableAttachment
+                }
+                
+                // Add newline after if not already present and not at end
+                if afterLocation < text.count && afterText != "\n" {
+                    let mutableAttachment = NSMutableAttributedString(attributedString: finalAttachmentString)
+                    let afterNewline = NSAttributedString(string: "\n")
+                    mutableAttachment.append(afterNewline)
+                    finalAttachmentString = mutableAttachment
+                }
+                
+                // Replace marker with properly spaced attachment
+                mutableString.replaceCharacters(in: match.range, with: finalAttachmentString)
             }
         }
         
@@ -493,6 +521,11 @@ class DrawingManager {
             mutableText.insert(attachmentString, at: range.location + 1)
             print("🔬 AFTER attachment insertion - mutableText length: \(mutableText.length)")
             
+            // CRITICAL FIX: Add newline after drawing to prevent text flow underneath
+            let afterNewlineString = NSAttributedString(string: "\n")
+            mutableText.insert(afterNewlineString, at: range.location + 2)
+            print("🔬 AFTER newline insertion - mutableText length: \(mutableText.length)")
+            
             // IMMEDIATE CHECK: Verify attachment is in mutableText right after insertion
             let insertionPosition = range.location + 1
             if insertionPosition < mutableText.length {
@@ -507,13 +540,18 @@ class DrawingManager {
                 }
             }
             
-            textView.selectedRange = NSRange(location: range.location + 2, length: 0)
-            print("🎨 DrawingManager: Inserted with newline at position \(range.location + 1)")
+            textView.selectedRange = NSRange(location: range.location + 3, length: 0)
+            print("🎨 DrawingManager: Inserted with newlines at position \(range.location + 1), cursor at \(range.location + 3)")
         } else {
             // CRITICAL TEST: Check attachment before and after insertion  
             print("🔬 BEFORE attachment insertion - mutableText length: \(mutableText.length)")
             mutableText.insert(attachmentString, at: range.location)
             print("🔬 AFTER attachment insertion - mutableText length: \(mutableText.length)")
+            
+            // CRITICAL FIX: Add newline after drawing to prevent text flow underneath
+            let afterNewlineString = NSAttributedString(string: "\n")
+            mutableText.insert(afterNewlineString, at: range.location + 1)
+            print("🔬 AFTER newline insertion - mutableText length: \(mutableText.length)")
             
             // IMMEDIATE CHECK: Verify attachment is in mutableText right after insertion
             if range.location < mutableText.length {
@@ -528,8 +566,8 @@ class DrawingManager {
                 }
             }
             
-            textView.selectedRange = NSRange(location: range.location + 1, length: 0)
-            print("🎨 DrawingManager: Inserted at start of line at position \(range.location)")
+            textView.selectedRange = NSRange(location: range.location + 2, length: 0)
+            print("🎨 DrawingManager: Inserted at start of line at position \(range.location), cursor at \(range.location + 2)")
         }
         
         print("🎨 DrawingManager: Final text length: \(mutableText.length)")
