@@ -34,6 +34,7 @@ public struct RichTextEditor: UIViewRepresentable {
     @ObservedObject private var context: RichTextContext
     private let configuration: (UITextView) -> Void
     @Binding private var showingFormatting: Bool
+    private var drawingManager: DrawingOverlayManager?
     
     // MARK: - Initialization
     
@@ -41,11 +42,13 @@ public struct RichTextEditor: UIViewRepresentable {
         text: Binding<NSAttributedString>,
         context: RichTextContext,
         showingFormatting: Binding<Bool> = .constant(false),
+        drawingManager: DrawingOverlayManager? = nil,
         configuration: @escaping (UITextView) -> Void = { _ in }
     ) {
         self._text = text
         self.context = context
         self._showingFormatting = showingFormatting
+        self.drawingManager = drawingManager
         self.configuration = configuration
     }
     
@@ -61,6 +64,12 @@ public struct RichTextEditor: UIViewRepresentable {
         textView.backgroundColor = .clear
         textView.textContainerInset = .zero
         textView.textContainer.lineFragmentPadding = 0
+        
+        // CRITICAL: Configure text container for proper attachment display
+        textView.textContainer.widthTracksTextView = true
+        textView.textContainer.heightTracksTextView = false
+        textView.textContainer.maximumNumberOfLines = 0
+        textView.textContainer.lineBreakMode = .byWordWrapping
         
         // Enable standard iOS text interactions
         textView.isUserInteractionEnabled = true
@@ -90,6 +99,9 @@ public struct RichTextEditor: UIViewRepresentable {
         // Connect the coordinator to this textView
         let coordinator = context.coordinator
         coordinator.connectTextView(textView)
+        
+        // Connect drawing manager to text view if available
+        drawingManager?.connectTextView(textView)
         
         // Add tap gesture for checkbox toggling
         let tapGesture = UITapGestureRecognizer(target: coordinator, action: #selector(RichTextCoordinator.handleTap(_:)))
@@ -162,11 +174,16 @@ public struct RichTextEditor: UIViewRepresentable {
     }
     
     public func makeCoordinator() -> RichTextCoordinator {
-        RichTextCoordinator(
+        let coordinator = RichTextCoordinator(
             text: $text,
             textView: UITextView(), // Will be replaced in makeUIView
             context: context
         )
+        
+        // Set up drawing manager integration if available
+        coordinator.drawingManager = drawingManager
+        
+        return coordinator
     }
     
     // MARK: - Static Factory Methods
@@ -213,6 +230,88 @@ public struct RichTextEditor: UIViewRepresentable {
                 .font: defaultFont,
                 .foregroundColor: UIColor.label
             ]
+        }
+    }
+}
+
+// MARK: - Rich Text Editor with Drawing Overlays
+public struct RichTextEditorWithDrawings: View {
+    @Binding private var text: NSAttributedString
+    @ObservedObject private var context: RichTextContext
+    @Binding private var showingFormatting: Bool
+    private let configuration: (UITextView) -> Void
+    private let onDrawingManagerReady: ((DrawingOverlayManager) -> Void)?
+    
+    @StateObject public var drawingManager = DrawingOverlayManager()
+    
+    public init(
+        text: Binding<NSAttributedString>,
+        context: RichTextContext,
+        showingFormatting: Binding<Bool> = .constant(false),
+        configuration: @escaping (UITextView) -> Void = { _ in },
+        onDrawingManagerReady: ((DrawingOverlayManager) -> Void)? = nil
+    ) {
+        self._text = text
+        self.context = context
+        self._showingFormatting = showingFormatting
+        self.configuration = configuration
+        self.onDrawingManagerReady = onDrawingManagerReady
+    }
+    
+    public var body: some View {
+        ZStack {
+            // Base text editor with shared drawing manager
+            RichTextEditor(
+                text: $text,
+                context: context,
+                showingFormatting: $showingFormatting,
+                drawingManager: drawingManager,
+                configuration: configuration
+            )
+            
+            // Drawing overlays
+            ForEach(Array(drawingManager.drawingMarkers.keys), id: \.self) { drawingId in
+                if let marker = drawingManager.drawingMarkers[drawingId] {
+                    let _ = print("🎨 RichTextEditorWithDrawings: Rendering overlay for drawing \(drawingId) at position \(marker.position)")
+                    DrawingOverlayView(
+                        marker: marker,
+                        onEdit: {
+                            drawingManager.currentEditingDrawing = marker
+                            drawingManager.showingDrawingEditor = true
+                        },
+                        onDelete: {
+                            drawingManager.deleteDrawing(drawingId)
+                        }
+                    )
+                }
+            }
+        }
+        .sheet(isPresented: $drawingManager.showingDrawingEditor) {
+            if let currentDrawing = drawingManager.currentEditingDrawing {
+                DrawingEditorView(
+                    drawingData: .constant(currentDrawing.drawingData),
+                    canvasHeight: .constant(DrawingOverlayManager.fixedCanvasHeight),
+                    selectedColor: .constant(currentDrawing.selectedColor),
+                    onSave: { data, height, color in
+                        drawingManager.saveDrawing(currentDrawing.id, data: data, color: color)
+                        drawingManager.currentEditingDrawing = nil
+                    },
+                    onDelete: {
+                        drawingManager.deleteDrawing(currentDrawing.id)
+                        drawingManager.currentEditingDrawing = nil
+                    }
+                )
+            }
+        }
+        .onChange(of: text) { _ in
+            // Update drawing positions when text changes
+            DispatchQueue.main.async {
+                drawingManager.updateAllDrawingPositions()
+            }
+        }
+        .onAppear {
+            // Provide access to the drawing manager once the view appears
+            onDrawingManagerReady?(drawingManager)
         }
     }
 }

@@ -178,6 +178,10 @@ class AnalyticsManager: ObservableObject {
         trackFormattingToggled(format: "code_block", isActive: isActive)
     }
     
+    func trackDrawingToggled(isActive: Bool) {
+        trackFormattingToggled(format: "drawing", isActive: isActive)
+    }
+    
     func trackIndentChanged(direction: String) {
         trackEvent("indent_changed", properties: [
             "direction": direction // "in" or "out"

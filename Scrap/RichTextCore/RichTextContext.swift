@@ -94,6 +94,9 @@ public class RichTextContext: ObservableObject {
     /// Whether code block formatting is active
     @Published public internal(set) var isCodeBlockActive = false
     
+    /// Whether drawing mode is active
+    @Published public internal(set) var isDrawingActive = false
+    
     // MARK: - Editor Capabilities
     
     /// Whether content can be copied
@@ -204,6 +207,21 @@ public class RichTextContext: ObservableObject {
         isBulletListActive = false
         isCheckboxActive = false
         actionPublisher.send(.toggleBlockFormat(.codeBlock))
+    }
+    
+    /// Toggle drawing/whiteboard mode
+    public func toggleDrawing() {
+        print("🎨 RichTextContext: toggleDrawing() called, isDrawingActive: \(isDrawingActive)")
+        
+        // Track analytics 
+        AnalyticsManager.shared.trackDrawingToggled(isActive: true)
+        
+        // Don't change state here - let coordinator handle the action and reset properly
+        // This prevents UI state cycling issues
+        print("🎨 RichTextContext: Sending drawing action without changing state")
+        
+        actionPublisher.send(.toggleBlockFormat(.drawing))
+        print("🎨 RichTextContext: sent .toggleBlockFormat(.drawing) action")
     }
     
     /// Increase indentation
@@ -586,4 +604,5 @@ public enum RichTextBlockFormat {
     case bulletList
     case checkbox
     case codeBlock
+    case drawing
 }

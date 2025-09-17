@@ -40,6 +40,9 @@ public class RichTextCoordinator: NSObject {
     /// Prevents checkbox cursor detection during checkbox toggling
     private var isTogglingSelf = false
     
+    /// Drawing overlay manager for handling drawings as overlays instead of attachments
+    weak var drawingManager: DrawingOverlayManager?
+    
     // MARK: - Initialization
     
     public init(
@@ -141,6 +144,7 @@ public class RichTextCoordinator: NSObject {
             applyStyleToggle(style)
             
         case .toggleBlockFormat(let format):
+            print("🎨 RichTextCoordinator: Received toggleBlockFormat action: \(format)")
             applyBlockFormat(format)
             
         case .indentIn:
@@ -474,6 +478,9 @@ public class RichTextCoordinator: NSObject {
             applyCheckboxFormat(mutableText, lineRange, lineText)
         case .codeBlock:
             applyCodeBlockFormat(mutableText, lineRange, lineText)
+        case .drawing:
+            print("🎨 RichTextCoordinator: Handling .drawing block format at range \(selectedRange)")
+            applyDrawingFormat(selectedRange)
         }
         
         updateBindingFromTextView()
@@ -649,7 +656,13 @@ public class RichTextCoordinator: NSObject {
         if trimmedLine.isEmpty {
             // Add NSTextAttachment checkbox for reliable tap detection and consistent sizing
             let attachment = CheckboxTextAttachment(isChecked: false)
-            let checkboxString = NSAttributedString(attachment: attachment)
+            
+            // Create attachment string with proper font context to ensure rendering compatibility
+            let checkboxString = NSMutableAttributedString(attachment: attachment)
+            // Apply system font to the attachment to avoid SpaceGrotesk font conflicts
+            let systemFont = UIFont.systemFont(ofSize: context.fontSize)
+            checkboxString.addAttribute(.font, value: systemFont, range: NSRange(location: 0, length: checkboxString.length))
+            
             let spaceString = NSAttributedString(string: " ")
             
             let checkboxWithSpace = NSMutableAttributedString()
@@ -734,7 +747,13 @@ public class RichTextCoordinator: NSObject {
             // Replace bullet with NSTextAttachment checkbox
             let contentAfterBullet = String(trimmedLine.dropFirst(2))
             let attachment = CheckboxTextAttachment(isChecked: false)
-            let checkboxString = NSAttributedString(attachment: attachment)
+            
+            // Create attachment string with proper font context to ensure rendering compatibility
+            let checkboxString = NSMutableAttributedString(attachment: attachment)
+            // Apply system font to the attachment to avoid SpaceGrotesk font conflicts
+            let systemFont = UIFont.systemFont(ofSize: context.fontSize)
+            checkboxString.addAttribute(.font, value: systemFont, range: NSRange(location: 0, length: checkboxString.length))
+            
             let spaceString = NSAttributedString(string: " ")
             let contentString = NSAttributedString(string: contentAfterBullet)
             
@@ -761,7 +780,13 @@ public class RichTextCoordinator: NSObject {
         } else if !trimmedLine.contains("☐") && !trimmedLine.contains("☑") {
             // Add NSTextAttachment checkbox to line with content
             let attachment = CheckboxTextAttachment(isChecked: false)
-            let checkboxString = NSAttributedString(attachment: attachment)
+            
+            // Create attachment string with proper font context to ensure rendering compatibility
+            let checkboxString = NSMutableAttributedString(attachment: attachment)
+            // Apply system font to the attachment to avoid SpaceGrotesk font conflicts
+            let systemFont = UIFont.systemFont(ofSize: context.fontSize)
+            checkboxString.addAttribute(.font, value: systemFont, range: NSRange(location: 0, length: checkboxString.length))
+            
             let spaceString = NSAttributedString(string: " ")
             let contentString = NSAttributedString(string: trimmedLine)
             
@@ -1871,7 +1896,13 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
                 // Create new checkbox with newline prefix using NSTextAttachment
                 let newlineString = NSAttributedString(string: "\n")
                 let attachment = CheckboxTextAttachment(isChecked: false)
-                let checkboxString = NSAttributedString(attachment: attachment)
+                
+                // Create attachment string with proper font context to ensure rendering compatibility
+                let checkboxString = NSMutableAttributedString(attachment: attachment)
+                // Apply system font to the attachment to avoid SpaceGrotesk font conflicts
+                let systemFont = UIFont.systemFont(ofSize: context.fontSize)
+                checkboxString.addAttribute(.font, value: systemFont, range: NSRange(location: 0, length: checkboxString.length))
+                
                 let spaceString = NSAttributedString(string: " ")
                 
                 let newCheckboxLine = NSMutableAttributedString()
@@ -2409,6 +2440,29 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         
         print("❌ checkForCheckboxAtLineStart: No checkbox found in line range \(lineRange)")
         return false
+    }
+    
+    /// Insert a new drawing overlay at the specified position
+    private func applyDrawingFormat(_ selectedRange: NSRange) {
+        print("🎨 RichTextCoordinator: applyDrawingFormat called at range \(selectedRange)")
+        
+        // Use the new overlay approach instead of NSTextAttachment
+        if let drawingManager = drawingManager {
+            print("🎨 RichTextCoordinator: Using overlay manager to insert drawing")
+            drawingManager.insertDrawing(at: selectedRange)
+        } else {
+            print("❌ RichTextCoordinator: No drawing manager available, falling back to old method")
+            // Fallback to old attachment method if overlay manager not available
+            DrawingManager.insertDrawing(in: textView, at: selectedRange)
+        }
+        
+        // Reset drawing active state to prevent UI cycling
+        DispatchQueue.main.async {
+            self.context.isDrawingActive = false
+            print("🎨 RichTextCoordinator: Reset isDrawingActive to false after drawing action")
+        }
+        
+        print("🎨 RichTextCoordinator: Drawing handling complete at range \(selectedRange)")
     }
     
     // MARK: - UIGestureRecognizerDelegate

@@ -23,6 +23,7 @@ struct NoteEditor: View {
     @State private var noteOpenTime = Date()
     @State private var hasTrackedOpen = false
     @State private var isBeingDeleted = false
+    @State private var drawingManager: DrawingOverlayManager?
     
     init(item: SparkItem, dataManager: FirebaseDataManager) {
         self.item = item
@@ -80,11 +81,43 @@ struct NoteEditor: View {
                             }
                     }
                     
-                    // Rich Text editor
-                    RichTextEditor.forNotes(
+                    // Rich Text editor with drawing overlays
+                    RichTextEditorWithDrawings(
                         text: $editedText,
                         context: richTextContext,
-                        showingFormatting: .constant(true)
+                        showingFormatting: .constant(true),
+                        configuration: { textView in
+                        // Apply forNotes configuration
+                        textView.autocorrectionType = .yes
+                        textView.autocapitalizationType = .sentences
+                        textView.smartQuotesType = .yes
+                        textView.smartDashesType = .yes
+                        textView.spellCheckingType = .yes
+                        
+                        // Set cursor color to black (matching design system)
+                        textView.tintColor = UIColor.label
+                        
+                        // Improve text alignment and padding to match placeholder
+                        textView.textContainerInset = UIEdgeInsets(top: 8, left: 0, bottom: 8, right: 0)
+                        textView.textContainer.lineFragmentPadding = 4
+                        
+                        // Better line spacing for readability
+                        let paragraphStyle = NSMutableParagraphStyle()
+                        paragraphStyle.lineSpacing = 4
+                        paragraphStyle.paragraphSpacing = 8
+                        
+                        // Set default Space Grotesk font for all notes
+                        let defaultFont = UIFont(name: "SpaceGrotesk-Regular", size: 16) ?? UIFont.systemFont(ofSize: 16)
+                        
+                        textView.typingAttributes = [
+                            .paragraphStyle: paragraphStyle,
+                            .font: defaultFont,
+                            .foregroundColor: UIColor.label
+                        ]
+                    },
+                    onDrawingManagerReady: { manager in
+                        drawingManager = manager
+                    }
                     )
                     .padding(.horizontal, 16)
                     .focused($isTextFocused)
@@ -260,7 +293,7 @@ struct NoteEditor: View {
                         
                         // CRITICAL: Convert ASCII markers back to interactive checkbox attachments
                         print("🔧 NoteEditor: Converting loaded RTF checkboxes for display")
-                        finalText = SparkItem.prepareForDisplay(loadedRTF)
+                        finalText = SparkItem.prepareForDisplay(loadedRTF, drawingManager: drawingManager)
                         print("🔧 NoteEditor: Checkbox conversion complete")
                         
                     } catch {
@@ -322,7 +355,7 @@ struct NoteEditor: View {
         // Convert the attributed string to RTF data to preserve formatting
         do {
             // Use trait preservation method for better RTF compatibility
-            let rtfCompatibleString = SparkItem.prepareForRTFSave(attributedText)
+            let rtfCompatibleString = SparkItem.prepareForRTFSave(attributedText, drawingManager: drawingManager)
             let rtfData = try rtfCompatibleString.data(
                 from: NSRange(location: 0, length: rtfCompatibleString.length),
                 documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
@@ -497,7 +530,7 @@ struct RichFormattingToolbar: View {
                 
                 // Checkbox button
                 Button(action: { context.toggleCheckbox() }) {
-                    Image(systemName: GentleLightning.Icons.formatChecklist)
+                    Image(systemName: "circle.dotted")
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(context.isCheckboxActive ? .white : .primary)
                         .frame(width: buttonWidth, height: 32)
@@ -506,15 +539,16 @@ struct RichFormattingToolbar: View {
                 }
                 .animation(.easeInOut(duration: 0.1), value: context.isCheckboxActive)
                 
-                // Indent Out button
-                Button(action: { context.indentOut() }) {
-                    Image(systemName: "decrease.indent")
+                // Marker/Drawing button
+                Button(action: { context.toggleDrawing() }) {
+                    Image(systemName: "pencil.tip")
                         .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.primary)
+                        .foregroundColor(context.isDrawingActive ? .white : .primary)
                         .frame(width: buttonWidth, height: 32)
-                        .background(Color.clear)
+                        .background(context.isDrawingActive ? Color.black : Color.clear)
                         .cornerRadius(8)
                 }
+                .animation(.easeInOut(duration: 0.1), value: context.isDrawingActive)
                 
                 // Indent In button
                 Button(action: { context.indentIn() }) {

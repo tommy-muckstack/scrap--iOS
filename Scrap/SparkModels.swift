@@ -61,6 +61,18 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
                 
                 // Debug: Check for specific checkbox patterns in the loaded content
                 let content = loadedAttributedString.string
+                if content.contains("[CHECKBOX_CHECKED]") {
+                    print("🔍 SparkItem.init: Found RTF-safe checked marker [CHECKBOX_CHECKED] in loaded content")
+                }
+                if content.contains("[CHECKBOX_UNCHECKED]") {
+                    print("🔍 SparkItem.init: Found RTF-safe unchecked marker [CHECKBOX_UNCHECKED] in loaded content")
+                }
+                if content.contains("☑CHECKED☑") {
+                    print("🔍 SparkItem.init: Found checked Unicode marker ☑CHECKED☑ in loaded content")
+                }
+                if content.contains("☐UNCHECKED☐") {
+                    print("🔍 SparkItem.init: Found unchecked Unicode marker ☐UNCHECKED☐ in loaded content")
+                }
                 if content.contains("<CHECKED>") {
                     print("🔍 SparkItem.init: Found checked ASCII marker <CHECKED> in loaded content")
                 }
@@ -90,7 +102,8 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
                 }
                 
                 // Convert system fonts back to SpaceGrotesk fonts while preserving formatting
-                let convertedAttributedString = SparkItem.prepareForDisplay(loadedAttributedString)
+                // Note: Drawing manager not available during Firebase loading, drawings will be restored when note is opened
+                let convertedAttributedString = SparkItem.prepareForDisplay(loadedAttributedString, drawingManager: nil)
                 
                 // Re-generate RTF data with SpaceGrotesk fonts for proper display
                 let convertedRTFData = try convertedAttributedString.data(
@@ -162,18 +175,48 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
     }
     
     // Prepare attributed string for RTF saving by ensuring system fonts with proper traits
-    static func prepareForRTFSave(_ attributedString: NSAttributedString) -> NSAttributedString {
+    static func prepareForRTFSave(_ attributedString: NSAttributedString, drawingManager: DrawingOverlayManager? = nil) -> NSAttributedString {
         let mutableString = NSMutableAttributedString(attributedString: attributedString)
         
         // First, convert NSTextAttachment checkboxes to Unicode characters for RTF persistence
         print("🔧 SparkItem.prepareForRTFSave: Converting checkboxes to Unicode before RTF save")
-        let processedString = CheckboxManager.convertAttachmentsToUnicodeCheckboxes(mutableString)
-        let finalMutableString = NSMutableAttributedString(attributedString: processedString)
+        let checkboxProcessedString = CheckboxManager.convertAttachmentsToUnicodeCheckboxes(mutableString)
         print("🔧 SparkItem.prepareForRTFSave: Checkbox conversion complete")
+        
+        // Then, convert drawing overlays to text markers for RTF persistence
+        print("🎨 SparkItem.prepareForRTFSave: Converting drawing overlays to text markers before RTF save")
+        // Check for drawing overlay markers in the string
+        let overlayMarkerPattern = "\\[DRAWING:([^\\]]+)\\]"
+        if let regex = try? NSRegularExpression(pattern: overlayMarkerPattern) {
+            let overlayMarkersFound = regex.matches(in: checkboxProcessedString.string, range: NSRange(location: 0, length: checkboxProcessedString.string.count)).count
+            print("🎨 SparkItem.prepareForRTFSave: Found \(overlayMarkersFound) drawing overlay markers to convert")
+        } else {
+            print("🎨 SparkItem.prepareForRTFSave: Failed to create regex for overlay markers")
+        }
+        
+        // Convert overlay markers to text markers using DrawingOverlayManager
+        let drawingProcessedString: NSAttributedString
+        if let drawingManager = drawingManager {
+            drawingProcessedString = drawingManager.convertToTextMarkers(checkboxProcessedString)
+        } else {
+            // No drawing manager provided, so no drawing conversion
+            print("⚠️ SparkItem.prepareForRTFSave: No drawing manager provided, skipping drawing conversion")
+            drawingProcessedString = checkboxProcessedString
+        }
+        let finalMutableString = NSMutableAttributedString(attributedString: drawingProcessedString)
+        print("🎨 SparkItem.prepareForRTFSave: Drawing overlay conversion complete")
+        
+        // Debug: Check if we have drawing markers in the final string
+        if finalMutableString.string.contains("🎨DRAWING:") {
+            let drawingMarkerCount = finalMutableString.string.components(separatedBy: "🎨DRAWING:").count - 1
+            print("🎨 SparkItem.prepareForRTFSave: Found \(drawingMarkerCount) drawing markers in final string")
+        } else {
+            print("❌ SparkItem.prepareForRTFSave: No drawing markers found in final string")
+        }
         
         // Debug: Print what we're about to save
         print("🔍 SparkItem.prepareForRTFSave: Final string content: '\(finalMutableString.string)'")
-        let checkboxChars = ["<UNCHECKED>", "<CHECKED>", "(UNCHECKED)", "(CHECKED)", "[UNCHECKED]", "[CHECKED]", "[ ]", "[✓]"]
+        let checkboxChars = ["[CHECKBOX_CHECKED]", "[CHECKBOX_UNCHECKED]", "☑CHECKED☑", "☐UNCHECKED☐", "[UNCHECKED]", "[CHECKED]", "<UNCHECKED>", "<CHECKED>", "(UNCHECKED)", "(CHECKED)", "[ ]", "[✓]"]
         for char in checkboxChars {
             let count = finalMutableString.string.components(separatedBy: char).count - 1
             if count > 0 {
@@ -192,7 +235,7 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
         }
         
         // Debug: Test RTF round-trip conversion to see what gets preserved
-        if finalMutableString.string.contains("<CHECKED>") || finalMutableString.string.contains("<UNCHECKED>") || finalMutableString.string.contains("(CHECKED)") || finalMutableString.string.contains("(UNCHECKED)") || finalMutableString.string.contains("[CHECKED]") || finalMutableString.string.contains("[UNCHECKED]") {
+        if finalMutableString.string.contains("[CHECKBOX_CHECKED]") || finalMutableString.string.contains("[CHECKBOX_UNCHECKED]") || finalMutableString.string.contains("☑CHECKED☑") || finalMutableString.string.contains("☐UNCHECKED☐") || finalMutableString.string.contains("[CHECKED]") || finalMutableString.string.contains("[UNCHECKED]") || finalMutableString.string.contains("<CHECKED>") || finalMutableString.string.contains("<UNCHECKED>") || finalMutableString.string.contains("(CHECKED)") || finalMutableString.string.contains("(UNCHECKED)") {
             do {
                 let testRTFData = try finalMutableString.data(
                     from: NSRange(location: 0, length: finalMutableString.length),
@@ -210,12 +253,16 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
                 print("🔍 SparkItem.prepareForRTFSave: RTF round-trip test - restored: '\(restoredAttributedString.string)'")
                 
                 // Check if markers survived
-                if restoredAttributedString.string.contains("<CHECKED>") || restoredAttributedString.string.contains("<UNCHECKED>") {
+                if restoredAttributedString.string.contains("[CHECKBOX_CHECKED]") || restoredAttributedString.string.contains("[CHECKBOX_UNCHECKED]") {
+                    print("✅ SparkItem.prepareForRTFSave: RTF-safe checkbox markers survived RTF conversion")
+                } else if restoredAttributedString.string.contains("☑CHECKED☑") || restoredAttributedString.string.contains("☐UNCHECKED☐") {
+                    print("✅ SparkItem.prepareForRTFSave: Unicode checkbox markers survived RTF conversion")
+                } else if restoredAttributedString.string.contains("[CHECKED]") || restoredAttributedString.string.contains("[UNCHECKED]") {
+                    print("✅ SparkItem.prepareForRTFSave: Square bracket markers survived RTF conversion")
+                } else if restoredAttributedString.string.contains("<CHECKED>") || restoredAttributedString.string.contains("<UNCHECKED>") {
                     print("✅ SparkItem.prepareForRTFSave: Angle bracket markers survived RTF conversion")
                 } else if restoredAttributedString.string.contains("(CHECKED)") || restoredAttributedString.string.contains("(UNCHECKED)") {
                     print("✅ SparkItem.prepareForRTFSave: Parentheses markers survived RTF conversion")
-                } else if restoredAttributedString.string.contains("[CHECKED]") || restoredAttributedString.string.contains("[UNCHECKED]") {
-                    print("✅ SparkItem.prepareForRTFSave: Square bracket markers survived RTF conversion")
                 } else {
                     print("❌ SparkItem.prepareForRTFSave: All checkbox markers were lost in RTF conversion")
                 }
@@ -225,12 +272,15 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
             }
         }
         
-        // Debug: Check Unicode values of checkbox characters
+        // Debug: Check Unicode values of checkbox characters (only when checkboxes are present)
         let content = finalMutableString.string
-        for (index, char) in content.enumerated() {
-            if char == "✓" || char == "[" || char == "]" {
-                if let scalar = char.unicodeScalars.first {
-                    print("🔍 SparkItem.prepareForRTFSave: Character '\(char)' at index \(index) has Unicode: \\u{\(String(scalar.value, radix: 16))}")
+        let hasCheckboxMarkers = content.contains("[CHECKBOX_") || content.contains("☑") || content.contains("☐")
+        if hasCheckboxMarkers {
+            for (index, char) in content.enumerated() {
+                if char == "✓" || char == "[" || char == "]" {
+                    if let scalar = char.unicodeScalars.first {
+                        print("🔍 SparkItem.prepareForRTFSave: Character '\(char)' at index \(index) has Unicode: \\u{\(String(scalar.value, radix: 16))}")
+                    }
                 }
             }
         }
@@ -290,7 +340,10 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
                 mutableParagraphStyle.headIndent = max(0, min(paragraphStyle.headIndent, 200))
                 mutableParagraphStyle.lineSpacing = max(0, min(paragraphStyle.lineSpacing, 50))
                 
-                print("🔧 SparkItem: Preserving paragraph style - firstLineIndent: \(mutableParagraphStyle.firstLineHeadIndent), headIndent: \(mutableParagraphStyle.headIndent)")
+                // Only log paragraph style preservation when there are actual indents  
+                if mutableParagraphStyle.firstLineHeadIndent > 0 || mutableParagraphStyle.headIndent > 0 {
+                    print("🔧 SparkItem: Preserving paragraph style - firstLineIndent: \(mutableParagraphStyle.firstLineHeadIndent), headIndent: \(mutableParagraphStyle.headIndent)")
+                }
                 
                 finalMutableString.addAttribute(.paragraphStyle, value: mutableParagraphStyle, range: styleRange)
             }
@@ -300,15 +353,15 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
     }
     
     // Convert system fonts back to SpaceGrotesk fonts while preserving formatting traits
-    static func prepareForDisplay(_ attributedString: NSAttributedString) -> NSAttributedString {
+    static func prepareForDisplay(_ attributedString: NSAttributedString, drawingManager: DrawingOverlayManager? = nil) -> NSAttributedString {
         let mutableString = NSMutableAttributedString(attributedString: attributedString)
         
         // Debug: Print the actual string content to see what we're working with
         print("🔍 SparkItem.prepareForDisplay: Input string content: '\(attributedString.string)'")
         print("🔍 SparkItem.prepareForDisplay: String length: \(attributedString.length)")
         
-        // Check for checkbox text markers (both new and legacy)
-        let checkboxChars = ["<UNCHECKED>", "<CHECKED>", "(UNCHECKED)", "(CHECKED)", "[UNCHECKED]", "[CHECKED]", "[ ]", "[✓]"]
+        // Check for checkbox text markers (RTF-safe, Unicode, and legacy)
+        let checkboxChars = ["[CHECKBOX_CHECKED]", "[CHECKBOX_UNCHECKED]", "☑CHECKED☑", "☐UNCHECKED☐", "[UNCHECKED]", "[CHECKED]", "<UNCHECKED>", "<CHECKED>", "(UNCHECKED)", "(CHECKED)", "[ ]", "[✓]"]
         for char in checkboxChars {
             let count = attributedString.string.components(separatedBy: char).count - 1
             if count > 0 {
@@ -326,9 +379,21 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
             }
         }
         
-        let processedString = CheckboxManager.convertUnicodeCheckboxesToAttachments(mutableString)
-        let finalMutableString = NSMutableAttributedString(attributedString: processedString)
+        let checkboxProcessedString = CheckboxManager.convertUnicodeCheckboxesToAttachments(mutableString)
         print("🔧 SparkItem.prepareForDisplay: Unicode checkbox conversion complete")
+        
+        // Then, convert drawing text markers back to overlay markers for display
+        print("🎨 SparkItem.prepareForDisplay: Converting drawing text markers to overlay markers for display")
+        let drawingProcessedString: NSAttributedString
+        if let drawingManager = drawingManager {
+            drawingProcessedString = drawingManager.restoreFromTextMarkers(checkboxProcessedString)
+        } else {
+            // No drawing manager provided, so no drawing conversion
+            print("⚠️ SparkItem.prepareForDisplay: No drawing manager provided, skipping drawing restoration")
+            drawingProcessedString = checkboxProcessedString
+        }
+        let finalMutableString = NSMutableAttributedString(attributedString: drawingProcessedString)
+        print("🎨 SparkItem.prepareForDisplay: Drawing marker conversion complete")
         
         // Debug: Check what we got back from the conversion
         var attachmentCount = 0
@@ -405,7 +470,10 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
         let fullRange = NSRange(location: 0, length: finalMutableString.length)
         finalMutableString.enumerateAttribute(.paragraphStyle, in: fullRange, options: []) { value, styleRange, _ in
             if let paragraphStyle = value as? NSParagraphStyle {
-                print("📖 SparkItem: Preserving paragraph style for display - firstLineIndent: \(paragraphStyle.firstLineHeadIndent), headIndent: \(paragraphStyle.headIndent)")
+                // Only log paragraph style preservation when there are actual indents
+                if paragraphStyle.firstLineHeadIndent > 0 || paragraphStyle.headIndent > 0 {
+                    print("📖 SparkItem: Preserving paragraph style for display - firstLineIndent: \(paragraphStyle.firstLineHeadIndent), headIndent: \(paragraphStyle.headIndent)")
+                }
                 // Paragraph styles should already be compatible, just ensure they're preserved
                 finalMutableString.addAttribute(.paragraphStyle, value: paragraphStyle, range: styleRange)
             }
@@ -495,33 +563,6 @@ struct FirebaseCategory: Codable {
     }
 }
 
-// MARK: - Color Extension
-extension Color {
-    init?(hex: String) {
-        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-        var int: UInt64 = 0
-        Scanner(string: hex).scanHexInt64(&int)
-        let a, r, g, b: UInt64
-        switch hex.count {
-        case 3: // RGB (12-bit)
-            (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
-        case 6: // RGB (24-bit)
-            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
-        case 8: // ARGB (32-bit)
-            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
-        default:
-            return nil
-        }
-        
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue: Double(b) / 255,
-            opacity: Double(a) / 255
-        )
-    }
-}
 
 // MARK: - Keyboard Dismissal Extension
 extension View {

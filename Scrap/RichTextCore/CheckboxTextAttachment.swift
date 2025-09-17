@@ -125,10 +125,9 @@ class CheckboxManager {
         let mutableString = NSMutableAttributedString(attributedString: attributedString)
         let text = attributedString.string
         
-        // First, find formal checkbox markers (ASCII and Unicode)
-        // Support both new ASCII markers and legacy Unicode markers
-        // Updated to use RTF-safe markers - trying angle brackets since parentheses might be RTF control characters
-        let checkboxPattern = "<CHECKED>|<UNCHECKED>|\\(CHECKED\\)|\\(UNCHECKED\\)|\\[CHECKED\\]|\\[UNCHECKED\\]|\\[\\s*[✓✔︎☑︎]\\s*\\]|\\[\\s*\\]"
+        // First, find formal checkbox markers (RTF-safe ASCII and legacy patterns)
+        // Prioritize new RTF-safe markers, but maintain backward compatibility
+        let checkboxPattern = "\\[CHECKBOX_CHECKED\\]|\\[CHECKBOX_UNCHECKED\\]|☑CHECKED☑|☐UNCHECKED☐|\\[CHECKED\\]|\\[UNCHECKED\\]|<CHECKED>|<UNCHECKED>|\\(CHECKED\\)|\\(UNCHECKED\\)|\\[\\s*[✓✔︎☑︎]\\s*\\]|\\[\\s*\\]"
         guard let regex = try? NSRegularExpression(pattern: checkboxPattern, options: [.caseInsensitive]) else {
             print("❌ CheckboxManager: Failed to create regex for checkbox conversion")
             return attributedString
@@ -168,7 +167,11 @@ class CheckboxManager {
                     // The actual text view delegate notification will be set up by toggleCheckbox when first toggled
                 }
                 
-                let attachmentString = NSAttributedString(attachment: attachment)
+                // Create attachment string with proper font context to ensure rendering compatibility
+                let attachmentString = NSMutableAttributedString(attachment: attachment)
+                // Apply system font to the attachment to avoid SpaceGrotesk font conflicts
+                let systemFont = UIFont.systemFont(ofSize: 16)
+                attachmentString.addAttribute(.font, value: systemFont, range: NSRange(location: 0, length: attachmentString.length))
                 
                 // Replace the plain text description with the attachment
                 mutableString.replaceCharacters(in: match.range, with: attachmentString)
@@ -189,9 +192,18 @@ class CheckboxManager {
             
             // Determine if checkbox is checked based on the marker type
             let isChecked: Bool
-            if character == "<CHECKED>" || character == "(CHECKED)" || character == "[CHECKED]" {
+            let lowercaseCharacter = character.lowercased()
+            
+            // Check RTF-safe markers first (highest priority)
+            if character == "[CHECKBOX_CHECKED]" {
                 isChecked = true
-            } else if character == "<UNCHECKED>" || character == "(UNCHECKED)" || character == "[UNCHECKED]" {
+            } else if character == "[CHECKBOX_UNCHECKED]" {
+                isChecked = false
+            } 
+            // Legacy Unicode markers  
+            else if character == "☑CHECKED☑" || lowercaseCharacter == "[checked]" || lowercaseCharacter == "<checked>" || lowercaseCharacter == "(checked)" {
+                isChecked = true
+            } else if character == "☐UNCHECKED☐" || lowercaseCharacter == "[unchecked]" || lowercaseCharacter == "<unchecked>" || lowercaseCharacter == "(unchecked)" {
                 isChecked = false
             } else {
                 // Legacy Unicode pattern - check if it contains any checkmark character
@@ -212,7 +224,11 @@ class CheckboxManager {
                 // The actual text view delegate notification will be set up by toggleCheckbox when first toggled
             }
             
-            let attachmentString = NSAttributedString(attachment: attachment)
+            // Create attachment string with proper font context to ensure rendering compatibility
+            let attachmentString = NSMutableAttributedString(attachment: attachment)
+            // Apply system font to the attachment to avoid SpaceGrotesk font conflicts
+            let systemFont = UIFont.systemFont(ofSize: 16)
+            attachmentString.addAttribute(.font, value: systemFont, range: NSRange(location: 0, length: attachmentString.length))
             
             // Replace marker with attachment
             mutableString.replaceCharacters(in: match.range, with: attachmentString)
@@ -222,17 +238,17 @@ class CheckboxManager {
         return mutableString
     }
     
-    /// Convert checkbox attachments to ASCII markers for RTF persistence
+    /// Convert checkbox attachments to RTF-safe ASCII markers for persistence
     static func convertAttachmentsToUnicodeCheckboxes(_ attributedString: NSAttributedString) -> NSAttributedString {
         let mutableString = NSMutableAttributedString(attributedString: attributedString)
         
-        print("🔄 CheckboxManager: Starting conversion of attachments to ASCII markers")
+        print("🔄 CheckboxManager: Starting conversion of attachments to RTF-safe markers")
         print("🔍 CheckboxManager: Input string length: \(attributedString.length)")
         
         var checkboxCount = 0
         var totalAttachments = 0
         
-        // Find checkbox attachments and replace with ASCII markers
+        // Find checkbox attachments and replace with RTF-safe ASCII markers
         attributedString.enumerateAttribute(.attachment, 
                                           in: NSRange(location: 0, length: attributedString.length),
                                           options: [.reverse]) { value, range, _ in
@@ -242,25 +258,26 @@ class CheckboxManager {
             
             if let checkboxAttachment = value as? CheckboxTextAttachment {
                 checkboxCount += 1
-                let checkboxText = checkboxAttachment.isChecked ? "<CHECKED>" : "<UNCHECKED>"
+                // Use RTF-safe ASCII-only markers that will survive RTF encoding/decoding
+                let checkboxText = checkboxAttachment.isChecked ? "[CHECKBOX_CHECKED]" : "[CHECKBOX_UNCHECKED]"
                 print("📝 CheckboxManager: Converting attachment #\(checkboxCount) at range \(range) to '\(checkboxText)' (checked: \(checkboxAttachment.isChecked))")
                 
                 let replacement = NSAttributedString(string: checkboxText)
                 mutableString.replaceCharacters(in: range, with: replacement)
-                print("✅ CheckboxManager: Converted attachment to ASCII marker '\(checkboxText)'")
+                print("✅ CheckboxManager: Converted attachment to RTF-safe marker '\(checkboxText)'")
             } else if value != nil {
                 print("🔍 CheckboxManager: Found non-checkbox attachment at range \(range): \(type(of: value!))")
             }
         }
         
         print("🔍 CheckboxManager: Total attachments found: \(totalAttachments)")
-        print("✅ CheckboxManager: Conversion complete - converted \(checkboxCount) checkbox attachments to ASCII markers")
+        print("✅ CheckboxManager: Conversion complete - converted \(checkboxCount) checkbox attachments to RTF-safe markers")
         
         // Verify the conversion worked by checking the final string
         let finalString = mutableString.string
-        let checkedCount = finalString.components(separatedBy: "<CHECKED>").count - 1
-        let uncheckedCount = finalString.components(separatedBy: "<UNCHECKED>").count - 1
-        print("🔍 CheckboxManager: Final string contains \(checkedCount) <CHECKED> and \(uncheckedCount) <UNCHECKED> markers")
+        let checkedCount = finalString.components(separatedBy: "[CHECKBOX_CHECKED]").count - 1
+        let uncheckedCount = finalString.components(separatedBy: "[CHECKBOX_UNCHECKED]").count - 1
+        print("🔍 CheckboxManager: Final string contains \(checkedCount) [CHECKBOX_CHECKED] and \(uncheckedCount) [CHECKBOX_UNCHECKED] markers")
         
         return mutableString
     }
@@ -286,7 +303,11 @@ class CheckboxManager {
             print("✅ CheckboxManager: New checkbox binding synchronized for state: \(newState)")
         }
         
-        let attachmentString = NSAttributedString(attachment: attachment)
+        // Create attachment string with proper font context to ensure rendering compatibility
+        let attachmentString = NSMutableAttributedString(attachment: attachment)
+        // Apply system font to the attachment to avoid SpaceGrotesk font conflicts
+        let systemFont = UIFont.systemFont(ofSize: 16)
+        attachmentString.addAttribute(.font, value: systemFont, range: NSRange(location: 0, length: attachmentString.length))
         mutableText.insert(attachmentString, at: range.location)
         
         textView.attributedText = mutableText
@@ -355,25 +376,40 @@ class CheckboxManager {
 // MARK: - RTF Persistence Extension
 extension CheckboxTextAttachment {
     
-    /// Custom encoding for RTF persistence using ASCII-safe markers
+    /// Custom encoding for RTF persistence using RTF-safe ASCII markers
     func encodeForRTF() -> String {
-        return isChecked ? "<CHECKED>" : "<UNCHECKED>"
+        return isChecked ? "[CHECKBOX_CHECKED]" : "[CHECKBOX_UNCHECKED]"
     }
     
     /// Decode from RTF representation
     static func decodeFromRTF(_ character: String) -> CheckboxTextAttachment? {
+        let lowercaseCharacter = character.lowercased()
         switch character {
-        case "<UNCHECKED>", "(UNCHECKED)", "[UNCHECKED]":
-            return CheckboxTextAttachment(isChecked: false)
-        case "<CHECKED>", "(CHECKED)", "[CHECKED]":
+        // RTF-safe markers (exact match, case-sensitive)
+        case "[CHECKBOX_CHECKED]":
             return CheckboxTextAttachment(isChecked: true)
-        // Keep backward compatibility with old format
-        case "[ ]":
+        case "[CHECKBOX_UNCHECKED]":
             return CheckboxTextAttachment(isChecked: false)
-        case "[✓]":
+        // Unicode markers (legacy support)
+        case "☑CHECKED☑":
             return CheckboxTextAttachment(isChecked: true)
+        case "☐UNCHECKED☐":
+            return CheckboxTextAttachment(isChecked: false)
         default:
-            return nil
+            // Legacy markers (case-insensitive)
+            switch lowercaseCharacter {
+            case "[unchecked]", "<unchecked>", "(unchecked)":
+                return CheckboxTextAttachment(isChecked: false)
+            case "[checked]", "<checked>", "(checked)":
+                return CheckboxTextAttachment(isChecked: true)
+            // Keep backward compatibility with old format
+            case "[ ]":
+                return CheckboxTextAttachment(isChecked: false)
+            case "[✓]":
+                return CheckboxTextAttachment(isChecked: true)
+            default:
+                return nil
+            }
         }
     }
 }

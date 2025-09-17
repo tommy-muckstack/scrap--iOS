@@ -464,7 +464,7 @@ class FirebaseDataManager: ObservableObject {
                     let rtfCompatibleString = SparkItem.prepareForRTFSave(attributedText)
                     rtfData = try rtfCompatibleString.data(
                         from: NSRange(location: 0, length: rtfCompatibleString.length),
-                        documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
+                        documentAttributes: [NSAttributedString.DocumentAttributeKey.documentType: NSAttributedString.DocumentType.rtf]
                     )
                     print("✅ DataManager: Created RTF data (\(rtfData?.count ?? 0) bytes) for \(creationType) note")
                 } catch {
@@ -517,16 +517,16 @@ class FirebaseDataManager: ObservableObject {
         }
     }
     
-    func createItemFromAttributedText(_ attributedText: NSAttributedString, creationType: String = "rich_text") {
+    func createItemFromAttributedText(_ attributedText: NSAttributedString, creationType: String = "rich_text", drawingManager: DrawingOverlayManager? = nil) {
         print("📝 Creating item from NSAttributedString with \(attributedText.length) characters")
         
         // Convert attributed text to RTF data for storage using trait preservation
         var rtfData: Data? = nil
         do {
-            let rtfCompatibleString = SparkItem.prepareForRTFSave(attributedText)
+            let rtfCompatibleString = SparkItem.prepareForRTFSave(attributedText, drawingManager: drawingManager)
             rtfData = try rtfCompatibleString.data(
                 from: NSRange(location: 0, length: rtfCompatibleString.length),
-                documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
+                documentAttributes: [NSAttributedString.DocumentAttributeKey.documentType: NSAttributedString.DocumentType.rtf]
             )
         } catch {
             print("❌ Failed to create RTF data: \(error)")
@@ -628,7 +628,7 @@ class FirebaseDataManager: ObservableObject {
         do {
             let attributedString = try NSAttributedString(
                 data: rtfData,
-                options: [.documentType: NSAttributedString.DocumentType.rtf],
+                options: [NSAttributedString.DocumentReadingOptionKey.documentType: NSAttributedString.DocumentType.rtf],
                 documentAttributes: nil
             )
             // Ensure UI updates happen on main thread
@@ -714,6 +714,7 @@ struct InputField: View {
     // Rich text state management
     @State private var attributedText = NSAttributedString()
     @StateObject private var richTextContext = RichTextContext()
+    @State private var richTextDrawingManager: DrawingOverlayManager? = nil
     
     // Voice recording state
     @State private var isRecording = false
@@ -748,10 +749,42 @@ struct InputField: View {
                                 .padding(.leading, 4)
                         }
                         
-                        RichTextEditor.forNotes(
+                        RichTextEditorWithDrawings(
                             text: $attributedText,
                             context: richTextContext,
-                            showingFormatting: .constant(false)
+                            showingFormatting: .constant(false),
+                            configuration: { textView in
+                            // Apply forNotes configuration
+                            textView.autocorrectionType = .yes
+                            textView.autocapitalizationType = .sentences
+                            textView.smartQuotesType = .yes
+                            textView.smartDashesType = .yes
+                            textView.spellCheckingType = .yes
+                            
+                            // Set cursor color to black (matching design system)
+                            textView.tintColor = UIColor.label
+                            
+                            // Improve text alignment and padding to match placeholder
+                            textView.textContainerInset = UIEdgeInsets(top: 8, left: 0, bottom: 8, right: 0)
+                            textView.textContainer.lineFragmentPadding = 4
+                            
+                            // Better line spacing for readability
+                            let paragraphStyle = NSMutableParagraphStyle()
+                            paragraphStyle.lineSpacing = 4
+                            paragraphStyle.paragraphSpacing = 8
+                            
+                            // Set default Space Grotesk font for all notes
+                            let defaultFont = UIFont(name: "SpaceGrotesk-Regular", size: 16) ?? UIFont.systemFont(ofSize: 16)
+                            
+                            textView.typingAttributes = [
+                                .paragraphStyle: paragraphStyle,
+                                .font: defaultFont,
+                                .foregroundColor: UIColor.label
+                            ]
+                        },
+                        onDrawingManagerReady: { manager in
+                            richTextDrawingManager = manager
+                        }
                         )
                         .disabled(isRecording)
                         .frame(minHeight: 40, maxHeight: max(40, min(textHeight, 120)), alignment: .topLeading)
@@ -831,7 +864,7 @@ struct InputField: View {
                             AnalyticsManager.shared.trackNoteSaved(method: "button", contentLength: attributedText.string.count)
                             
                             // Create new item with rich text formatting
-                            dataManager.createItemFromAttributedText(attributedText, creationType: "rich_text")
+                            dataManager.createItemFromAttributedText(attributedText, creationType: "rich_text", drawingManager: richTextDrawingManager)
                             
                             // Clear both text fields
                             text = ""
@@ -1520,6 +1553,7 @@ struct ContentView: View {
     @State private var attributedText = NSAttributedString()
     @State private var navigationPath = NavigationPath()
     @State private var showingAccountDrawer = false
+    @State private var richTextDrawingManager: DrawingOverlayManager? = nil
     @FocusState private var isInputFieldFocused: Bool
     
     // Search functionality
