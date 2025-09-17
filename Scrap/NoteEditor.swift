@@ -117,6 +117,30 @@ struct NoteEditor: View {
                     },
                     onDrawingManagerReady: { manager in
                         drawingManager = manager
+                        
+                        // Re-process text to restore any drawing markers that were preserved
+                        if let rtfData = item.rtfData {
+                            do {
+                                let loadedRTF = try NSAttributedString(
+                                    data: rtfData,
+                                    options: [.documentType: NSAttributedString.DocumentType.rtf],
+                                    documentAttributes: nil
+                                )
+                                
+                                // Re-process with drawing manager now available
+                                print("🎨 NoteEditor: Re-processing text with drawing manager available")
+                                let finalText = SparkItem.prepareForDisplay(loadedRTF, drawingManager: manager)
+                                
+                                // Update the rich text editor
+                                DispatchQueue.main.async {
+                                    richTextContext.setAttributedString(finalText)
+                                }
+                                
+                                print("🎨 NoteEditor: Drawing restoration complete")
+                            } catch {
+                                print("❌ NoteEditor: Failed to re-process text for drawing restoration: \(error)")
+                            }
+                        }
                     }
                     )
                     .padding(.horizontal, 16)

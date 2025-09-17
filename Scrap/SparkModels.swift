@@ -25,6 +25,48 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
         self.createdAt = Date()
     }
     
+    /// Clean content for display by removing drawing markers and other artifacts
+    private static func cleanContentForDisplay(_ content: String) -> String {
+        var cleanedContent = content
+        
+        // Remove drawing text markers (🎨DRAWING:...🎨)
+        let drawingPattern = "🎨DRAWING:[^🎨]*🎨"
+        if let regex = try? NSRegularExpression(pattern: drawingPattern, options: []) {
+            cleanedContent = regex.stringByReplacingMatches(
+                in: cleanedContent,
+                range: NSRange(location: 0, length: cleanedContent.count),
+                withTemplate: ""
+            )
+        }
+        
+        // Remove checkbox text markers
+        let checkboxMarkers = [
+            "\\[CHECKBOX_CHECKED\\]", "\\[CHECKBOX_UNCHECKED\\]",
+            "☑CHECKED☑", "☐UNCHECKED☐",
+            "\\[CHECKED\\]", "\\[UNCHECKED\\]",
+            "<CHECKED>", "<UNCHECKED>",
+            "\\(CHECKED\\)", "\\(UNCHECKED\\)"
+        ]
+        
+        for marker in checkboxMarkers {
+            if let regex = try? NSRegularExpression(pattern: marker, options: []) {
+                cleanedContent = regex.stringByReplacingMatches(
+                    in: cleanedContent,
+                    range: NSRange(location: 0, length: cleanedContent.count),
+                    withTemplate: ""
+                )
+            }
+        }
+        
+        // Clean up extra whitespace and newlines
+        cleanedContent = cleanedContent
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "\n\n+", with: " ", options: .regularExpression)
+            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        
+        return cleanedContent
+    }
+    
     init(from firebaseNote: FirebaseNote) {
         self.id = firebaseNote.id ?? UUID().uuidString
         self.title = firebaseNote.title ?? ""
@@ -112,7 +154,9 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
                 )
                 self.rtfData = convertedRTFData
                 
-                self.content = loadedAttributedString.string // Plain text for title bar only
+                // Clean the content for display purposes (remove drawing markers, etc.)
+                let rawContent = loadedAttributedString.string
+                self.content = SparkItem.cleanContentForDisplay(rawContent) // Clean plain text for title bar only
             } catch {
                 print("❌ SparkItem init: Failed to load RTF, using Firebase content: \(error)")
                 // Fallback to Firebase content if RTF extraction fails
@@ -146,7 +190,17 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
     }
     
     var displayTitle: String {
-        title.isEmpty ? (content.isEmpty ? "Untitled Note" : String(content.prefix(30))) : title
+        if !title.isEmpty {
+            return title
+        }
+        
+        if content.isEmpty {
+            return "Untitled Note"
+        }
+        
+        // Clean drawing markers and other non-display content from preview
+        let cleanContent = SparkItem.cleanContentForDisplay(content)
+        return cleanContent.isEmpty ? "Untitled Note" : String(cleanContent.prefix(30))
     }
     
     // MARK: - Hashable
@@ -356,57 +410,22 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
     static func prepareForDisplay(_ attributedString: NSAttributedString, drawingManager: DrawingOverlayManager? = nil) -> NSAttributedString {
         let mutableString = NSMutableAttributedString(attributedString: attributedString)
         
-        // Debug: Print the actual string content to see what we're working with
-        print("🔍 SparkItem.prepareForDisplay: Input string content: '\(attributedString.string)'")
-        print("🔍 SparkItem.prepareForDisplay: String length: \(attributedString.length)")
-        
-        // Check for checkbox text markers (RTF-safe, Unicode, and legacy)
-        let checkboxChars = ["[CHECKBOX_CHECKED]", "[CHECKBOX_UNCHECKED]", "☑CHECKED☑", "☐UNCHECKED☐", "[UNCHECKED]", "[CHECKED]", "<UNCHECKED>", "<CHECKED>", "(UNCHECKED)", "(CHECKED)", "[ ]", "[✓]"]
-        for char in checkboxChars {
-            let count = attributedString.string.components(separatedBy: char).count - 1
-            if count > 0 {
-                print("🔍 SparkItem.prepareForDisplay: Found \(count) instances of '\(char)'")
-            }
-        }
         
         // First, convert Unicode checkboxes to NSTextAttachment for better display
-        print("🔧 SparkItem.prepareForDisplay: Converting Unicode checkboxes to attachments for display")
-        
-        // Debug: Check what we're sending to the conversion function
-        mutableString.enumerateAttribute(.attachment, in: NSRange(location: 0, length: mutableString.length), options: []) { value, range, _ in
-            if let attachment = value {
-                print("🔍 SparkItem.prepareForDisplay: Input has attachment at range \(range): \(type(of: attachment))")
-            }
-        }
-        
         let checkboxProcessedString = CheckboxManager.convertUnicodeCheckboxesToAttachments(mutableString)
-        print("🔧 SparkItem.prepareForDisplay: Unicode checkbox conversion complete")
         
-        // Then, convert drawing text markers back to overlay markers for display
-        print("🎨 SparkItem.prepareForDisplay: Converting drawing text markers to overlay markers for display")
+        // Then, convert drawing text markers back to drawing attachments for display
         let drawingProcessedString: NSAttributedString
         if let drawingManager = drawingManager {
+            // Use the provided drawing manager to restore overlay markers
             drawingProcessedString = drawingManager.restoreFromTextMarkers(checkboxProcessedString)
         } else {
-            // No drawing manager provided, so no drawing conversion
-            print("⚠️ SparkItem.prepareForDisplay: No drawing manager provided, skipping drawing restoration")
-            drawingProcessedString = checkboxProcessedString
+            // No drawing manager provided, preserve the text markers for later processing
+            // but hide them from display by making them invisible
+            drawingProcessedString = hideDrawingTextMarkers(checkboxProcessedString)
         }
         let finalMutableString = NSMutableAttributedString(attributedString: drawingProcessedString)
-        print("🎨 SparkItem.prepareForDisplay: Drawing marker conversion complete")
         
-        // Debug: Check what we got back from the conversion
-        var attachmentCount = 0
-        finalMutableString.enumerateAttribute(.attachment, in: NSRange(location: 0, length: finalMutableString.length), options: []) { value, range, _ in
-            if let attachment = value {
-                attachmentCount += 1
-                print("🔍 SparkItem.prepareForDisplay: Output has attachment #\(attachmentCount) at range \(range): \(type(of: attachment))")
-                if let checkboxAttachment = attachment as? CheckboxTextAttachment {
-                    print("🔍 SparkItem.prepareForDisplay: Attachment is CheckboxTextAttachment (checked: \(checkboxAttachment.isChecked))")
-                }
-            }
-        }
-        print("🔍 SparkItem.prepareForDisplay: Total attachments after conversion: \(attachmentCount)")
         
         // Then get the range after potential length changes from checkbox conversion
         let updatedRange = NSRange(location: 0, length: finalMutableString.length)
@@ -480,6 +499,34 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
         }
         
         return finalMutableString
+    }
+    
+    /// Hide drawing text markers by making them invisible while preserving them for overlay processing
+    private static func hideDrawingTextMarkers(_ attributedString: NSAttributedString) -> NSAttributedString {
+        let mutableString = NSMutableAttributedString(attributedString: attributedString)
+        let text = mutableString.string
+        
+        // Find drawing markers
+        let drawingPattern = "🎨DRAWING:([^:]*):([^:]*):([^:]*)🎨"
+        guard let regex = try? NSRegularExpression(pattern: drawingPattern, options: []) else {
+            return attributedString
+        }
+        
+        let matches = regex.matches(in: text, range: NSRange(location: 0, length: text.count))
+        
+        // Process matches in reverse order to maintain indices
+        for match in matches.reversed() {
+            // Instead of removing the marker, make it invisible
+            let hiddenAttributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 0.1),
+                .foregroundColor: UIColor.clear,
+                .backgroundColor: UIColor.clear
+            ]
+            
+            mutableString.addAttributes(hiddenAttributes, range: match.range)
+        }
+        
+        return mutableString
     }
     
 }

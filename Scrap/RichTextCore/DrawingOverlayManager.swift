@@ -245,31 +245,55 @@ public class DrawingOverlayManager: ObservableObject {
         let text = mutableString.string
         let pattern = "\\[DRAWING:([^\\]]+)\\]"
         
+        // Debug: Print what text we're searching for drawing markers
+        print("🎨 DrawingOverlayManager: Searching for drawing markers in text: '\(text.prefix(200))'")
+        print("🎨 DrawingOverlayManager: Current stored drawing markers: \(Array(drawingMarkers.keys))")
+        
         do {
             let regex = try NSRegularExpression(pattern: pattern, options: [])
             let matches = regex.matches(in: text, range: NSRange(location: 0, length: text.count))
             
             print("🎨 DrawingOverlayManager: Found \(matches.count) drawing markers to convert for persistence")
             
-            // Process matches in reverse order to maintain indices
-            for match in matches.reversed() {
-                if match.numberOfRanges >= 2 {
-                    let drawingId = (text as NSString).substring(with: match.range(at: 1))
-                    
-                    if let marker = drawingMarkers[drawingId] {
-                        // Convert to text marker format
-                        let base64Data = marker.drawingData?.base64EncodedString() ?? ""
+            // If no matches found, check if we have orphaned markers that need to be converted anyway
+            if matches.isEmpty && !drawingMarkers.isEmpty {
+                print("⚠️ DrawingOverlayManager: No drawing markers found in text, but we have \(drawingMarkers.count) stored drawings")
+                print("⚠️ DrawingOverlayManager: This suggests the [DRAWING:ID] markers were lost from the text")
+                
+                // Try to add the drawing markers at the end of the text
+                for (drawingId, marker) in drawingMarkers {
+                    if let drawingData = marker.drawingData {
+                        let base64Data = drawingData.base64EncodedString()
                         let color = marker.selectedColor.rawValue
-                        let textMarker = "🎨DRAWING:\(base64Data):\(DrawingOverlayManager.fixedCanvasHeight):\(color)🎨"
+                        let textMarker = "\n🎨DRAWING:\(base64Data):\(DrawingOverlayManager.fixedCanvasHeight):\(color)🎨\n"
                         
-                        let replacement = NSAttributedString(string: textMarker)
-                        mutableString.replaceCharacters(in: match.range, with: replacement)
+                        let markerAttributedString = NSAttributedString(string: textMarker)
+                        mutableString.append(markerAttributedString)
                         
-                        print("🎨 DrawingOverlayManager: Converted drawing \(drawingId) to text marker")
-                    } else {
-                        print("⚠️ DrawingOverlayManager: Drawing marker \(drawingId) not found in current markers")
-                        // Remove orphaned marker
-                        mutableString.deleteCharacters(in: match.range)
+                        print("🎨 DrawingOverlayManager: Added orphaned drawing \(drawingId) as text marker")
+                    }
+                }
+            } else {
+                // Process found matches in reverse order to maintain indices
+                for match in matches.reversed() {
+                    if match.numberOfRanges >= 2 {
+                        let drawingId = (text as NSString).substring(with: match.range(at: 1))
+                        
+                        if let marker = drawingMarkers[drawingId] {
+                            // Convert to text marker format
+                            let base64Data = marker.drawingData?.base64EncodedString() ?? ""
+                            let color = marker.selectedColor.rawValue
+                            let textMarker = "🎨DRAWING:\(base64Data):\(DrawingOverlayManager.fixedCanvasHeight):\(color)🎨"
+                            
+                            let replacement = NSAttributedString(string: textMarker)
+                            mutableString.replaceCharacters(in: match.range, with: replacement)
+                            
+                            print("🎨 DrawingOverlayManager: Converted drawing \(drawingId) to text marker")
+                        } else {
+                            print("⚠️ DrawingOverlayManager: Drawing marker \(drawingId) not found in current markers")
+                            // Remove orphaned marker
+                            mutableString.deleteCharacters(in: match.range)
+                        }
                     }
                 }
             }

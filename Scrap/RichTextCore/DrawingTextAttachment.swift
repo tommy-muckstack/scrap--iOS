@@ -13,12 +13,10 @@ class DrawingTextAttachment: NSTextAttachment, NSCopying {
     /// PencilKit drawing data
     var drawingData: Data? {
         didSet {
-            print("🎨 DrawingTextAttachment: drawingData changed, regenerating image")
             // Regenerate image with new drawing data
             let bounds = CGRect(x: 0, y: 0, width: 300, height: canvasHeight + 40)
             let newImage = generateDrawingImage(bounds: bounds)
             self.image = newImage
-            print("🎨 DrawingTextAttachment: Updated image with new drawing data, size: \(newImage.size)")
         }
     }
     
@@ -26,12 +24,10 @@ class DrawingTextAttachment: NSTextAttachment, NSCopying {
     var canvasHeight: CGFloat = 120 { // 5 lines high (24pt line height * 5)
         didSet {
             if canvasHeight != oldValue {
-                print("🎨 DrawingTextAttachment: canvasHeight changed from \(oldValue) to \(canvasHeight), regenerating image")
                 // Regenerate image with new height
                 let bounds = CGRect(x: 0, y: 0, width: 300, height: canvasHeight + 40)
                 let newImage = generateDrawingImage(bounds: bounds)
                 self.image = newImage
-                print("🎨 DrawingTextAttachment: Updated image with new height, size: \(newImage.size)")
             }
         }
     }
@@ -56,15 +52,12 @@ class DrawingTextAttachment: NSTextAttachment, NSCopying {
         self.canvasHeight = height
         
         // Immediately generate and set the initial image to ensure rendering
-        print("🎨 DrawingTextAttachment.init: Generating initial image")
         let initialBounds = CGRect(x: 0, y: 0, width: 300, height: height + 40)
         let initialImage = generateDrawingImage(bounds: initialBounds)
         self.image = initialImage
-        print("🎨 DrawingTextAttachment.init: Set initial image with size: \(initialImage.size)")
         
         // CRITICAL: Force bounds to ensure proper layout
         self.bounds = CGRect(x: 0, y: 0, width: 300, height: height + 40)
-        print("🎨 DrawingTextAttachment.init: Set bounds to \(self.bounds)")
     }
     
     required init?(coder: NSCoder) {
@@ -74,15 +67,12 @@ class DrawingTextAttachment: NSTextAttachment, NSCopying {
         self.selectedColor = DrawingColor(rawValue: coder.decodeObject(forKey: "selectedColor") as? String ?? "") ?? .black
         
         // Generate and set the image after decoding
-        print("🎨 DrawingTextAttachment.init(coder): Generating image after decoding")
         let initialBounds = CGRect(x: 0, y: 0, width: 300, height: canvasHeight + 40)
         let initialImage = generateDrawingImage(bounds: initialBounds)
         self.image = initialImage
-        print("🎨 DrawingTextAttachment.init(coder): Set decoded image with size: \(initialImage.size)")
         
         // CRITICAL: Force bounds to ensure proper layout
         self.bounds = CGRect(x: 0, y: 0, width: 300, height: canvasHeight + 40)
-        print("🎨 DrawingTextAttachment.init(coder): Set bounds to \(self.bounds)")
     }
     
     override func encode(with coder: NSCoder) {
@@ -97,7 +87,6 @@ class DrawingTextAttachment: NSTextAttachment, NSCopying {
         copy.selectedColor = selectedColor
         copy.onEditDrawing = onEditDrawing
         copy.onDeleteDrawing = onDeleteDrawing
-        print("🎨 DrawingTextAttachment.copy: Created copy with image size: \(copy.image?.size ?? CGSize.zero)")
         return copy
     }
     
@@ -116,28 +105,22 @@ class DrawingTextAttachment: NSTextAttachment, NSCopying {
         // Too large negative offset can push drawing outside visible area
         let yOffset: CGFloat = -5 // Small negative offset to align with text baseline
         
-        print("🎨 DrawingTextAttachment: attachmentBounds called - width: \(width), height: \(totalHeight), yOffset: \(yOffset)")
         return CGRect(x: 0, y: yOffset, width: width, height: totalHeight)
     }
     
     override var image: UIImage? {
         get {
-            print("🖼️ DRAWING RENDER: image getter called")
             // Always return the current cached image or generate if needed
             if let cachedImage = super.image {
-                print("🖼️ DRAWING RENDER: Returning cached image size: \(cachedImage.size)")
                 return cachedImage
             } else {
-                print("🖼️ DRAWING RENDER: No cached image, generating new one")
                 let bounds = CGRect(x: 0, y: 0, width: 300, height: canvasHeight + 40)
                 let generatedImage = generateDrawingImage(bounds: bounds)
                 super.image = generatedImage // Cache the generated image
-                print("🖼️ DRAWING RENDER: Generated and cached image size: \(generatedImage.size)")
                 return generatedImage
             }
         }
         set {
-            print("🖼️ DRAWING RENDER: image setter called with: \(newValue?.size ?? CGSize.zero)")
             super.image = newValue
         }
     }
@@ -145,18 +128,13 @@ class DrawingTextAttachment: NSTextAttachment, NSCopying {
     override func image(forBounds imageBounds: CGRect, 
                        textContainer: NSTextContainer?, 
                        characterIndex charIndex: Int) -> UIImage? {
-        print("🖼️ DRAWING RENDER: image(forBounds:) called - bounds: \(imageBounds)")
-        print("🖼️ DRAWING RENDER: textContainer: \(textContainer?.description ?? "nil")")
-        print("🖼️ DRAWING RENDER: characterIndex: \(charIndex)")
         
         // Use the bounds from attachmentBounds if imageBounds is invalid
         let renderBounds = imageBounds.width > 0 && imageBounds.height > 0 ? 
             imageBounds : 
             CGRect(x: 0, y: 0, width: 300, height: canvasHeight + 40)
             
-        print("🖼️ DRAWING RENDER: Using render bounds: \(renderBounds)")
         let generatedImage = generateDrawingImage(bounds: renderBounds)
-        print("🖼️ DRAWING RENDER: Generated image size: \(generatedImage.size)")
         
         // Also cache this image in the main image property
         super.image = generatedImage
@@ -168,12 +146,9 @@ class DrawingTextAttachment: NSTextAttachment, NSCopying {
     
     /// Generate the drawing view image with borders and controls
     private func generateDrawingImage(bounds: CGRect) -> UIImage {
-        print("🎨 DrawingTextAttachment: generateDrawingImage called with bounds: \(bounds)")
-        print("🎨 DrawingTextAttachment: canvasHeight: \(canvasHeight)")
         
         // Ensure bounds are valid
         guard bounds.width > 0 && bounds.height > 0 else {
-            print("❌ DrawingTextAttachment: Invalid bounds for image generation - creating error placeholder")
             // Create a visible error placeholder with black border
             let renderer = UIGraphicsImageRenderer(size: CGSize(width: 300, height: 100))
             return renderer.image { context in
@@ -214,7 +189,6 @@ class DrawingTextAttachment: NSTextAttachment, NSCopying {
             width: max(bounds.width, 300), // Ensure full width for visibility
             height: max(bounds.height, 120) // Ensure minimum canvas height
         )
-        print("🎨 DrawingTextAttachment: Using actualBounds: \(actualBounds)")
         
         let renderer = UIGraphicsImageRenderer(bounds: actualBounds)
         let generatedImage = renderer.image { context in
@@ -228,7 +202,6 @@ class DrawingTextAttachment: NSTextAttachment, NSCopying {
             let drawingRect = CGRect(x: 8, y: 20, width: actualBounds.width - 16, height: canvasHeight)
             let cornerRadius: CGFloat = 8.0
             
-            print("🎨 DrawingTextAttachment: Drawing in rect: \(drawingRect)")
             
             // Background color - use a light gray to make it more visible
             cgContext.setFillColor(UIColor.systemGray6.cgColor)
@@ -269,8 +242,6 @@ class DrawingTextAttachment: NSTextAttachment, NSCopying {
             drawResizeHandle(in: cgContext, bounds: actualBounds)
         }
         
-        print("🎨 DrawingTextAttachment: Generated image with size: \(generatedImage.size)")
-        print("🎨 DrawingTextAttachment: Image scale: \(generatedImage.scale)")
         
         return generatedImage
     }
@@ -428,30 +399,15 @@ class DrawingManager {
     static func convertAttachmentsToTextMarkers(_ attributedString: NSAttributedString) -> NSAttributedString {
         let mutableString = NSMutableAttributedString(attributedString: attributedString)
         
-        print("🎨 DrawingManager: Starting conversion of drawing attachments to text markers")
-        print("🔍 DrawingManager: Input string length: \(attributedString.length)")
-        print("🔍 DrawingManager: Input string content: '\(attributedString.string.prefix(200))...'")
-        
         var drawingCount = 0
-        var totalAttachments = 0
         
         // Find drawing attachments and replace with text markers
         attributedString.enumerateAttribute(.attachment, 
                                           in: NSRange(location: 0, length: attributedString.length),
                                           options: [.reverse]) { value, range, _ in
             
-            if value != nil {
-                totalAttachments += 1
-            }
-            
-            print("🎨 DrawingManager: Found attachment #\(totalAttachments) at range \(range): \(value == nil ? "nil" : String(describing: type(of: value!)))")
-            
             if let drawingAttachment = value as? DrawingTextAttachment {
                 drawingCount += 1
-                print("🎨 DrawingManager: Found DrawingTextAttachment #\(drawingCount) at range \(range)")
-                print("🎨 DrawingManager: DrawingAttachment ID: \(drawingAttachment.drawingId)")
-                print("🎨 DrawingManager: DrawingAttachment height: \(drawingAttachment.canvasHeight)")
-                print("🎨 DrawingManager: DrawingAttachment data size: \(drawingAttachment.drawingData?.count ?? 0) bytes")
                 
                 // Create marker with drawing data and height
                 let base64Data = drawingAttachment.drawingData?.base64EncodedString() ?? ""
@@ -459,28 +415,11 @@ class DrawingManager {
                 let color = drawingAttachment.selectedColor.rawValue
                 let drawingMarker = "🎨DRAWING:\(base64Data):\(height):\(color)🎨"
                 
-                print("🎨 DrawingManager: Converting drawing #\(drawingCount) to marker (height: \(height))")
-                print("🎨 DrawingManager: Generated marker preview: '\(String(drawingMarker.prefix(100)))...'")
-                
                 let replacement = NSAttributedString(string: drawingMarker)
                 mutableString.replaceCharacters(in: range, with: replacement)
-                print("✅ DrawingManager: Successfully replaced attachment with marker")
-            } else if value != nil {
-                print("🔍 DrawingManager: Found non-drawing attachment at range \(range): \(type(of: value!))")
             }
         }
         
-        print("🔍 DrawingManager: Total attachments found: \(totalAttachments)")
-        print("🎨 DrawingManager: Converted \(drawingCount) drawing attachments to markers")
-        
-        // Verify the conversion by checking for markers in the result
-        let finalString = mutableString.string
-        if finalString.contains("🎨DRAWING:") {
-            let markerCount = finalString.components(separatedBy: "🎨DRAWING:").count - 1
-            print("✅ DrawingManager: Final string contains \(markerCount) drawing markers")
-        } else {
-            print("❌ DrawingManager: No drawing markers found in final string")
-        }
         
         return mutableString
     }
@@ -490,17 +429,14 @@ class DrawingManager {
         let mutableString = NSMutableAttributedString(attributedString: attributedString)
         let text = attributedString.string
         
-        print("🎨 DrawingManager: Converting text markers to drawing attachments")
         
         // Find drawing markers
         let drawingPattern = "🎨DRAWING:([^:]*):([^:]*):([^:]*)🎨"
         guard let regex = try? NSRegularExpression(pattern: drawingPattern, options: []) else {
-            print("❌ DrawingManager: Failed to create regex for drawing conversion")
             return attributedString
         }
         
         let matches = regex.matches(in: text, range: NSRange(location: 0, length: text.count))
-        print("🎨 DrawingManager: Found \(matches.count) drawing markers to convert")
         
         // Process matches in reverse order to maintain indices
         for match in matches.reversed() {
@@ -513,14 +449,10 @@ class DrawingManager {
                 let height = CGFloat(Double(heightString) ?? 120)
                 let color = DrawingColor(rawValue: colorString) ?? .black
                 
-                print("🎨 DrawingManager: Converting marker to drawing (height: \(height), color: \(color.name))")
-                
                 // Create drawing attachment
                 let drawingData = base64Data.isEmpty ? nil : Data(base64Encoded: base64Data)
                 let attachment = DrawingTextAttachment(drawingData: drawingData, height: height)
                 attachment.selectedColor = color
-                
-                print("🎨 DrawingManager: Created attachment from marker with image size: \(attachment.image?.size ?? CGSize.zero)")
                 
                 let attachmentString = NSAttributedString(attachment: attachment)
                 
@@ -529,7 +461,6 @@ class DrawingManager {
             }
         }
         
-        print("🎨 DrawingManager: Drawing marker conversion complete")
         return mutableString
     }
     
