@@ -41,6 +41,13 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
             // For content display, extract plain text only for title bar purposes
             // The actual rich content will be handled by the RTF editor
             do {
+                // Debug: First decode the RTF data to see what we're actually storing
+                if let rtfString = String(data: rtfData, encoding: .utf8) {
+                    print("🔍 SparkItem.init: Raw RTF data contains: \(rtfString.prefix(500))")
+                } else {
+                    print("🔍 SparkItem.init: RTF data is not UTF-8 encoded")
+                }
+                
                 let loadedAttributedString = try NSAttributedString(
                     data: rtfData,
                     options: [.documentType: NSAttributedString.DocumentType.rtf],
@@ -50,6 +57,30 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
                 // Debug: Print what was actually loaded from RTF
                 print("🔍 SparkItem.init: Loaded from RTF - content: '\(loadedAttributedString.string)'")
                 print("🔍 SparkItem.init: Loaded from RTF - length: \(loadedAttributedString.length)")
+                
+                // Debug: Check for specific checkbox patterns in the loaded content
+                let content = loadedAttributedString.string
+                if content.contains("(CHECKED)") {
+                    print("🔍 SparkItem.init: Found checked ASCII marker (CHECKED) in loaded content")
+                }
+                if content.contains("(UNCHECKED)") {
+                    print("🔍 SparkItem.init: Found unchecked ASCII marker (UNCHECKED) in loaded content")
+                }
+                if content.contains("[CHECKED]") {
+                    print("🔍 SparkItem.init: Found checked ASCII marker [CHECKED] in loaded content")
+                }
+                if content.contains("[UNCHECKED]") {
+                    print("🔍 SparkItem.init: Found unchecked ASCII marker [UNCHECKED] in loaded content")
+                }
+                if content.contains("✓") {
+                    print("🔍 SparkItem.init: Found checkmark character ✓ in loaded content")
+                }
+                if content.contains("[ ]") {
+                    print("🔍 SparkItem.init: Found unchecked pattern [ ] in loaded content")
+                }
+                if content.contains("[✓]") {
+                    print("🔍 SparkItem.init: Found checked pattern [✓] in loaded content")
+                }
                 
                 // Convert system fonts back to SpaceGrotesk fonts while preserving formatting
                 let convertedAttributedString = SparkItem.prepareForDisplay(loadedAttributedString)
@@ -135,11 +166,63 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
         
         // Debug: Print what we're about to save
         print("🔍 SparkItem.prepareForRTFSave: Final string content: '\(finalMutableString.string)'")
-        let checkboxChars = ["[ ]", "[✓]"]
+        let checkboxChars = ["(UNCHECKED)", "(CHECKED)", "[UNCHECKED]", "[CHECKED]", "[ ]", "[✓]"]
         for char in checkboxChars {
             let count = finalMutableString.string.components(separatedBy: char).count - 1
             if count > 0 {
                 print("🔍 SparkItem.prepareForRTFSave: Converted string contains \(count) instances of '\(char)'")
+            }
+        }
+        
+        // Debug: Check for any NSTextAttachment objects that might still be present
+        finalMutableString.enumerateAttribute(.attachment, in: NSRange(location: 0, length: finalMutableString.length), options: []) { value, range, _ in
+            if let attachment = value {
+                print("⚠️ SparkItem.prepareForRTFSave: Still found attachment at range \(range): \(type(of: attachment))")
+                if let checkboxAttachment = attachment as? CheckboxTextAttachment {
+                    print("⚠️ SparkItem.prepareForRTFSave: Attachment is CheckboxTextAttachment (checked: \(checkboxAttachment.isChecked))")
+                }
+            }
+        }
+        
+        // Debug: Test RTF round-trip conversion to see what gets preserved
+        if finalMutableString.string.contains("(CHECKED)") || finalMutableString.string.contains("(UNCHECKED)") || finalMutableString.string.contains("[CHECKED]") || finalMutableString.string.contains("[UNCHECKED]") {
+            do {
+                let testRTFData = try finalMutableString.data(
+                    from: NSRange(location: 0, length: finalMutableString.length),
+                    documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
+                )
+                
+                // Now try to read it back
+                let restoredAttributedString = try NSAttributedString(
+                    data: testRTFData,
+                    options: [.documentType: NSAttributedString.DocumentType.rtf],
+                    documentAttributes: nil
+                )
+                
+                print("🔍 SparkItem.prepareForRTFSave: RTF round-trip test - original: '\(finalMutableString.string)'")
+                print("🔍 SparkItem.prepareForRTFSave: RTF round-trip test - restored: '\(restoredAttributedString.string)'")
+                
+                // Check if markers survived
+                if restoredAttributedString.string.contains("(CHECKED)") || restoredAttributedString.string.contains("(UNCHECKED)") {
+                    print("✅ SparkItem.prepareForRTFSave: Parentheses markers survived RTF conversion")
+                } else if restoredAttributedString.string.contains("[CHECKED]") || restoredAttributedString.string.contains("[UNCHECKED]") {
+                    print("✅ SparkItem.prepareForRTFSave: Square bracket markers survived RTF conversion")
+                } else {
+                    print("❌ SparkItem.prepareForRTFSave: All checkbox markers were lost in RTF conversion")
+                }
+                
+            } catch {
+                print("❌ SparkItem.prepareForRTFSave: RTF round-trip test failed: \(error)")
+            }
+        }
+        
+        // Debug: Check Unicode values of checkbox characters
+        let content = finalMutableString.string
+        for (index, char) in content.enumerated() {
+            if char == "✓" || char == "[" || char == "]" {
+                if let scalar = char.unicodeScalars.first {
+                    print("🔍 SparkItem.prepareForRTFSave: Character '\(char)' at index \(index) has Unicode: \\u{\(String(scalar.value, radix: 16))}")
+                }
             }
         }
         
@@ -215,8 +298,8 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
         print("🔍 SparkItem.prepareForDisplay: Input string content: '\(attributedString.string)'")
         print("🔍 SparkItem.prepareForDisplay: String length: \(attributedString.length)")
         
-        // Check for checkbox text markers
-        let checkboxChars = ["[ ]", "[✓]"]
+        // Check for checkbox text markers (both new and legacy)
+        let checkboxChars = ["(UNCHECKED)", "(CHECKED)", "[UNCHECKED]", "[CHECKED]", "[ ]", "[✓]"]
         for char in checkboxChars {
             let count = attributedString.string.components(separatedBy: char).count - 1
             if count > 0 {
@@ -226,9 +309,30 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
         
         // First, convert Unicode checkboxes to NSTextAttachment for better display
         print("🔧 SparkItem.prepareForDisplay: Converting Unicode checkboxes to attachments for display")
+        
+        // Debug: Check what we're sending to the conversion function
+        mutableString.enumerateAttribute(.attachment, in: NSRange(location: 0, length: mutableString.length), options: []) { value, range, _ in
+            if let attachment = value {
+                print("🔍 SparkItem.prepareForDisplay: Input has attachment at range \(range): \(type(of: attachment))")
+            }
+        }
+        
         let processedString = CheckboxManager.convertUnicodeCheckboxesToAttachments(mutableString)
         let finalMutableString = NSMutableAttributedString(attributedString: processedString)
         print("🔧 SparkItem.prepareForDisplay: Unicode checkbox conversion complete")
+        
+        // Debug: Check what we got back from the conversion
+        var attachmentCount = 0
+        finalMutableString.enumerateAttribute(.attachment, in: NSRange(location: 0, length: finalMutableString.length), options: []) { value, range, _ in
+            if let attachment = value {
+                attachmentCount += 1
+                print("🔍 SparkItem.prepareForDisplay: Output has attachment #\(attachmentCount) at range \(range): \(type(of: attachment))")
+                if let checkboxAttachment = attachment as? CheckboxTextAttachment {
+                    print("🔍 SparkItem.prepareForDisplay: Attachment is CheckboxTextAttachment (checked: \(checkboxAttachment.isChecked))")
+                }
+            }
+        }
+        print("🔍 SparkItem.prepareForDisplay: Total attachments after conversion: \(attachmentCount)")
         
         // Then get the range after potential length changes from checkbox conversion
         let updatedRange = NSRange(location: 0, length: finalMutableString.length)

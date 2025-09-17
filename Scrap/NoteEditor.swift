@@ -252,11 +252,17 @@ struct NoteEditor: View {
                 var finalText = editedText
                 if let rtfData = item.rtfData {
                     do {
-                        finalText = try NSAttributedString(
+                        let loadedRTF = try NSAttributedString(
                             data: rtfData,
                             options: [.documentType: NSAttributedString.DocumentType.rtf],
                             documentAttributes: nil
                         )
+                        
+                        // CRITICAL: Convert ASCII markers back to interactive checkbox attachments
+                        print("🔧 NoteEditor: Converting loaded RTF checkboxes for display")
+                        finalText = SparkItem.prepareForDisplay(loadedRTF)
+                        print("🔧 NoteEditor: Checkbox conversion complete")
+                        
                     } catch {
                         print("❌ NoteEditor: Failed to load RTF, using formatted text: \(error)")
                         finalText = Self.createFormattedText(from: item.content)
