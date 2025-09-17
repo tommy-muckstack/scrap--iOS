@@ -42,6 +42,7 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
             // The actual rich content will be handled by the RTF editor
             do {
                 // Debug: First decode the RTF data to see what we're actually storing
+                print("🔍 SparkItem.init: Loading RTF data from Firebase, size: \(rtfData.count) bytes")
                 if let rtfString = String(data: rtfData, encoding: .utf8) {
                     print("🔍 SparkItem.init: Raw RTF data contains: \(rtfString.prefix(500))")
                 } else {
@@ -60,6 +61,12 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
                 
                 // Debug: Check for specific checkbox patterns in the loaded content
                 let content = loadedAttributedString.string
+                if content.contains("<CHECKED>") {
+                    print("🔍 SparkItem.init: Found checked ASCII marker <CHECKED> in loaded content")
+                }
+                if content.contains("<UNCHECKED>") {
+                    print("🔍 SparkItem.init: Found unchecked ASCII marker <UNCHECKED> in loaded content")
+                }
                 if content.contains("(CHECKED)") {
                     print("🔍 SparkItem.init: Found checked ASCII marker (CHECKED) in loaded content")
                 }
@@ -166,7 +173,7 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
         
         // Debug: Print what we're about to save
         print("🔍 SparkItem.prepareForRTFSave: Final string content: '\(finalMutableString.string)'")
-        let checkboxChars = ["(UNCHECKED)", "(CHECKED)", "[UNCHECKED]", "[CHECKED]", "[ ]", "[✓]"]
+        let checkboxChars = ["<UNCHECKED>", "<CHECKED>", "(UNCHECKED)", "(CHECKED)", "[UNCHECKED]", "[CHECKED]", "[ ]", "[✓]"]
         for char in checkboxChars {
             let count = finalMutableString.string.components(separatedBy: char).count - 1
             if count > 0 {
@@ -185,7 +192,7 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
         }
         
         // Debug: Test RTF round-trip conversion to see what gets preserved
-        if finalMutableString.string.contains("(CHECKED)") || finalMutableString.string.contains("(UNCHECKED)") || finalMutableString.string.contains("[CHECKED]") || finalMutableString.string.contains("[UNCHECKED]") {
+        if finalMutableString.string.contains("<CHECKED>") || finalMutableString.string.contains("<UNCHECKED>") || finalMutableString.string.contains("(CHECKED)") || finalMutableString.string.contains("(UNCHECKED)") || finalMutableString.string.contains("[CHECKED]") || finalMutableString.string.contains("[UNCHECKED]") {
             do {
                 let testRTFData = try finalMutableString.data(
                     from: NSRange(location: 0, length: finalMutableString.length),
@@ -203,7 +210,9 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
                 print("🔍 SparkItem.prepareForRTFSave: RTF round-trip test - restored: '\(restoredAttributedString.string)'")
                 
                 // Check if markers survived
-                if restoredAttributedString.string.contains("(CHECKED)") || restoredAttributedString.string.contains("(UNCHECKED)") {
+                if restoredAttributedString.string.contains("<CHECKED>") || restoredAttributedString.string.contains("<UNCHECKED>") {
+                    print("✅ SparkItem.prepareForRTFSave: Angle bracket markers survived RTF conversion")
+                } else if restoredAttributedString.string.contains("(CHECKED)") || restoredAttributedString.string.contains("(UNCHECKED)") {
                     print("✅ SparkItem.prepareForRTFSave: Parentheses markers survived RTF conversion")
                 } else if restoredAttributedString.string.contains("[CHECKED]") || restoredAttributedString.string.contains("[UNCHECKED]") {
                     print("✅ SparkItem.prepareForRTFSave: Square bracket markers survived RTF conversion")
@@ -299,7 +308,7 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
         print("🔍 SparkItem.prepareForDisplay: String length: \(attributedString.length)")
         
         // Check for checkbox text markers (both new and legacy)
-        let checkboxChars = ["(UNCHECKED)", "(CHECKED)", "[UNCHECKED]", "[CHECKED]", "[ ]", "[✓]"]
+        let checkboxChars = ["<UNCHECKED>", "<CHECKED>", "(UNCHECKED)", "(CHECKED)", "[UNCHECKED]", "[CHECKED]", "[ ]", "[✓]"]
         for char in checkboxChars {
             let count = attributedString.string.components(separatedBy: char).count - 1
             if count > 0 {

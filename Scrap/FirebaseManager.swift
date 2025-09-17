@@ -398,6 +398,50 @@ class FirebaseManager: ObservableObject {
     }
     
     func updateNoteWithRTF(noteId: String, rtfData: Data) async throws {
+        // Debug: Check what's in the RTF data before saving
+        print("🔍 FirebaseManager.updateNoteWithRTF: Saving RTF data of size \(rtfData.count) bytes")
+        
+        // Try to read back the RTF data to see what's actually being saved
+        do {
+            let testAttributedString = try NSAttributedString(
+                data: rtfData,
+                options: [.documentType: NSAttributedString.DocumentType.rtf],
+                documentAttributes: nil
+            )
+            print("🔍 FirebaseManager.updateNoteWithRTF: RTF contains text: '\(testAttributedString.string)'")
+            
+            // Check for checkbox markers
+            let content = testAttributedString.string
+            if content.contains("<CHECKED>") {
+                print("🔍 FirebaseManager.updateNoteWithRTF: RTF data contains <CHECKED> markers")
+            }
+            if content.contains("<UNCHECKED>") {
+                print("🔍 FirebaseManager.updateNoteWithRTF: RTF data contains <UNCHECKED> markers")
+            }
+            if content.contains("(CHECKED)") {
+                print("🔍 FirebaseManager.updateNoteWithRTF: RTF data contains (CHECKED) markers")
+            }
+            if content.contains("(UNCHECKED)") {
+                print("🔍 FirebaseManager.updateNoteWithRTF: RTF data contains (UNCHECKED) markers")
+            }
+            if content.contains("[CHECKED]") {
+                print("🔍 FirebaseManager.updateNoteWithRTF: RTF data contains [CHECKED] markers")
+            }
+            if content.contains("[UNCHECKED]") {
+                print("🔍 FirebaseManager.updateNoteWithRTF: RTF data contains [UNCHECKED] markers")
+            }
+            
+            // Check for any attachments that might still be present
+            testAttributedString.enumerateAttribute(.attachment, in: NSRange(location: 0, length: testAttributedString.length), options: []) { value, range, _ in
+                if let attachment = value {
+                    print("🔍 FirebaseManager.updateNoteWithRTF: RTF data still contains attachment at range \(range): \(type(of: attachment))")
+                }
+            }
+            
+        } catch {
+            print("❌ FirebaseManager.updateNoteWithRTF: Failed to read back RTF data: \(error)")
+        }
+        
         // Store RTF data as base64 string for Firebase compatibility
         let base64RTF = rtfData.base64EncodedString()
         try await db.collection("notes").document(noteId).updateData([

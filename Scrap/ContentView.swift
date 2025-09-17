@@ -802,6 +802,19 @@ struct InputField: View {
                         isFieldFocused.wrappedValue = isEditing
                     }
                 }
+                .onChange(of: text) { newPlainText in
+                    // Sync plain text changes (from voice transcription) to attributed text for display
+                    if attributedText.string != newPlainText {
+                        print("🔄 InputField: Syncing text binding to attributedText: '\(newPlainText)'")
+                        
+                        // Create attributed string with proper SpaceGrotesk font and size
+                        let attributes: [NSAttributedString.Key: Any] = [
+                            .font: UIFont(name: "SpaceGrotesk-Regular", size: 17) ?? UIFont.systemFont(ofSize: 17),
+                            .foregroundColor: UIColor.label
+                        ]
+                        attributedText = NSAttributedString(string: newPlainText, attributes: attributes)
+                    }
+                }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
                     // Refresh authorization status when app becomes active (user returning from Settings)
                     authorizationStatus = SFSpeechRecognizer.authorizationStatus()

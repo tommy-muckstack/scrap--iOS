@@ -127,8 +127,8 @@ class CheckboxManager {
         
         // First, find formal checkbox markers (ASCII and Unicode)
         // Support both new ASCII markers and legacy Unicode markers
-        // Updated to use RTF-safe markers with parentheses instead of square brackets
-        let checkboxPattern = "\\(CHECKED\\)|\\(UNCHECKED\\)|\\[CHECKED\\]|\\[UNCHECKED\\]|\\[\\s*[✓✔︎☑︎]\\s*\\]|\\[\\s*\\]"
+        // Updated to use RTF-safe markers - trying angle brackets since parentheses might be RTF control characters
+        let checkboxPattern = "<CHECKED>|<UNCHECKED>|\\(CHECKED\\)|\\(UNCHECKED\\)|\\[CHECKED\\]|\\[UNCHECKED\\]|\\[\\s*[✓✔︎☑︎]\\s*\\]|\\[\\s*\\]"
         guard let regex = try? NSRegularExpression(pattern: checkboxPattern, options: [.caseInsensitive]) else {
             print("❌ CheckboxManager: Failed to create regex for checkbox conversion")
             return attributedString
@@ -189,9 +189,9 @@ class CheckboxManager {
             
             // Determine if checkbox is checked based on the marker type
             let isChecked: Bool
-            if character == "(CHECKED)" || character == "[CHECKED]" {
+            if character == "<CHECKED>" || character == "(CHECKED)" || character == "[CHECKED]" {
                 isChecked = true
-            } else if character == "(UNCHECKED)" || character == "[UNCHECKED]" {
+            } else if character == "<UNCHECKED>" || character == "(UNCHECKED)" || character == "[UNCHECKED]" {
                 isChecked = false
             } else {
                 // Legacy Unicode pattern - check if it contains any checkmark character
@@ -242,7 +242,7 @@ class CheckboxManager {
             
             if let checkboxAttachment = value as? CheckboxTextAttachment {
                 checkboxCount += 1
-                let checkboxText = checkboxAttachment.isChecked ? "(CHECKED)" : "(UNCHECKED)"
+                let checkboxText = checkboxAttachment.isChecked ? "<CHECKED>" : "<UNCHECKED>"
                 print("📝 CheckboxManager: Converting attachment #\(checkboxCount) at range \(range) to '\(checkboxText)' (checked: \(checkboxAttachment.isChecked))")
                 
                 let replacement = NSAttributedString(string: checkboxText)
@@ -258,9 +258,9 @@ class CheckboxManager {
         
         // Verify the conversion worked by checking the final string
         let finalString = mutableString.string
-        let checkedCount = finalString.components(separatedBy: "(CHECKED)").count - 1
-        let uncheckedCount = finalString.components(separatedBy: "(UNCHECKED)").count - 1
-        print("🔍 CheckboxManager: Final string contains \(checkedCount) (CHECKED) and \(uncheckedCount) (UNCHECKED) markers")
+        let checkedCount = finalString.components(separatedBy: "<CHECKED>").count - 1
+        let uncheckedCount = finalString.components(separatedBy: "<UNCHECKED>").count - 1
+        print("🔍 CheckboxManager: Final string contains \(checkedCount) <CHECKED> and \(uncheckedCount) <UNCHECKED> markers")
         
         return mutableString
     }
@@ -357,15 +357,15 @@ extension CheckboxTextAttachment {
     
     /// Custom encoding for RTF persistence using ASCII-safe markers
     func encodeForRTF() -> String {
-        return isChecked ? "(CHECKED)" : "(UNCHECKED)"
+        return isChecked ? "<CHECKED>" : "<UNCHECKED>"
     }
     
     /// Decode from RTF representation
     static func decodeFromRTF(_ character: String) -> CheckboxTextAttachment? {
         switch character {
-        case "(UNCHECKED)", "[UNCHECKED]":
+        case "<UNCHECKED>", "(UNCHECKED)", "[UNCHECKED]":
             return CheckboxTextAttachment(isChecked: false)
-        case "(CHECKED)", "[CHECKED]":
+        case "<CHECKED>", "(CHECKED)", "[CHECKED]":
             return CheckboxTextAttachment(isChecked: true)
         // Keep backward compatibility with old format
         case "[ ]":
