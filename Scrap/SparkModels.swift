@@ -149,10 +149,9 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
                 print("🔍 SparkItem.init: Preserving original RTF data with drawing markers intact")
                 self.rtfData = rtfData // Keep original RTF data with markers
                 
-                // For immediate display purposes, create a version with hidden markers
-                // but don't save this back to RTF - it's just for display
-                let displayAttributedString = SparkItem.prepareForDisplay(loadedAttributedString, drawingManager: nil)
-                print("🔍 SparkItem.init: Created display version with hidden drawing markers")
+                // Note: We used to create a display version here, but it's not needed
+                // since the drawing manager will handle proper display when the note is opened
+                print("🔍 SparkItem.init: Skipping display processing to preserve drawing markers")
                 
                 // Clean the content for display purposes (remove drawing markers, etc.)
                 let rawContent = loadedAttributedString.string
