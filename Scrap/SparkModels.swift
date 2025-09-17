@@ -47,6 +47,10 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
                     documentAttributes: nil
                 )
                 
+                // Debug: Print what was actually loaded from RTF
+                print("🔍 SparkItem.init: Loaded from RTF - content: '\(loadedAttributedString.string)'")
+                print("🔍 SparkItem.init: Loaded from RTF - length: \(loadedAttributedString.length)")
+                
                 // Convert system fonts back to SpaceGrotesk fonts while preserving formatting
                 let convertedAttributedString = SparkItem.prepareForDisplay(loadedAttributedString)
                 
@@ -129,6 +133,16 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
         let finalMutableString = NSMutableAttributedString(attributedString: processedString)
         print("🔧 SparkItem.prepareForRTFSave: Checkbox conversion complete")
         
+        // Debug: Print what we're about to save
+        print("🔍 SparkItem.prepareForRTFSave: Final string content: '\(finalMutableString.string)'")
+        let checkboxChars = ["[ ]", "[✓]"]
+        for char in checkboxChars {
+            let count = finalMutableString.string.components(separatedBy: char).count - 1
+            if count > 0 {
+                print("🔍 SparkItem.prepareForRTFSave: Converted string contains \(count) instances of '\(char)'")
+            }
+        }
+        
         // Then convert fonts to system fonts for RTF compatibility and preserve paragraph styles
         let range = NSRange(location: 0, length: finalMutableString.length)
         
@@ -196,6 +210,19 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
     // Convert system fonts back to SpaceGrotesk fonts while preserving formatting traits
     static func prepareForDisplay(_ attributedString: NSAttributedString) -> NSAttributedString {
         let mutableString = NSMutableAttributedString(attributedString: attributedString)
+        
+        // Debug: Print the actual string content to see what we're working with
+        print("🔍 SparkItem.prepareForDisplay: Input string content: '\(attributedString.string)'")
+        print("🔍 SparkItem.prepareForDisplay: String length: \(attributedString.length)")
+        
+        // Check for checkbox text markers
+        let checkboxChars = ["[ ]", "[✓]"]
+        for char in checkboxChars {
+            let count = attributedString.string.components(separatedBy: char).count - 1
+            if count > 0 {
+                print("🔍 SparkItem.prepareForDisplay: Found \(count) instances of '\(char)'")
+            }
+        }
         
         // First, convert Unicode checkboxes to NSTextAttachment for better display
         print("🔧 SparkItem.prepareForDisplay: Converting Unicode checkboxes to attachments for display")

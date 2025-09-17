@@ -1034,8 +1034,6 @@ struct InputField: View {
             // Start recognition task
             print("🎙️ ContentView: Starting speech recognition task...")
             recognitionTask = speechRecognizer.recognitionTask(with: recognitionRequest) { result, error in
-                var isFinal = false
-                
                 if let result = result {
                     DispatchQueue.main.async {
                         let transcription = result.bestTranscription.formattedString
@@ -1073,7 +1071,6 @@ struct InputField: View {
                             }
                         }
                     }
-                    isFinal = result.isFinal
                 }
                 
                 // Error handling only - cleanup is now handled in the result processing above

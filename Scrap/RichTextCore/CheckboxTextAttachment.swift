@@ -125,9 +125,9 @@ class CheckboxManager {
         let mutableString = NSMutableAttributedString(attributedString: attributedString)
         let text = attributedString.string
         
-        // Find Unicode checkbox characters and replace with attachments
-        // Note: ☑️ is two Unicode scalars (☑ + variation selector), so we need separate patterns
-        let checkboxPattern = "☑️|☑|☐"
+        // Find checkbox text markers and replace with attachments
+        // Using RTF-compatible text markers instead of Unicode symbols
+        let checkboxPattern = "\\[✓\\]|\\[ \\]"
         guard let regex = try? NSRegularExpression(pattern: checkboxPattern) else {
             print("❌ CheckboxManager: Failed to create regex for checkbox conversion")
             return attributedString
@@ -143,7 +143,7 @@ class CheckboxManager {
         // Process matches in reverse order to maintain indices
         for match in matches.reversed() {
             let character = (text as NSString).substring(with: match.range)
-            let isChecked = character == "☑️" || character == "☑"
+            let isChecked = character == "[✓]"
             
             print("📝 CheckboxManager: Converting '\(character)' to attachment (checked: \(isChecked))")
             
@@ -174,7 +174,7 @@ class CheckboxManager {
                                           options: [.reverse]) { value, range, _ in
             if let checkboxAttachment = value as? CheckboxTextAttachment {
                 checkboxCount += 1
-                let checkboxText = checkboxAttachment.isChecked ? "☑" : "☐"
+                let checkboxText = checkboxAttachment.isChecked ? "[✓]" : "[ ]"
                 print("📝 CheckboxManager: Converting attachment #\(checkboxCount) at range \(range) to '\(checkboxText)' (checked: \(checkboxAttachment.isChecked))")
                 
                 let replacement = NSAttributedString(string: checkboxText)
@@ -248,15 +248,15 @@ extension CheckboxTextAttachment {
     
     /// Custom encoding for RTF persistence
     func encodeForRTF() -> String {
-        return isChecked ? "☑" : "☐"
+        return isChecked ? "[✓]" : "[ ]"
     }
     
     /// Decode from RTF representation
     static func decodeFromRTF(_ character: String) -> CheckboxTextAttachment? {
         switch character {
-        case "☐":
+        case "[ ]":
             return CheckboxTextAttachment(isChecked: false)
-        case "☑", "☑️":
+        case "[✓]":
             return CheckboxTextAttachment(isChecked: true)
         default:
             return nil
