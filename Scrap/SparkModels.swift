@@ -143,16 +143,16 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
                     print("🔍 SparkItem.init: Found checked pattern [✓] in loaded content")
                 }
                 
-                // Convert system fonts back to SpaceGrotesk fonts while preserving formatting
-                // Note: Drawing manager not available during Firebase loading, drawings will be restored when note is opened
-                let convertedAttributedString = SparkItem.prepareForDisplay(loadedAttributedString, drawingManager: nil)
+                // CRITICAL FIX: Store original RTF data with drawing markers intact
+                // We need to preserve the original drawing markers in RTF for later processing
+                // when the drawing manager becomes available
+                print("🔍 SparkItem.init: Preserving original RTF data with drawing markers intact")
+                self.rtfData = rtfData // Keep original RTF data with markers
                 
-                // Re-generate RTF data with SpaceGrotesk fonts for proper display
-                let convertedRTFData = try convertedAttributedString.data(
-                    from: NSRange(location: 0, length: convertedAttributedString.length),
-                    documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
-                )
-                self.rtfData = convertedRTFData
+                // For immediate display purposes, create a version with hidden markers
+                // but don't save this back to RTF - it's just for display
+                let displayAttributedString = SparkItem.prepareForDisplay(loadedAttributedString, drawingManager: nil)
+                print("🔍 SparkItem.init: Created display version with hidden drawing markers")
                 
                 // Clean the content for display purposes (remove drawing markers, etc.)
                 let rawContent = loadedAttributedString.string
@@ -506,26 +506,37 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
         let mutableString = NSMutableAttributedString(attributedString: attributedString)
         let text = mutableString.string
         
+        print("🔍 hideDrawingTextMarkers: Processing string with length \(text.count)")
+        
         // Find drawing markers
         let drawingPattern = "🎨DRAWING:([^:]*):([^:]*):([^:]*)🎨"
         guard let regex = try? NSRegularExpression(pattern: drawingPattern, options: []) else {
+            print("❌ hideDrawingTextMarkers: Failed to create regex")
             return attributedString
         }
         
         let matches = regex.matches(in: text, range: NSRange(location: 0, length: text.count))
+        print("🔍 hideDrawingTextMarkers: Found \(matches.count) drawing markers to hide")
         
         // Process matches in reverse order to maintain indices
-        for match in matches.reversed() {
-            // Instead of removing the marker, make it invisible
-            let hiddenAttributes: [NSAttributedString.Key: Any] = [
-                .font: UIFont.systemFont(ofSize: 0.1),
-                .foregroundColor: UIColor.clear,
-                .backgroundColor: UIColor.clear
-            ]
+        for (index, match) in matches.reversed().enumerated() {
+            print("🔍 hideDrawingTextMarkers: Processing match \(index + 1) at range \(match.range)")
             
-            mutableString.addAttributes(hiddenAttributes, range: match.range)
+            // CRITICAL FIX: Instead of just making the marker invisible, 
+            // replace it with a completely hidden zero-width attachment
+            // This ensures the drawing markers don't show up as text
+            let hiddenAttachment = NSTextAttachment()
+            hiddenAttachment.image = UIImage() // Empty image
+            hiddenAttachment.bounds = CGRect.zero // Zero size
+            
+            let attachmentString = NSAttributedString(attachment: hiddenAttachment)
+            
+            // Replace the marker with the hidden attachment
+            mutableString.replaceCharacters(in: match.range, with: attachmentString)
+            print("🔍 hideDrawingTextMarkers: Replaced marker with hidden attachment")
         }
         
+        print("🔍 hideDrawingTextMarkers: Final string length: \(mutableString.length)")
         return mutableString
     }
     
