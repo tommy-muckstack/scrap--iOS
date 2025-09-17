@@ -127,8 +127,9 @@ class CheckboxManager {
         
         // Find checkbox text markers and replace with attachments
         // Using RTF-compatible text markers instead of Unicode symbols
-        let checkboxPattern = "\\[✓\\]|\\[ \\]"
-        guard let regex = try? NSRegularExpression(pattern: checkboxPattern) else {
+        // Updated pattern to handle potential encoding issues with Unicode checkmark
+        let checkboxPattern = "\\[\\s*[✓✔︎☑︎]\\s*\\]|\\[\\s*\\]"
+        guard let regex = try? NSRegularExpression(pattern: checkboxPattern, options: [.caseInsensitive]) else {
             print("❌ CheckboxManager: Failed to create regex for checkbox conversion")
             return attributedString
         }
@@ -137,13 +138,39 @@ class CheckboxManager {
         print("🔍 CheckboxManager: Found \(matches.count) checkbox Unicode characters to convert")
         
         if matches.count == 0 {
-            print("⚠️ CheckboxManager: No checkbox characters found in text: '\(text.prefix(100))...'")
+            // Enhanced debug logging to see exactly what characters we have
+            let debugText = text.prefix(200)
+            print("⚠️ CheckboxManager: No checkbox characters found in text: '\(debugText)...'")
+            
+            // Check for presence of bracket characters specifically
+            if text.contains("[") && text.contains("]") {
+                print("🔍 CheckboxManager: Text contains brackets, checking for specific patterns...")
+                do {
+                    let bracketRegex = try NSRegularExpression(pattern: "\\[[^\\]]*\\]")
+                    let bracketMatches = bracketRegex.matches(in: text, range: NSRange(location: 0, length: text.count))
+                    for match in bracketMatches {
+                        let bracketContent = (text as NSString).substring(with: match.range)
+                        print("🔍 CheckboxManager: Found bracket pattern: '\(bracketContent)'")
+                        // Print Unicode values for debugging
+                        for char in bracketContent {
+                            if let scalar = char.unicodeScalars.first {
+                                print("  - Character: '\(char)' Unicode: \\u{\(String(scalar.value, radix: 16))}")
+                            }
+                        }
+                    }
+                } catch {
+                    print("❌ CheckboxManager: Failed to create bracket debug regex")
+                }
+            }
         }
         
         // Process matches in reverse order to maintain indices
         for match in matches.reversed() {
             let character = (text as NSString).substring(with: match.range)
-            let isChecked = character == "[✓]"
+            
+            // Check if this is a checked checkbox (contains any checkmark character)
+            let checkedPattern = "[✓✔︎☑︎]"
+            let isChecked = character.range(of: checkedPattern, options: .regularExpression) != nil
             
             print("📝 CheckboxManager: Converting '\(character)' to attachment (checked: \(isChecked))")
             
