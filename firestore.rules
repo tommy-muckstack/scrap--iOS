@@ -33,6 +33,7 @@ service cloud.firestore {
     match /drawings_archived/{drawingId} {
       // Only allow writes for archiving - users can only archive drawings from their own notes
       allow create: if request.auth != null 
+        && request.auth.uid == request.resource.data.userId
         && validateArchivedDrawingData(request.resource.data);
       
       // No read or update access from frontend - archives are storage-only
@@ -125,10 +126,10 @@ function validateArchivedNoteData(data) {
 // Validate archived drawing data structure
 function validateArchivedDrawingData(data) {
   // Required fields check
-  let hasRequiredFields = data.keys().hasAll(['drawingId', 'noteId', 'base64Data', 'height', 'color', 'archivedAt', 'originalNoteId']);
+  let hasRequiredFields = data.keys().hasAll(['drawingId', 'noteId', 'base64Data', 'height', 'color', 'archivedAt', 'originalNoteId', 'userId']);
   
   // All allowed fields
-  let allowedFields = ['drawingId', 'noteId', 'base64Data', 'height', 'color', 'archivedAt', 'originalNoteId'];
+  let allowedFields = ['drawingId', 'noteId', 'base64Data', 'height', 'color', 'archivedAt', 'originalNoteId', 'userId'];
   
   // Check that all fields in data are allowed
   let hasOnlyAllowedFields = data.keys().hasOnly(allowedFields);
@@ -142,5 +143,6 @@ function validateArchivedDrawingData(data) {
     && data.color is string
     && data.color.matches('^#[0-9A-Fa-f]{6}$')  // Valid hex color
     && data.archivedAt is timestamp
-    && data.originalNoteId is string;
+    && data.originalNoteId is string
+    && data.userId is string;
 }

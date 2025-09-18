@@ -630,7 +630,8 @@ class FirebaseManager: ObservableObject {
                 base64Data: drawingDataBase64,
                 height: String(height),
                 color: color,
-                noteId: noteId
+                noteId: noteId,
+                userId: noteData["userId"] as? String ?? ""
             )
             
             print("🎨 FirebaseManager: Archived single drawing for note \(noteId)")
@@ -698,14 +699,15 @@ class FirebaseManager: ObservableObject {
                     base64Data: base64Data,
                     height: heightString,
                     color: colorString,
-                    noteId: noteId
+                    noteId: noteId,
+                    userId: noteData["userId"] as? String ?? ""
                 )
             }
         }
     }
     
     /// Archive drawing data to Firestore before deletion
-    private func archiveDrawingData(drawingId: String, base64Data: String, height: String, color: String, noteId: String) async {
+    private func archiveDrawingData(drawingId: String, base64Data: String, height: String, color: String, noteId: String, userId: String) async {
         do {
             let drawingArchive = [
                 "drawingId": drawingId,
@@ -714,7 +716,8 @@ class FirebaseManager: ObservableObject {
                 "height": height,
                 "color": color,
                 "archivedAt": Timestamp(date: Date()),
-                "originalNoteId": noteId
+                "originalNoteId": noteId,
+                "userId": userId
             ] as [String: Any]
             
             try await db.collection("drawings_archived").document(drawingId).setData(drawingArchive)
