@@ -97,7 +97,7 @@ function validateArchivedNoteData(data) {
   let hasRequiredFields = data.keys().hasAll(['userId', 'content', 'isTask', 'categories', 'createdAt', 'updatedAt', 'creationType', 'archivedAt', 'originalId']);
   
   // All allowed fields (required + optional)
-  let allowedFields = ['userId', 'content', 'isTask', 'categories', 'createdAt', 'updatedAt', 'creationType', 'archivedAt', 'originalId', 'title', 'categoryIds', 'pineconeId', 'rtfContent', 'id'];
+  let allowedFields = ['userId', 'content', 'isTask', 'categories', 'createdAt', 'updatedAt', 'creationType', 'archivedAt', 'originalId', 'title', 'categoryIds', 'pineconeId', 'rtfContent', 'id', 'hasDrawing', 'drawingData', 'drawingHeight', 'drawingColor'];
   
   // Check that all fields in data are allowed
   let hasOnlyAllowedFields = data.keys().hasOnly(allowedFields);
@@ -120,7 +120,11 @@ function validateArchivedNoteData(data) {
     && (!('categoryIds' in data.keys()) || (data.categoryIds is list && data.categoryIds.size() <= 10))
     && (!('pineconeId' in data.keys()) || data.pineconeId is string)
     && (!('rtfContent' in data.keys()) || data.rtfContent is string)
-    && (!('id' in data.keys()) || data.id is string);
+    && (!('id' in data.keys()) || data.id is string)
+    && (!('hasDrawing' in data.keys()) || data.hasDrawing is bool)
+    && (!('drawingData' in data.keys()) || data.drawingData is string)
+    && (!('drawingHeight' in data.keys()) || data.drawingHeight is number)
+    && (!('drawingColor' in data.keys()) || data.drawingColor is string);
 }
 
 // Validate archived drawing data structure
