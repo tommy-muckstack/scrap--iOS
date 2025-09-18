@@ -934,6 +934,7 @@ struct CategoryCard: View {
     let category: Category
     let isSelected: Bool
     let onToggle: () -> Void
+    @EnvironmentObject var themeManager: ThemeManager
     
     var body: some View {
         Button(action: onToggle) {
@@ -970,7 +971,7 @@ struct CategoryCard: View {
                     .fill(GentleLightning.Colors.surface)
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
-                            .stroke(isSelected ? GentleLightning.Colors.accentNeutral : GentleLightning.Colors.textSecondary.opacity(0.2), lineWidth: isSelected ? 2 : 1)
+                            .stroke(isSelected ? GentleLightning.Colors.accentNeutral : GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode).opacity(0.2), lineWidth: isSelected ? 2 : 1)
                     )
             )
         }
