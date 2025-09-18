@@ -782,13 +782,14 @@ struct CategoryManagerView: View {
                 VStack(spacing: 20) {
                     // Header
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Manage Tags")
+                        Text("Add Tags")
                             .font(GentleLightning.Typography.title)
                             .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
                         
-                        Text("\(userCategories.count)/5 tags used")
+                        Text(item.title.isEmpty ? "Untitled Note" : item.title)
                             .font(GentleLightning.Typography.caption)
                             .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
+                            .lineLimit(2)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 20)
