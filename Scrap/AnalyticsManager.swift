@@ -366,6 +366,45 @@ class AnalyticsManager: ObservableObject {
         trackEvent("app_background")
     }
     
+    // MARK: - Drawing Events (Single Drawing Per Note)
+    func trackDrawingAdded(noteId: String) {
+        trackEvent("drawing_added", properties: [
+            "note_id": noteId,
+            "drawing_type": "single_per_note"
+        ])
+    }
+    
+    func trackDrawingUpdated(noteId: String, hasContent: Bool) {
+        trackEvent("drawing_updated", properties: [
+            "note_id": noteId,
+            "has_content": hasContent,
+            "drawing_type": "single_per_note"
+        ])
+    }
+    
+    func trackDrawingHeightChanged(noteId: String, newHeight: CGFloat) {
+        trackEvent("drawing_height_changed", properties: [
+            "note_id": noteId,
+            "new_height": Int(newHeight),
+            "drawing_type": "single_per_note"
+        ])
+    }
+    
+    func trackDrawingColorChanged(noteId: String, newColor: String) {
+        trackEvent("drawing_color_changed", properties: [
+            "note_id": noteId,
+            "new_color": newColor,
+            "drawing_type": "single_per_note"
+        ])
+    }
+    
+    func trackDrawingDeleted(noteId: String) {
+        trackEvent("drawing_deleted", properties: [
+            "note_id": noteId,
+            "drawing_type": "single_per_note"
+        ])
+    }
+    
     // MARK: - Storage and Performance Control
     func flushEvents() {
         // Manually flush events - use sparingly to reduce I/O

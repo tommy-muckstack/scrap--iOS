@@ -23,7 +23,6 @@ struct NoteEditor: View {
     @State private var noteOpenTime = Date()
     @State private var hasTrackedOpen = false
     @State private var isBeingDeleted = false
-    @State private var drawingManager: DrawingOverlayManager?
     
     init(item: SparkItem, dataManager: FirebaseDataManager) {
         self.item = item
@@ -81,67 +80,11 @@ struct NoteEditor: View {
                             }
                     }
                     
-                    // Rich Text editor with drawing overlays
-                    RichTextEditorWithDrawings(
+                    // Rich Text editor - now without inline drawings since we have fixed bottom drawing
+                    RichTextEditor.forNotes(
                         text: $editedText,
                         context: richTextContext,
-                        showingFormatting: .constant(true),
-                        configuration: { textView in
-                        // Apply forNotes configuration
-                        textView.autocorrectionType = .yes
-                        textView.autocapitalizationType = .sentences
-                        textView.smartQuotesType = .yes
-                        textView.smartDashesType = .yes
-                        textView.spellCheckingType = .yes
-                        
-                        // Set cursor color to black (matching design system)
-                        textView.tintColor = UIColor.label
-                        
-                        // Improve text alignment and padding to match placeholder
-                        textView.textContainerInset = UIEdgeInsets(top: 8, left: 0, bottom: 8, right: 0)
-                        textView.textContainer.lineFragmentPadding = 4
-                        
-                        // Better line spacing for readability
-                        let paragraphStyle = NSMutableParagraphStyle()
-                        paragraphStyle.lineSpacing = 4
-                        paragraphStyle.paragraphSpacing = 8
-                        
-                        // Set default Space Grotesk font for all notes
-                        let defaultFont = UIFont(name: "SpaceGrotesk-Regular", size: 16) ?? UIFont.systemFont(ofSize: 16)
-                        
-                        textView.typingAttributes = [
-                            .paragraphStyle: paragraphStyle,
-                            .font: defaultFont,
-                            .foregroundColor: UIColor.label
-                        ]
-                    },
-                    onDrawingManagerReady: { manager in
-                        drawingManager = manager
-                        
-                        // Re-process text to restore any drawing markers that were preserved
-                        if let rtfData = item.rtfData {
-                            do {
-                                let loadedRTF = try NSAttributedString(
-                                    data: rtfData,
-                                    options: [.documentType: NSAttributedString.DocumentType.rtf],
-                                    documentAttributes: nil
-                                )
-                                
-                                // Re-process with drawing manager now available
-                                print("🎨 NoteEditor: Re-processing text with drawing manager available")
-                                let finalText = SparkItem.prepareForDisplay(loadedRTF, drawingManager: manager)
-                                
-                                // Update the rich text editor
-                                DispatchQueue.main.async {
-                                    richTextContext.setAttributedString(finalText)
-                                }
-                                
-                                print("🎨 NoteEditor: Drawing restoration complete")
-                            } catch {
-                                print("❌ NoteEditor: Failed to re-process text for drawing restoration: \(error)")
-                            }
-                        }
-                    }
+                        showingFormatting: .constant(true)
                     )
                     .padding(.horizontal, 16)
                     .focused($isTextFocused)
@@ -150,6 +93,45 @@ struct NoteEditor: View {
                         if !isBeingDeleted {
                             updateContent(editedText)
                         }
+                    }
+                    
+                    // Fixed bottom drawing area (shown when note has drawing capability)
+                    if item.hasDrawing {
+                        Divider()
+                            .padding(.horizontal, 16)
+                        
+                        FixedBottomDrawingArea(
+                            drawingData: Binding(
+                                get: { item.drawingData },
+                                set: { newData in
+                                    item.drawingData = newData
+                                    // Save drawing data to Firebase
+                                    updateDrawingData(newData)
+                                }
+                            ),
+                            drawingHeight: Binding(
+                                get: { item.drawingHeight },
+                                set: { newHeight in
+                                    item.drawingHeight = newHeight
+                                    // Save height to Firebase
+                                    updateDrawingHeight(newHeight)
+                                }
+                            ),
+                            drawingColor: Binding(
+                                get: { item.drawingColor },
+                                set: { newColor in
+                                    item.drawingColor = newColor
+                                    // Save color to Firebase
+                                    updateDrawingColor(newColor)
+                                }
+                            ),
+                            onDrawingChanged: { drawingData in
+                                // Additional callback for when drawing changes
+                                updateDrawingData(drawingData)
+                            }
+                        )
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
                     }
                     
                     Divider()
@@ -251,6 +233,14 @@ struct NoteEditor: View {
                 showingCategoryManager = true 
                 loadCategories()
             }
+            
+            // Add Drawing option (only show if note doesn't have drawing yet)
+            if !item.hasDrawing {
+                Button("Add Drawing") { 
+                    addDrawingToNote()
+                }
+            }
+            
             Button("Share") { shareNote() }
             Button("Delete", role: .destructive) { 
                 // Track delete confirmation shown
@@ -317,7 +307,7 @@ struct NoteEditor: View {
                         
                         // CRITICAL: Convert ASCII markers back to interactive checkbox attachments
                         print("🔧 NoteEditor: Converting loaded RTF checkboxes for display")
-                        finalText = SparkItem.prepareForDisplay(loadedRTF, drawingManager: drawingManager)
+                        finalText = SparkItem.prepareForDisplay(loadedRTF)
                         print("🔧 NoteEditor: Checkbox conversion complete")
                         
                     } catch {
@@ -379,7 +369,7 @@ struct NoteEditor: View {
         // Convert the attributed string to RTF data to preserve formatting
         do {
             // Use trait preservation method for better RTF compatibility
-            let rtfCompatibleString = SparkItem.prepareForRTFSave(attributedText, drawingManager: drawingManager)
+            let rtfCompatibleString = SparkItem.prepareForRTFSave(attributedText)
             let rtfData = try rtfCompatibleString.data(
                 from: NSRange(location: 0, length: rtfCompatibleString.length),
                 documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
@@ -453,6 +443,118 @@ struct NoteEditor: View {
                     isLoadingCategories = false
                 }
                 print("Failed to load categories: \(error)")
+            }
+        }
+    }
+    
+    private func addDrawingToNote() {
+        // Don't add drawing if note is being deleted
+        guard !isBeingDeleted else { return }
+        
+        // Enable drawing for this note
+        item.hasDrawing = true
+        item.drawingData = nil // Start with no drawing data
+        item.drawingHeight = 200 // Default height
+        item.drawingColor = "#000000" // Default color
+        
+        // Track drawing addition
+        AnalyticsManager.shared.trackDrawingAdded(noteId: item.firebaseId ?? item.id)
+        
+        // Save to Firebase
+        if let firebaseId = item.firebaseId {
+            Task {
+                try? await dataManager.firebaseManager.updateNoteDrawingData(
+                    noteId: firebaseId,
+                    drawingData: nil,
+                    hasDrawing: true
+                )
+                try? await dataManager.firebaseManager.updateNoteDrawingHeight(
+                    noteId: firebaseId,
+                    height: 200
+                )
+                try? await dataManager.firebaseManager.updateNoteDrawingColor(
+                    noteId: firebaseId,
+                    color: "#000000"
+                )
+            }
+        }
+    }
+    
+    // MARK: - Drawing Update Methods
+    
+    private func updateDrawingData(_ drawingData: Data?) {
+        // Don't save if note is being deleted
+        guard !isBeingDeleted else { return }
+        
+        item.drawingData = drawingData
+        
+        // Update hasDrawing based on whether drawing data exists
+        let hasDrawing = drawingData != nil && !drawingData!.isEmpty
+        if item.hasDrawing != hasDrawing {
+            item.hasDrawing = hasDrawing
+        }
+        
+        if let firebaseId = item.firebaseId {
+            Task {
+                // Update the drawing data in Firebase
+                // This will need to be implemented in FirebaseManager for single drawing per note
+                try? await dataManager.firebaseManager.updateNoteDrawingData(
+                    noteId: firebaseId, 
+                    drawingData: drawingData,
+                    hasDrawing: hasDrawing
+                )
+                
+                // Track drawing update analytics
+                AnalyticsManager.shared.trackDrawingUpdated(
+                    noteId: firebaseId,
+                    hasContent: hasDrawing
+                )
+            }
+        }
+    }
+    
+    private func updateDrawingHeight(_ height: CGFloat) {
+        // Don't save if note is being deleted
+        guard !isBeingDeleted else { return }
+        
+        item.drawingHeight = height
+        
+        if let firebaseId = item.firebaseId {
+            Task {
+                // Update the drawing height in Firebase
+                try? await dataManager.firebaseManager.updateNoteDrawingHeight(
+                    noteId: firebaseId,
+                    height: height
+                )
+                
+                // Track height change analytics
+                AnalyticsManager.shared.trackDrawingHeightChanged(
+                    noteId: firebaseId,
+                    newHeight: height
+                )
+            }
+        }
+    }
+    
+    private func updateDrawingColor(_ color: String) {
+        // Don't save if note is being deleted
+        guard !isBeingDeleted else { return }
+        
+        item.drawingColor = color
+        
+        if let firebaseId = item.firebaseId {
+            Task {
+                // Update the drawing color in Firebase
+                try? await dataManager.firebaseManager.updateNoteDrawingColor(
+                    noteId: firebaseId,
+                    color: color
+                )
+                
+                // Track color change analytics
+                AnalyticsManager.shared.trackDrawingColorChanged(
+                    noteId: firebaseId,
+                    newColor: color
+                )
             }
         }
     }

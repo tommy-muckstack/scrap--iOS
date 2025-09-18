@@ -96,16 +96,36 @@ class DrawingTextAttachment: NSTextAttachment, NSCopying {
                                  proposedLineFragment lineFrag: CGRect, 
                                  glyphPosition position: CGPoint, 
                                  characterIndex charIndex: Int) -> CGRect {
-        // Always full width of text container, fallback to a reasonable width
-        let width = textContainer?.size.width ?? max(lineFrag.width, 300)
+        
+        // CRITICAL FIX: Use a fixed width to prevent drawing repositioning when keyboard appears/disappears
+        // Instead of using textContainer width which changes with keyboard, use the line fragment width
+        // or a reasonable fallback that stays consistent
+        let width: CGFloat
+        if lineFrag.width > 0 {
+            // Use line fragment width when available (more stable than textContainer.size.width)
+            width = lineFrag.width
+        } else if let containerWidth = textContainer?.size.width, containerWidth > 0 {
+            // Fallback to container width only if line fragment is invalid
+            width = containerWidth
+        } else {
+            // Ultimate fallback to fixed width
+            width = 300
+        }
+        
         // Add padding for the options button and border
         let totalHeight = canvasHeight + 40 // 20pt top padding + 20pt bottom padding
         
-        // CRITICAL FIX: Use zero Y offset to prevent text from flowing underneath
-        // The attachment should sit on the baseline and take up its full height
-        // This ensures text flows around it properly and cursor positioning works correctly
-        let yOffset: CGFloat = 0 // Align with text baseline to prevent text underneath
+        // CRITICAL FIX: Use a simpler, more stable positioning approach
+        // Position the attachment at the baseline (y = 0) and let the layout manager handle it
+        // This prevents the drawing from jumping when the keyboard state changes
+        let yOffset: CGFloat = 0
         
+        print("🔍 DrawingTextAttachment: Setting bounds - width: \(width), height: \(totalHeight), yOffset: \(yOffset)")
+        print("🔍 DrawingTextAttachment: Line fragment: \(lineFrag), glyph position: \(position)")
+        print("🔍 DrawingTextAttachment: Text container size: \(textContainer?.size ?? CGSize.zero)")
+        print("🔍 DrawingTextAttachment: Proposed line fragment height: \(lineFrag.height)")
+        
+        // Return bounds that maintain consistent positioning regardless of keyboard state
         return CGRect(x: 0, y: yOffset, width: width, height: totalHeight)
     }
     
@@ -135,6 +155,9 @@ class DrawingTextAttachment: NSTextAttachment, NSCopying {
             imageBounds : 
             CGRect(x: 0, y: 0, width: 300, height: canvasHeight + 40)
             
+        print("🔍 DrawingTextAttachment: Rendering image for bounds: \(renderBounds)")
+        print("🔍 DrawingTextAttachment: Original imageBounds: \(imageBounds)")
+            
         let generatedImage = generateDrawingImage(bounds: renderBounds)
         
         // Also cache this image in the main image property
@@ -142,6 +165,11 @@ class DrawingTextAttachment: NSTextAttachment, NSCopying {
         
         return generatedImage
     }
+    
+    // MARK: - Additional Layout Methods
+    // Note: cellBaselineOffset() is not available in NSTextAttachment
+    // The attachment bounds method handles positioning
+    
     
     // MARK: - Image Generation
     
@@ -455,7 +483,23 @@ class DrawingManager {
                 let attachment = DrawingTextAttachment(drawingData: drawingData, height: height)
                 attachment.selectedColor = color
                 
-                let attachmentString = NSAttributedString(attachment: attachment)
+                // CRITICAL: Apply same enhanced paragraph formatting as insertion to restored drawings
+                let attachmentString = NSMutableAttributedString(attachment: attachment)
+                let paragraphStyle = NSMutableParagraphStyle()
+                paragraphStyle.lineBreakMode = .byWordWrapping
+                paragraphStyle.alignment = .left
+                
+                // CRITICAL: Match the enhanced formatting from insertion
+                let attachmentHeight = height + 40
+                paragraphStyle.minimumLineHeight = attachmentHeight
+                paragraphStyle.maximumLineHeight = attachmentHeight
+                paragraphStyle.paragraphSpacing = 15 // Space after the drawing
+                paragraphStyle.paragraphSpacingBefore = 10 // Space before the drawing
+                paragraphStyle.lineHeightMultiple = 1.0
+                
+                attachmentString.addAttribute(.paragraphStyle, 
+                                            value: paragraphStyle, 
+                                            range: NSRange(location: 0, length: attachmentString.length))
                 
                 // CRITICAL FIX: Ensure proper spacing around restored drawings
                 // Add newlines before and after the attachment to prevent text flow issues
@@ -504,8 +548,33 @@ class DrawingManager {
         
         let attachment = DrawingTextAttachment()
         print("🎨 DrawingManager: Created DrawingTextAttachment with ID: \(attachment.drawingId)")
-        let attachmentString = NSAttributedString(attachment: attachment)
-        print("🎨 DrawingManager: Created attachment string with length: \(attachmentString.length)")
+        
+        // CRITICAL FIX: Create attachment string with proper paragraph formatting
+        // to ensure it behaves as a block element
+        let attachmentString = NSMutableAttributedString(attachment: attachment)
+        
+        // CRITICAL: Set paragraph style to force block-level behavior and prevent floating
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.lineBreakMode = .byWordWrapping
+        paragraphStyle.alignment = .left
+        
+        // CRITICAL: Set line height to match attachment height exactly to prevent overlap
+        let attachmentHeight = attachment.canvasHeight + 40
+        paragraphStyle.minimumLineHeight = attachmentHeight
+        paragraphStyle.maximumLineHeight = attachmentHeight
+        
+        // CRITICAL: Add paragraph spacing to create clear separation and prevent text flow underneath
+        paragraphStyle.paragraphSpacing = 15 // Space after the drawing
+        paragraphStyle.paragraphSpacingBefore = 10 // Space before the drawing
+        
+        // CRITICAL: Set line height multiple to ensure consistent spacing
+        paragraphStyle.lineHeightMultiple = 1.0
+        
+        attachmentString.addAttribute(.paragraphStyle, 
+                                    value: paragraphStyle, 
+                                    range: NSRange(location: 0, length: attachmentString.length))
+        
+        print("🎨 DrawingManager: Created attachment string with length: \(attachmentString.length) and proper paragraph formatting")
         
         // Insert newline before drawing if not at start of line
         let lineRange = (textView.text as NSString).lineRange(for: NSRange(location: range.location, length: 0))
@@ -619,6 +688,11 @@ class DrawingManager {
         
         // 4. Force complete relayout of text container
         textView.layoutManager.ensureLayout(for: textView.textContainer)
+        
+        // 4.5. CRITICAL: Force text container to recognize attachment bounds and prevent text flow underneath
+        // This ensures the layout manager properly allocates space for block-level attachments
+        textView.textContainer.exclusionPaths = []
+        textView.textContainer.exclusionPaths = textView.textContainer.exclusionPaths // Reset exclusion paths
         
         // 5. Force view hierarchy refresh with emphasis on text rendering
         textView.setNeedsLayout()

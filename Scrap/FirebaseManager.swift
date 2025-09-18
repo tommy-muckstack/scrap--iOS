@@ -320,7 +320,7 @@ class FirebaseManager: ObservableObject {
     }
     
     // MARK: - Notes Operations
-    func createNote(content: String, title: String? = nil, categoryIds: [String] = [], isTask: Bool, categories: [String] = [], creationType: String = "text", rtfData: Data? = nil) async throws -> String {
+    func createNote(content: String, title: String? = nil, categoryIds: [String] = [], isTask: Bool, categories: [String] = [], creationType: String = "text", rtfData: Data? = nil, hasDrawing: Bool = false, drawingData: Data? = nil, drawingHeight: Double = 200, drawingColor: String = "#000000") async throws -> String {
         
         guard let userId = user?.uid else {
             print("❌ FirebaseManager: User not authenticated!")
@@ -331,6 +331,9 @@ class FirebaseManager: ObservableObject {
         
         // Convert RTF data to base64 string for Firebase storage
         let rtfContentString = rtfData?.base64EncodedString()
+        
+        // Convert drawing data to base64 string for Firebase storage
+        let drawingDataString = drawingData?.base64EncodedString()
         
         let note = FirebaseNote(
             userId: userId,
@@ -343,7 +346,11 @@ class FirebaseManager: ObservableObject {
             updatedAt: Date(),
             pineconeId: nil, // Will be updated after Pinecone insertion
             creationType: creationType,
-            rtfContent: rtfContentString // Store RTF from the start
+            rtfContent: rtfContentString, // Store RTF from the start
+            hasDrawing: hasDrawing,
+            drawingData: drawingDataString,
+            drawingHeight: drawingHeight,
+            drawingColor: drawingColor
         )
         
         print("📝 FirebaseManager: Created note object: \(note)")
@@ -497,6 +504,51 @@ class FirebaseManager: ObservableObject {
         ])
     }
     
+    // MARK: - Single Drawing Per Note Methods
+    
+    func updateNoteDrawingData(noteId: String, drawingData: Data?, hasDrawing: Bool) async throws {
+        var updateData: [String: Any] = [
+            "hasDrawing": hasDrawing,
+            "updatedAt": Date()
+        ]
+        
+        if let drawingData = drawingData {
+            // Store drawing data as base64 string for Firebase compatibility
+            updateData["drawingData"] = drawingData.base64EncodedString()
+        } else {
+            // Remove drawing data when nil
+            updateData["drawingData"] = FieldValue.delete()
+        }
+        
+        try await db.collection("notes").document(noteId).updateData(updateData)
+        
+        // Update vector search index (async, don't block update)
+        Task {
+            do {
+                let noteDoc = try await db.collection("notes").document(noteId).getDocument()
+                if let note = try? noteDoc.data(as: FirebaseNote.self) {
+                    try await VectorSearchService.shared.indexNote(note)
+                }
+            } catch {
+                print("⚠️ FirebaseManager: Failed to update vector index after drawing update: \(error)")
+            }
+        }
+    }
+    
+    func updateNoteDrawingHeight(noteId: String, height: CGFloat) async throws {
+        try await db.collection("notes").document(noteId).updateData([
+            "drawingHeight": height,
+            "updatedAt": Date()
+        ])
+    }
+    
+    func updateNoteDrawingColor(noteId: String, color: String) async throws {
+        try await db.collection("notes").document(noteId).updateData([
+            "drawingColor": color,
+            "updatedAt": Date()
+        ])
+    }
+    
     func fetchNotes(limit: Int = 50) async throws -> [FirebaseNote] {
         // Return demo data in screenshot mode
         if isScreenshotMode {
@@ -528,6 +580,9 @@ class FirebaseManager: ObservableObject {
             throw NSError(domain: "FirebaseManager", code: 404, userInfo: [NSLocalizedDescriptionKey: "Note not found"])
         }
         
+        // CRITICAL: Clean up any associated drawings before deletion
+        await cleanupDrawingsForNote(noteData: noteData, noteId: noteId)
+        
         // Create archived version with additional metadata
         var archivedData = noteData
         archivedData["archivedAt"] = Timestamp(date: Date()) // Use current timestamp instead of server timestamp
@@ -552,6 +607,172 @@ class FirebaseManager: ObservableObject {
         
         // Track analytics
         AnalyticsManager.shared.trackItemDeleted(isTask: noteData["isTask"] as? Bool ?? false)
+    }
+    
+    // MARK: - Drawing Cleanup & Archival
+    
+    /// Clean up any drawings associated with a note before deletion/archival
+    /// This function handles both the new single drawing per note and legacy inline drawings
+    /// before the note is deleted, ensuring drawings are preserved for potential restoration
+    private func cleanupDrawingsForNote(noteData: [String: Any], noteId: String) async {
+        print("🎨 FirebaseManager: Starting drawing cleanup for note \(noteId)")
+        
+        // NEW: Handle single drawing per note architecture
+        if let hasDrawing = noteData["hasDrawing"] as? Bool, hasDrawing,
+           let drawingDataBase64 = noteData["drawingData"] as? String,
+           !drawingDataBase64.isEmpty {
+            
+            let height = noteData["drawingHeight"] as? Double ?? 200.0
+            let color = noteData["drawingColor"] as? String ?? "#000000"
+            
+            await archiveDrawingData(
+                drawingId: "\(noteId)_single_drawing",
+                base64Data: drawingDataBase64,
+                height: String(height),
+                color: color,
+                noteId: noteId
+            )
+            
+            print("🎨 FirebaseManager: Archived single drawing for note \(noteId)")
+        }
+        
+        // LEGACY: Check for old inline drawings in RTF content (for backward compatibility)
+        if let rtfContentBase64 = noteData["rtfContent"] as? String,
+           let rtfData = Data(base64Encoded: rtfContentBase64) {
+            
+            await cleanupDrawingsFromRTF(rtfData: rtfData, noteId: noteId)
+        }
+        
+        // LEGACY: Also check plain content for drawing markers (fallback)
+        if let content = noteData["content"] as? String {
+            await cleanupDrawingsFromContent(content: content, noteId: noteId)
+        }
+        
+        print("✅ FirebaseManager: Drawing cleanup completed for note \(noteId)")
+    }
+    
+    /// Extract and archive drawing data from RTF content
+    private func cleanupDrawingsFromRTF(rtfData: Data, noteId: String) async {
+        do {
+            let attributedString = try NSAttributedString(
+                data: rtfData,
+                options: [.documentType: NSAttributedString.DocumentType.rtf],
+                documentAttributes: nil
+            )
+            
+            let content = attributedString.string
+            await cleanupDrawingsFromContent(content: content, noteId: noteId)
+            
+        } catch {
+            print("⚠️ FirebaseManager: Failed to extract content from RTF for drawing cleanup: \(error)")
+        }
+    }
+    
+    /// Extract and archive drawing data from plain text content
+    private func cleanupDrawingsFromContent(content: String, noteId: String) async {
+        let drawingPattern = "🎨DRAWING:([^:]*):([^:]*):([^:]*)🎨"
+        guard let regex = try? NSRegularExpression(pattern: drawingPattern, options: []) else {
+            print("⚠️ FirebaseManager: Failed to create drawing pattern regex")
+            return
+        }
+        
+        let matches = regex.matches(in: content, range: NSRange(location: 0, length: content.count))
+        
+        if matches.isEmpty {
+            print("📝 FirebaseManager: No drawings found in note \(noteId)")
+            return
+        }
+        
+        print("🎨 FirebaseManager: Found \(matches.count) drawing(s) in note \(noteId)")
+        
+        // Extract and archive drawing data
+        for (index, match) in matches.enumerated() {
+            if match.numberOfRanges >= 4 {
+                let base64Data = (content as NSString).substring(with: match.range(at: 1))
+                let heightString = (content as NSString).substring(with: match.range(at: 2))
+                let colorString = (content as NSString).substring(with: match.range(at: 3))
+                
+                // Archive the drawing data
+                await archiveDrawingData(
+                    drawingId: "\(noteId)_drawing_\(index)",
+                    base64Data: base64Data,
+                    height: heightString,
+                    color: colorString,
+                    noteId: noteId
+                )
+            }
+        }
+    }
+    
+    /// Archive drawing data to Firestore before deletion
+    private func archiveDrawingData(drawingId: String, base64Data: String, height: String, color: String, noteId: String) async {
+        do {
+            let drawingArchive = [
+                "drawingId": drawingId,
+                "noteId": noteId,
+                "base64Data": base64Data,
+                "height": height,
+                "color": color,
+                "archivedAt": Timestamp(date: Date()),
+                "originalNoteId": noteId
+            ] as [String: Any]
+            
+            try await db.collection("drawings_archived").document(drawingId).setData(drawingArchive)
+            print("✅ FirebaseManager: Archived drawing \(drawingId) from note \(noteId)")
+            
+        } catch {
+            print("❌ FirebaseManager: Failed to archive drawing \(drawingId): \(error)")
+        }
+    }
+    
+    /// Delete archived drawings for a specific note (useful for permanent deletion)
+    func deleteArchivedDrawings(forNoteId noteId: String) async throws {
+        print("🗑️ FirebaseManager: Deleting archived drawings for note \(noteId)")
+        
+        let snapshot = try await db.collection("drawings_archived")
+            .whereField("originalNoteId", isEqualTo: noteId)
+            .getDocuments()
+        
+        let batch = db.batch()
+        for document in snapshot.documents {
+            batch.deleteDocument(document.reference)
+        }
+        
+        try await batch.commit()
+        print("✅ FirebaseManager: Deleted \(snapshot.documents.count) archived drawing(s) for note \(noteId)")
+    }
+    
+    /// Get archived drawings for a specific note (useful for restoration)
+    func getArchivedDrawings(forNoteId noteId: String) async throws -> [[String: Any]] {
+        let snapshot = try await db.collection("drawings_archived")
+            .whereField("originalNoteId", isEqualTo: noteId)
+            .getDocuments()
+        
+        return snapshot.documents.map { $0.data() }
+    }
+    
+    /// Test function to verify drawing extraction from content (for debugging)
+    func testDrawingExtraction(content: String) -> [(String, String, String)] {
+        let drawingPattern = "🎨DRAWING:([^:]*):([^:]*):([^:]*)🎨"
+        guard let regex = try? NSRegularExpression(pattern: drawingPattern, options: []) else {
+            print("❌ Failed to create drawing pattern regex")
+            return []
+        }
+        
+        let matches = regex.matches(in: content, range: NSRange(location: 0, length: content.count))
+        var drawings: [(String, String, String)] = []
+        
+        for match in matches {
+            if match.numberOfRanges >= 4 {
+                let base64Data = (content as NSString).substring(with: match.range(at: 1))
+                let heightString = (content as NSString).substring(with: match.range(at: 2))
+                let colorString = (content as NSString).substring(with: match.range(at: 3))
+                drawings.append((base64Data, heightString, colorString))
+            }
+        }
+        
+        print("🔍 Found \(drawings.count) drawing(s) in content")
+        return drawings
     }
     
     func toggleNoteCompletion(noteId: String, isCompleted: Bool) async throws {
@@ -632,7 +853,11 @@ class FirebaseManager: ObservableObject {
                 updatedAt: calendar.date(byAdding: .hour, value: -2, to: now) ?? now,
                 pineconeId: nil,
                 creationType: "text",
-                rtfContent: nil
+                rtfContent: nil,
+                hasDrawing: true,
+                drawingData: nil, // In a real app, this would be base64 drawing data
+                drawingHeight: 250,
+                drawingColor: "#6B73FF"
             ),
             FirebaseNote(
                 id: "demo2",
@@ -646,7 +871,8 @@ class FirebaseManager: ObservableObject {
                 updatedAt: calendar.date(byAdding: .hour, value: -5, to: now) ?? now,
                 pineconeId: nil,
                 creationType: "text",
-                rtfContent: nil
+                rtfContent: nil,
+                hasDrawing: false
             ),
             FirebaseNote(
                 id: "demo3",
@@ -660,7 +886,8 @@ class FirebaseManager: ObservableObject {
                 updatedAt: calendar.date(byAdding: .day, value: -1, to: now) ?? now,
                 pineconeId: nil,
                 creationType: "voice",
-                rtfContent: nil
+                rtfContent: nil,
+                hasDrawing: false
             ),
             FirebaseNote(
                 id: "demo4",
@@ -674,7 +901,8 @@ class FirebaseManager: ObservableObject {
                 updatedAt: calendar.date(byAdding: .day, value: -2, to: now) ?? now,
                 pineconeId: nil,
                 creationType: "text",
-                rtfContent: nil
+                rtfContent: nil,
+                hasDrawing: false
             ),
             FirebaseNote(
                 id: "demo5",
@@ -688,7 +916,8 @@ class FirebaseManager: ObservableObject {
                 updatedAt: calendar.date(byAdding: .day, value: -3, to: now) ?? now,
                 pineconeId: nil,
                 creationType: "voice",
-                rtfContent: nil
+                rtfContent: nil,
+                hasDrawing: false
             )
         ]
     }

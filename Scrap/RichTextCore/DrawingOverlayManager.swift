@@ -391,6 +391,52 @@ public class DrawingOverlayManager: ObservableObject {
         
         return mutableString
     }
+    
+    // MARK: - Cleanup Methods
+    
+    /// Clear all drawing markers (call when note is deleted/archived)
+    public func clearAllDrawings() {
+        print("🗑️ DrawingOverlayManager: Clearing all drawing markers")
+        drawingMarkers.removeAll()
+        currentEditingDrawing = nil
+        showingDrawingEditor = false
+        print("✅ DrawingOverlayManager: Successfully cleared all drawing markers")
+    }
+    
+    /// Clear specific drawing markers by their IDs
+    public func clearDrawings(withIds drawingIds: [String]) {
+        print("🗑️ DrawingOverlayManager: Clearing \(drawingIds.count) specific drawing markers")
+        for drawingId in drawingIds {
+            drawingMarkers.removeValue(forKey: drawingId)
+            // If we're currently editing one of these drawings, close the editor
+            if currentEditingDrawing?.id == drawingId {
+                currentEditingDrawing = nil
+                showingDrawingEditor = false
+            }
+        }
+        print("✅ DrawingOverlayManager: Successfully cleared \(drawingIds.count) drawing markers")
+    }
+    
+    /// Extract all drawing IDs from note content for targeted cleanup
+    public static func extractDrawingIds(from attributedString: NSAttributedString) -> [String] {
+        let text = attributedString.string
+        var drawingIds: [String] = []
+        
+        // Find [DRAWING:ID] markers
+        let markerPattern = "\\[DRAWING:([^\\]]+)\\]"
+        if let regex = try? NSRegularExpression(pattern: markerPattern, options: []) {
+            let matches = regex.matches(in: text, range: NSRange(location: 0, length: text.count))
+            for match in matches {
+                if match.numberOfRanges >= 2 {
+                    let drawingId = (text as NSString).substring(with: match.range(at: 1))
+                    drawingIds.append(drawingId)
+                }
+            }
+        }
+        
+        print("🔍 DrawingOverlayManager: Found \(drawingIds.count) drawing IDs in note content")
+        return drawingIds
+    }
 }
 
 // MARK: - Drawing Overlay View

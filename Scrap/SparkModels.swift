@@ -15,6 +15,12 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
     var firebaseId: String?
     var rtfData: Data? // Stored RTF data for rich text formatting
     
+    // MARK: - Single Drawing Support
+    @Published var hasDrawing: Bool = false
+    var drawingData: Data? // PencilKit drawing data
+    var drawingHeight: CGFloat = 200 // Default drawing height
+    var drawingColor: String = "#000000" // Drawing color
+    
     init(content: String, title: String = "", categoryIds: [String] = [], isTask: Bool = false, id: String = UUID().uuidString) {
         self.id = id
         self.content = content
@@ -186,6 +192,16 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
                 self.rtfData = nil
             }
         }
+        
+        // Initialize single drawing properties
+        self.hasDrawing = firebaseNote.hasDrawing ?? false
+        if let base64DrawingData = firebaseNote.drawingData {
+            self.drawingData = Data(base64Encoded: base64DrawingData)
+        } else {
+            self.drawingData = nil
+        }
+        self.drawingHeight = CGFloat(firebaseNote.drawingHeight ?? 200)
+        self.drawingColor = firebaseNote.drawingColor ?? "#000000"
     }
     
     var displayTitle: String {
@@ -228,7 +244,7 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
     }
     
     // Prepare attributed string for RTF saving by ensuring system fonts with proper traits
-    static func prepareForRTFSave(_ attributedString: NSAttributedString, drawingManager: DrawingOverlayManager? = nil) -> NSAttributedString {
+    static func prepareForRTFSave(_ attributedString: NSAttributedString) -> NSAttributedString {
         let mutableString = NSMutableAttributedString(attributedString: attributedString)
         
         // First, convert NSTextAttachment checkboxes to Unicode characters for RTF persistence
@@ -236,28 +252,8 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
         let checkboxProcessedString = CheckboxManager.convertAttachmentsToUnicodeCheckboxes(mutableString)
         print("🔧 SparkItem.prepareForRTFSave: Checkbox conversion complete")
         
-        // Then, convert drawing overlays to text markers for RTF persistence
-        print("🎨 SparkItem.prepareForRTFSave: Converting drawing overlays to text markers before RTF save")
-        // Check for drawing overlay markers in the string
-        let overlayMarkerPattern = "\\[DRAWING:([^\\]]+)\\]"
-        if let regex = try? NSRegularExpression(pattern: overlayMarkerPattern) {
-            let overlayMarkersFound = regex.matches(in: checkboxProcessedString.string, range: NSRange(location: 0, length: checkboxProcessedString.string.count)).count
-            print("🎨 SparkItem.prepareForRTFSave: Found \(overlayMarkersFound) drawing overlay markers to convert")
-        } else {
-            print("🎨 SparkItem.prepareForRTFSave: Failed to create regex for overlay markers")
-        }
-        
-        // Convert overlay markers to text markers using DrawingOverlayManager
-        let drawingProcessedString: NSAttributedString
-        if let drawingManager = drawingManager {
-            drawingProcessedString = drawingManager.convertToTextMarkers(checkboxProcessedString)
-        } else {
-            // No drawing manager provided, so no drawing conversion
-            print("⚠️ SparkItem.prepareForRTFSave: No drawing manager provided, skipping drawing conversion")
-            drawingProcessedString = checkboxProcessedString
-        }
-        let finalMutableString = NSMutableAttributedString(attributedString: drawingProcessedString)
-        print("🎨 SparkItem.prepareForRTFSave: Drawing overlay conversion complete")
+        // Note: Drawing overlay conversion removed - using single drawing per note architecture
+        let finalMutableString = NSMutableAttributedString(attributedString: checkboxProcessedString)
         
         // Debug: Check if we have drawing markers in the final string
         if finalMutableString.string.contains("🎨DRAWING:") {
@@ -406,24 +402,15 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
     }
     
     // Convert system fonts back to SpaceGrotesk fonts while preserving formatting traits
-    static func prepareForDisplay(_ attributedString: NSAttributedString, drawingManager: DrawingOverlayManager? = nil) -> NSAttributedString {
+    static func prepareForDisplay(_ attributedString: NSAttributedString) -> NSAttributedString {
         let mutableString = NSMutableAttributedString(attributedString: attributedString)
         
         
         // First, convert Unicode checkboxes to NSTextAttachment for better display
         let checkboxProcessedString = CheckboxManager.convertUnicodeCheckboxesToAttachments(mutableString)
         
-        // Then, convert drawing text markers back to drawing attachments for display
-        let drawingProcessedString: NSAttributedString
-        if let drawingManager = drawingManager {
-            // Use the provided drawing manager to restore overlay markers
-            drawingProcessedString = drawingManager.restoreFromTextMarkers(checkboxProcessedString)
-        } else {
-            // No drawing manager provided, preserve the text markers for later processing
-            // but hide them from display by making them invisible
-            drawingProcessedString = hideDrawingTextMarkers(checkboxProcessedString)
-        }
-        let finalMutableString = NSMutableAttributedString(attributedString: drawingProcessedString)
+        // Note: Drawing text marker conversion removed - using single drawing per note architecture
+        let finalMutableString = NSMutableAttributedString(attributedString: checkboxProcessedString)
         
         
         // Then get the range after potential length changes from checkbox conversion
@@ -500,44 +487,6 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
         return finalMutableString
     }
     
-    /// Hide drawing text markers by making them invisible while preserving them for overlay processing
-    private static func hideDrawingTextMarkers(_ attributedString: NSAttributedString) -> NSAttributedString {
-        let mutableString = NSMutableAttributedString(attributedString: attributedString)
-        let text = mutableString.string
-        
-        print("🔍 hideDrawingTextMarkers: Processing string with length \(text.count)")
-        
-        // Find drawing markers
-        let drawingPattern = "🎨DRAWING:([^:]*):([^:]*):([^:]*)🎨"
-        guard let regex = try? NSRegularExpression(pattern: drawingPattern, options: []) else {
-            print("❌ hideDrawingTextMarkers: Failed to create regex")
-            return attributedString
-        }
-        
-        let matches = regex.matches(in: text, range: NSRange(location: 0, length: text.count))
-        print("🔍 hideDrawingTextMarkers: Found \(matches.count) drawing markers to hide")
-        
-        // Process matches in reverse order to maintain indices
-        for (index, match) in matches.reversed().enumerated() {
-            print("🔍 hideDrawingTextMarkers: Processing match \(index + 1) at range \(match.range)")
-            
-            // CRITICAL FIX: Instead of just making the marker invisible, 
-            // replace it with a completely hidden zero-width attachment
-            // This ensures the drawing markers don't show up as text
-            let hiddenAttachment = NSTextAttachment()
-            hiddenAttachment.image = UIImage() // Empty image
-            hiddenAttachment.bounds = CGRect.zero // Zero size
-            
-            let attachmentString = NSAttributedString(attachment: hiddenAttachment)
-            
-            // Replace the marker with the hidden attachment
-            mutableString.replaceCharacters(in: match.range, with: attachmentString)
-            print("🔍 hideDrawingTextMarkers: Replaced marker with hidden attachment")
-        }
-        
-        print("🔍 hideDrawingTextMarkers: Final string length: \(mutableString.length)")
-        return mutableString
-    }
     
 }
 
@@ -604,7 +553,50 @@ struct FirebaseNote: Identifiable, Codable {
     let creationType: String
     let rtfContent: String? // RTF data stored as base64 string
     
+    // MARK: - Single Drawing Support
+    let hasDrawing: Bool?
+    let drawingData: String? // Base64 encoded PencilKit data
+    let drawingHeight: Double? // Drawing canvas height
+    let drawingColor: String? // Drawing color hex
+    
     var wrappedContent: String { content }
+    
+    // Custom initializer for creating new notes with single drawing support
+    init(
+        id: String? = nil,
+        userId: String,
+        content: String,
+        title: String? = nil,
+        categoryIds: [String]? = nil,
+        isTask: Bool,
+        categories: [String] = [],
+        createdAt: Date,
+        updatedAt: Date,
+        pineconeId: String? = nil,
+        creationType: String,
+        rtfContent: String? = nil,
+        hasDrawing: Bool? = nil,
+        drawingData: String? = nil,
+        drawingHeight: Double? = nil,
+        drawingColor: String? = nil
+    ) {
+        self.id = id
+        self.userId = userId
+        self.content = content
+        self.title = title
+        self.categoryIds = categoryIds
+        self.isTask = isTask
+        self.categories = categories
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.pineconeId = pineconeId
+        self.creationType = creationType
+        self.rtfContent = rtfContent
+        self.hasDrawing = hasDrawing
+        self.drawingData = drawingData
+        self.drawingHeight = drawingHeight
+        self.drawingColor = drawingColor
+    }
 }
 
 struct FirebaseCategory: Codable {

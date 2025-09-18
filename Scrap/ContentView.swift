@@ -517,13 +517,13 @@ class FirebaseDataManager: ObservableObject {
         }
     }
     
-    func createItemFromAttributedText(_ attributedText: NSAttributedString, creationType: String = "rich_text", drawingManager: DrawingOverlayManager? = nil) {
+    func createItemFromAttributedText(_ attributedText: NSAttributedString, creationType: String = "rich_text") {
         print("📝 Creating item from NSAttributedString with \(attributedText.length) characters")
         
         // Convert attributed text to RTF data for storage using trait preservation
         var rtfData: Data? = nil
         do {
-            let rtfCompatibleString = SparkItem.prepareForRTFSave(attributedText, drawingManager: drawingManager)
+            let rtfCompatibleString = SparkItem.prepareForRTFSave(attributedText)
             rtfData = try rtfCompatibleString.data(
                 from: NSRange(location: 0, length: rtfCompatibleString.length),
                 documentAttributes: [NSAttributedString.DocumentAttributeKey.documentType: NSAttributedString.DocumentType.rtf]
@@ -714,7 +714,6 @@ struct InputField: View {
     // Rich text state management
     @State private var attributedText = NSAttributedString()
     @StateObject private var richTextContext = RichTextContext()
-    @State private var richTextDrawingManager: DrawingOverlayManager? = nil
     
     // Voice recording state
     @State private var isRecording = false
@@ -864,7 +863,7 @@ struct InputField: View {
                             AnalyticsManager.shared.trackNoteSaved(method: "button", contentLength: attributedText.string.count)
                             
                             // Create new item with rich text formatting
-                            dataManager.createItemFromAttributedText(attributedText, creationType: "rich_text", drawingManager: richTextDrawingManager)
+                            dataManager.createItemFromAttributedText(attributedText, creationType: "rich_text")
                             
                             // Clear both text fields
                             text = ""
@@ -1297,6 +1296,24 @@ struct ItemRowSimple: View {
             .scaleEffect(isNavigating ? 0.98 : 1.0)
         }
         .buttonStyle(PlainButtonStyle())
+        .contextMenu {
+            Button(action: {
+                // Add scribble/drawing to this note
+                Task {
+                    await addScribbleToNote()
+                }
+            }) {
+                Label("Add Scribble", systemImage: "scribble")
+            }
+            
+            Divider()
+            
+            Button("Delete", role: .destructive) {
+                withAnimation(GentleLightning.Animation.gentle) {
+                    dataManager.deleteItem(item)
+                }
+            }
+        }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button("Delete") {
                 withAnimation(GentleLightning.Animation.gentle) {
@@ -1304,6 +1321,61 @@ struct ItemRowSimple: View {
                 }
             }
             .tint(.red)
+        }
+    }
+    
+    // MARK: - Single Drawing Support
+    
+    /// Add a scribble/drawing to this note using single drawing per note architecture
+    private func addScribbleToNote() async {
+        guard let firebaseId = item.firebaseId else {
+            print("❌ ItemRowSimple: Cannot add scribble - note has no Firebase ID")
+            return
+        }
+        
+        // Update the item to indicate it has a drawing
+        await MainActor.run {
+            item.hasDrawing = true
+            // Initialize with empty drawing data - will be populated when user first draws
+            item.drawingData = nil
+            item.drawingHeight = 200 // Default height
+            item.drawingColor = "#000000" // Default black color
+        }
+        
+        // Update Firebase to reflect the change using the new Firebase methods
+        do {
+            // Use the dedicated Firebase methods for single drawing updates
+            try await FirebaseManager.shared.updateNoteDrawingData(
+                noteId: firebaseId,
+                drawingData: nil, // No drawing data initially
+                hasDrawing: true
+            )
+            
+            try await FirebaseManager.shared.updateNoteDrawingHeight(
+                noteId: firebaseId,
+                height: 200
+            )
+            
+            try await FirebaseManager.shared.updateNoteDrawingColor(
+                noteId: firebaseId,
+                color: "#000000"
+            )
+            
+            print("✅ ItemRowSimple: Successfully added scribble capability to note \(firebaseId)")
+            
+            // Track analytics for drawing addition
+            AnalyticsManager.shared.trackDrawingUpdated(
+                noteId: firebaseId,
+                hasDrawing: true,
+                drawingDataSize: 0
+            )
+            
+        } catch {
+            print("❌ ItemRowSimple: Failed to update note with scribble capability: \(error)")
+            // Revert local change on error
+            await MainActor.run {
+                item.hasDrawing = false
+            }
         }
     }
 }
@@ -1553,7 +1625,6 @@ struct ContentView: View {
     @State private var attributedText = NSAttributedString()
     @State private var navigationPath = NavigationPath()
     @State private var showingAccountDrawer = false
-    @State private var richTextDrawingManager: DrawingOverlayManager? = nil
     @FocusState private var isInputFieldFocused: Bool
     
     // Search functionality

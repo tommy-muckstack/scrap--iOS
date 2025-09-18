@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		FB278C4CB2A378355238193FA1 /* FixedBottomDrawingArea.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB5E37779F8FB657FA73F4A60C /* FixedBottomDrawingArea.swift */; };
 		DO22EF6301C71B2462B4C64710 /* DrawingOverlayManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DOD8C7102D79E20AB0D28D61AB /* DrawingOverlayManager.swift */; };
 		DV79E89AC389D89736E6DD85CB /* DrawingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DV1493A473BC9059A7BA221CB2 /* DrawingView.swift */; };
 		DT065B225F8776AB27F25855E4 /* DrawingTextAttachment.swift in Sources */ = {isa = PBXBuildFile; fileRef = DT7D6F3F7DC267AEB075D83B9C /* DrawingTextAttachment.swift */; };
@@ -98,6 +99,7 @@
 		1D1A2B262B1234567890ABCC /* Scrap.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Scrap.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1D1A2B292B1234567890ABCD /* ScrapApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrapApp.swift; sourceTree = "<group>"; };
 		1D1A2B2B2B1234567890ABCE /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		FB5E37779F8FB657FA73F4A60C /* FixedBottomDrawingArea.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/FixedBottomDrawingArea.swift; sourceTree = "<group>"; };
 		DOD8C7102D79E20AB0D28D61AB /* DrawingOverlayManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/DrawingOverlayManager.swift; sourceTree = "<group>"; };
 		1D1A2B2D2B1234567890ABCF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1D1A2B302B1234567890ABD0 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
@@ -214,6 +216,7 @@
 				BB304E792E6F9E750054DD40 /* GoogleService-Info.plist */,
 				1D1A2B292B1234567890ABCD /* ScrapApp.swift */,
 				1D1A2B2B2B1234567890ABCE /* ContentView.swift */,
+				FB5E37779F8FB657FA73F4A60C /* FixedBottomDrawingArea.swift */,
 				DOD8C7102D79E20AB0D28D61AB /* DrawingOverlayManager.swift */,
 				WV4D495EF6CFBCA907B22BE841 /* RichTextCore/WaveformView.swift */,
 				CB9C978ACDF7B3C5EE3AA9E274 /* RichTextCore/CheckboxTextAttachment.swift */,
@@ -447,6 +450,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1D1A2B2C2B1234567890ABCE /* ContentView.swift in Sources */,
+				FB278C4CB2A378355238193FA1 /* FixedBottomDrawingArea.swift in Sources */,
 				DO22EF6301C71B2462B4C64710 /* DrawingOverlayManager.swift in Sources */,
 				WV324054AB161F2E7C28E40AB1 /* RichTextCore/WaveformView.swift in Sources */,
 				CB8B2374A7366A9664FA926D92 /* RichTextCore/CheckboxTextAttachment.swift in Sources */,

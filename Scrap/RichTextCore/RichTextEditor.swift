@@ -103,6 +103,14 @@ public struct RichTextEditor: UIViewRepresentable {
         // Connect drawing manager to text view if available
         drawingManager?.connectTextView(textView)
         
+        // CRITICAL FIX: Connect drawing manager to coordinator for overlay system
+        coordinator.drawingManager = drawingManager
+        if drawingManager != nil {
+            print("✅ RichTextEditor: Successfully connected DrawingOverlayManager to coordinator")
+        } else {
+            print("⚠️ RichTextEditor: No DrawingOverlayManager available, will use fallback NSTextAttachment method")
+        }
+        
         // Add tap gesture for checkbox toggling
         let tapGesture = UITapGestureRecognizer(target: coordinator, action: #selector(RichTextCoordinator.handleTap(_:)))
         tapGesture.numberOfTapsRequired = 1
@@ -180,8 +188,7 @@ public struct RichTextEditor: UIViewRepresentable {
             context: context
         )
         
-        // Set up drawing manager integration if available
-        coordinator.drawingManager = drawingManager
+        // DrawingManager will be set in makeUIView after proper initialization
         
         return coordinator
     }
