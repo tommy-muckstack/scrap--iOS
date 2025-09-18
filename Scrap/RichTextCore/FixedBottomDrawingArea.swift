@@ -7,7 +7,7 @@ import UIKit
 struct FixedBottomDrawingArea: View {
     @Binding var drawingData: Data?
     @Binding var drawingHeight: CGFloat
-    @Binding var drawingColor: String
+    @Binding var drawingColor: DrawingColor
     @State private var showingDrawingEditor = false
     @State private var canvasView = PKCanvasView()
     
@@ -20,7 +20,7 @@ struct FixedBottomDrawingArea: View {
     init(
         drawingData: Binding<Data?>,
         drawingHeight: Binding<CGFloat>,
-        drawingColor: Binding<String>,
+        drawingColor: Binding<DrawingColor>,
         onDrawingChanged: @escaping (Data?) -> Void = { _ in }
     ) {
         self._drawingData = drawingData
@@ -49,7 +49,7 @@ struct FixedBottomDrawingArea: View {
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
         .sheet(isPresented: $showingDrawingEditor) {
-            DrawingEditorView(
+            DrawingView(
                 drawingData: $drawingData,
                 canvasHeight: $drawingHeight,
                 selectedColor: $drawingColor,
@@ -176,155 +176,34 @@ struct DrawingDisplayView: UIViewRepresentable {
     func updateUIView(_ uiView: PKCanvasView, context: Context) {
         // Update drawing if data changes
         if let drawing = try? PKDrawing(data: drawingData) {
-            if !uiView.drawing.isEqual(drawing) {
+            if uiView.drawing.dataRepresentation() != drawingData {
                 uiView.drawing = drawing
             }
         }
     }
 }
 
-/// Full-screen drawing editor for editing the drawing
-struct DrawingEditorView: View {
-    @Binding var drawingData: Data?
-    @Binding var canvasHeight: CGFloat
-    @Binding var selectedColor: String
-    @Environment(\.presentationMode) var presentationMode
-    @State private var canvasView = PKCanvasView()
-    @State private var showingDeleteConfirmation = false
-    
-    let onSave: (Data?, CGFloat, String) -> Void
-    let onDelete: () -> Void
-    
-    var body: some View {
-        NavigationView {
-            VStack(spacing: 0) {
-                // Drawing canvas
-                DrawingCanvasView(
-                    canvasView: $canvasView,
-                    drawingData: $drawingData,
-                    selectedColor: selectedColor
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(.systemGray6))
-                
-                // Color picker
-                colorPickerView
-                    .padding()
-                    .background(Color(.systemBackground))
-            }
-            .navigationTitle("Edit Scribble")
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationBarItems(
-                leading: Button("Cancel") {
-                    presentationMode.wrappedValue.dismiss()
-                },
-                trailing: HStack {
-                    if drawingData != nil {
-                        Button("Delete") {
-                            showingDeleteConfirmation = true
-                        }
-                        .foregroundColor(.red)
-                    }
-                    
-                    Button("Save") {
-                        saveDrawing()
-                    }
-                    .fontWeight(.semibold)
-                }
-            )
-        }
-        .alert("Delete Scribble", isPresented: $showingDeleteConfirmation) {
-            Button("Delete", role: .destructive) {
-                onDelete()
-            }
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text("Are you sure you want to delete this scribble? This action cannot be undone.")
-        }
-        .onAppear {
-            setupCanvas()
-        }
-    }
-    
-    @ViewBuilder
-    private var colorPickerView: some View {
-        HStack(spacing: 16) {
-            Text("Color:")
-                .font(.system(size: 16, weight: .medium))
-            
-            HStack(spacing: 12) {
-                ForEach(drawingColors, id: \.self) { color in
-                    Button(action: {
-                        selectedColor = color
-                        updateCanvasInkColor()
-                    }) {
-                        Circle()
-                            .fill(Color(hex: color) ?? .black)
-                            .frame(width: 32, height: 32)
-                            .overlay(
-                                Circle()
-                                    .stroke(selectedColor == color ? Color.blue : Color.clear, lineWidth: 3)
-                            )
-                    }
-                }
-            }
-            
-            Spacer()
-        }
-    }
-    
-    private let drawingColors = [
-        "#000000", // Black
-        "#6B73FF", // Blue  
-        "#9F7AEA", // Purple
-        "#4FD1C7", // Teal
-        "#68D391", // Green
-        "#F6AD55"  // Orange
-    ]
-    
-    private func setupCanvas() {
-        canvasView.tool = PKInkingTool(.pen, color: UIColor(hex: selectedColor) ?? .black, width: 3)
-        canvasView.allowsFingerDrawing = true
-        
-        // Load existing drawing if available
-        if let data = drawingData, let drawing = try? PKDrawing(data: data) {
-            canvasView.drawing = drawing
-        }
-    }
-    
-    private func updateCanvasInkColor() {
-        let color = UIColor(hex: selectedColor) ?? .black
-        canvasView.tool = PKInkingTool(.pen, color: color, width: 3)
-    }
-    
-    private func saveDrawing() {
-        let drawing = canvasView.drawing
-        let data = drawing.dataRepresentation()
-        onSave(data.isEmpty ? nil : data, canvasHeight, selectedColor)
-    }
-}
 
 /// UIViewRepresentable wrapper for PKCanvasView
 struct DrawingCanvasView: UIViewRepresentable {
     @Binding var canvasView: PKCanvasView
     @Binding var drawingData: Data?
-    let selectedColor: String
+    let selectedColor: DrawingColor
     
     func makeUIView(context: Context) -> PKCanvasView {
         canvasView.backgroundColor = UIColor.clear
         canvasView.isOpaque = false
-        canvasView.allowsFingerDrawing = true
+        canvasView.drawingPolicy = .anyInput
         
         // Set initial tool
-        let color = UIColor(hex: selectedColor) ?? .black
-        canvasView.tool = PKInkingTool(.pen, color: color, width: 3)
+        canvasView.tool = PKInkingTool(.pen, color: selectedColor.uiColor, width: 3)
         
         return canvasView
     }
     
     func updateUIView(_ uiView: PKCanvasView, context: Context) {
         // Update tool color if it changed
-        let newColor = UIColor(hex: selectedColor) ?? .black
+        let newColor = selectedColor.uiColor
         if let currentTool = uiView.tool as? PKInkingTool,
            currentTool.color != newColor {
             uiView.tool = PKInkingTool(.pen, color: newColor, width: 3)
@@ -344,7 +223,7 @@ struct FixedBottomDrawingArea_Previews: PreviewProvider {
             FixedBottomDrawingArea(
                 drawingData: .constant(nil),
                 drawingHeight: .constant(200),
-                drawingColor: .constant("#000000")
+                drawingColor: .constant(.black)
             )
             .padding()
         }

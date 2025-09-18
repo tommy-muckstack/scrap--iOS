@@ -1493,13 +1493,13 @@ struct AccountDrawerView: View {
                                 .font(GentleLightning.Typography.body)
                             Spacer()
                         }
-                        .foregroundColor(GentleLightning.Colors.textBlack)
+                        .foregroundColor(themeManager.isDarkMode ? GentleLightning.Colors.textPrimary(isDark: true) : GentleLightning.Colors.textBlack)
                         .padding(.horizontal, 20)
                         .padding(.vertical, 16)
                         .background(
                             RoundedRectangle(cornerRadius: 12)
-                                .fill(GentleLightning.Colors.surface)
-                                .shadow(color: GentleLightning.Colors.shadowLight, radius: 4, x: 0, y: 1)
+                                .fill(themeManager.isDarkMode ? Color.black : GentleLightning.Colors.surface)
+                                .shadow(color: themeManager.isDarkMode ? GentleLightning.Colors.shadow(isDark: true) : GentleLightning.Colors.shadowLight, radius: 4, x: 0, y: 1)
                         )
                     }
                     .buttonStyle(PlainButtonStyle())
@@ -1520,8 +1520,8 @@ struct AccountDrawerView: View {
                         .padding(.vertical, 16)
                         .background(
                             RoundedRectangle(cornerRadius: 12)
-                                .fill(GentleLightning.Colors.surface)
-                                .shadow(color: GentleLightning.Colors.shadowLight, radius: 4, x: 0, y: 1)
+                                .fill(themeManager.isDarkMode ? Color.black : GentleLightning.Colors.surface)
+                                .shadow(color: themeManager.isDarkMode ? GentleLightning.Colors.shadow(isDark: true) : GentleLightning.Colors.shadowLight, radius: 4, x: 0, y: 1)
                         )
                     }
                     .buttonStyle(PlainButtonStyle())
