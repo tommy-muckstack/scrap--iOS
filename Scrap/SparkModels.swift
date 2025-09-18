@@ -100,7 +100,6 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
                 // RTF content loaded successfully
                 
                 // Check for specific checkbox patterns in the loaded content
-                let content = loadedAttributedString.string
                 // Silent checkbox pattern detection
                 // Silent checkbox pattern detection continues
                 
