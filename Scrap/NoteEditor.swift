@@ -854,7 +854,7 @@ struct CategoryManagerView: View {
                     Text(errorMessage)
                 }
             }
-            .navigationTitle(showingCreateForm ? "" : "Tags")
+            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
