@@ -8,12 +8,12 @@ class ThemeManager: ObservableObject {
     static let shared = ThemeManager()
     
     private init() {
-        // Load saved preference or use system default
+        // Load saved preference or default to light mode
         if let savedPreference = UserDefaults.standard.object(forKey: "isDarkMode") as? Bool {
             isDarkMode = savedPreference
         } else {
-            // Default to system appearance
-            isDarkMode = UITraitCollection.current.userInterfaceStyle == .dark
+            // Always default to light mode regardless of system settings
+            isDarkMode = false
         }
     }
     

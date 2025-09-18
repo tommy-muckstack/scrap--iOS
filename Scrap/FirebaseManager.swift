@@ -639,6 +639,7 @@ class FirebaseManager: ObservableObject {
         
         // Get userId for archival authorization
         let userId = noteData["userId"] as? String ?? ""
+        print("🔍 FirebaseManager: Extracted userId from noteData: '\(userId)' (empty: \(userId.isEmpty))")
         
         // LEGACY: Check for old inline drawings in RTF content (for backward compatibility)
         if let rtfContentBase64 = noteData["rtfContent"] as? String,
@@ -722,6 +723,9 @@ class FirebaseManager: ObservableObject {
                 "originalNoteId": noteId,
                 "userId": userId
             ] as [String: Any]
+            
+            print("🔍 FirebaseManager: Attempting to archive drawing with userId: '\(userId)' (length: \(userId.count))")
+            print("🔍 FirebaseManager: Current user ID: '\(user?.uid ?? "nil")'")
             
             try await db.collection("drawings_archived").document(drawingId).setData(drawingArchive)
             print("✅ FirebaseManager: Archived drawing \(drawingId) from note \(noteId)")
