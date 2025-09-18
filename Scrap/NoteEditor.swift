@@ -5,6 +5,7 @@ struct NoteEditor: View {
     @ObservedObject var item: SparkItem
     let dataManager: FirebaseDataManager
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var themeManager: ThemeManager
     
     @State private var editedText: NSAttributedString
     @State private var editedTitle: String
@@ -52,7 +53,7 @@ struct NoteEditor: View {
                         if editedTitle.isEmpty {
                             Text("Title (optional)")
                                 .font(GentleLightning.Typography.title)
-                                .foregroundColor(GentleLightning.Colors.textSecondary.opacity(0.6))
+                                .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode).opacity(0.6))
                                 .padding(.horizontal, 16)
                                 .padding(.top, 16 + 8) // Match TextEditor padding + text offset
                                 .allowsHitTesting(false)
@@ -61,7 +62,7 @@ struct NoteEditor: View {
                         // Multiline text editor for title
                         TextEditor(text: $editedTitle)
                             .font(GentleLightning.Typography.title)
-                            .foregroundColor(GentleLightning.Colors.textPrimary)
+                            .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
                             .scrollContentBackground(.hidden)
                             .background(Color.clear)
                             .padding(.horizontal, 16)
@@ -142,14 +143,14 @@ struct NoteEditor: View {
                         HStack {
                             Text("Tags:")
                                 .font(GentleLightning.Typography.caption)
-                                .foregroundColor(GentleLightning.Colors.textSecondary)
+                                .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
                             
                             // Simple text list of tag names
                             Text(userCategories.filter { category in
                                 selectedCategories.contains(category.firebaseId ?? category.id)
                             }.map { $0.name }.joined(separator: ", "))
                                 .font(GentleLightning.Typography.caption)
-                                .foregroundColor(GentleLightning.Colors.textPrimary)
+                                .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
                             
                             Spacer()
                         }
@@ -206,7 +207,7 @@ struct NoteEditor: View {
             }) {
                 Image(systemName: GentleLightning.Icons.navigationBack)
                     .font(.system(size: 20, weight: .medium))
-                    .foregroundColor(.black)
+                    .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
             },
             trailing: Button(action: { 
                 // Track options menu opened
@@ -215,13 +216,13 @@ struct NoteEditor: View {
             }) {
                 VStack(spacing: 3) {
                     Circle()
-                        .fill(Color.black)
+                        .fill(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
                         .frame(width: 4, height: 4)
                     Circle()
-                        .fill(Color.black)
+                        .fill(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
                         .frame(width: 4, height: 4)
                     Circle()
-                        .fill(Color.black)
+                        .fill(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
                         .frame(width: 4, height: 4)
                 }
                 .frame(width: 24, height: 24)
@@ -750,6 +751,7 @@ struct CategoryManagerView: View {
     let onCategoryUpdate: ([String]) -> Void
     
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var themeManager: ThemeManager
     @State private var showingCreateForm = false
     @State private var newCategoryName = ""
     @State private var selectedColorKey = ""
@@ -782,11 +784,11 @@ struct CategoryManagerView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Manage Tags")
                             .font(GentleLightning.Typography.title)
-                            .foregroundColor(GentleLightning.Colors.textPrimary)
+                            .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
                         
                         Text("\(userCategories.count)/5 tags used")
                             .font(GentleLightning.Typography.caption)
-                            .foregroundColor(GentleLightning.Colors.textSecondary)
+                            .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 20)
@@ -796,11 +798,11 @@ struct CategoryManagerView: View {
                         VStack(spacing: 16) {
                             Text("No tags yet")
                                 .font(GentleLightning.Typography.subtitle)
-                                .foregroundColor(GentleLightning.Colors.textSecondary)
+                                .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
                             
                             Text("Create your first tag to organize your notes")
                                 .font(GentleLightning.Typography.secondary)
-                                .foregroundColor(GentleLightning.Colors.textSecondary)
+                                .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
                                 .multilineTextAlignment(.center)
                         }
                         .padding(40)
@@ -858,7 +860,7 @@ struct CategoryManagerView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") { dismiss() }
                         .font(GentleLightning.Typography.body)
-                        .foregroundColor(.black)
+                        .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
                 }
             }
         }
@@ -952,14 +954,14 @@ struct CategoryCard: View {
                 // Category name
                 Text(category.name)
                     .font(GentleLightning.Typography.body)
-                    .foregroundColor(GentleLightning.Colors.textPrimary)
+                    .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
                 
                 // Usage count
                 Text("\(category.usageCount) notes")
                     .font(GentleLightning.Typography.caption)
-                    .foregroundColor(GentleLightning.Colors.textSecondary)
+                    .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
             }
             .frame(height: 120)
             .frame(maxWidth: .infinity)
@@ -983,6 +985,7 @@ struct CreateTagInlineView: View {
     let availableColors: [(key: String, hex: String, name: String)]
     let onCancel: () -> Void
     let onCreate: (String, String) -> Void
+    @EnvironmentObject var themeManager: ThemeManager
     
     var body: some View {
         VStack(spacing: 24) {
@@ -991,7 +994,7 @@ struct CreateTagInlineView: View {
                 Button(action: onCancel) {
                     Image(systemName: GentleLightning.Icons.navigationBack)
                         .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(.black)
+                        .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
                 }
                 
                 Spacer()

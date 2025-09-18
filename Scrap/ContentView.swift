@@ -242,27 +242,35 @@ struct GentleLightning {
         }
         
         static func textPrimary(isDark: Bool) -> Color {
-            isDark ? Color(red: 0.224, green: 1.0, blue: 0.078) : Color(red: 0.12, green: 0.12, blue: 0.15) // #39FF14 for dark mode
+            isDark ? Color.white : Color(red: 0.12, green: 0.12, blue: 0.15) // White for dark mode, original dark color for light mode
         }
         
         static func textSecondary(isDark: Bool) -> Color {
-            isDark ? Color(red: 0.224, green: 1.0, blue: 0.078).opacity(0.7) : Color(red: 0.45, green: 0.45, blue: 0.5) // Dimmed neon green
+            isDark ? Color.white.opacity(0.7) : Color(red: 0.45, green: 0.45, blue: 0.5) // Dimmed white for dark mode
         }
         
         static func textTertiary(isDark: Bool) -> Color {
-            isDark ? Color(red: 0.224, green: 1.0, blue: 0.078).opacity(0.5) : Color(red: 0.60, green: 0.60, blue: 0.65) // More dimmed neon green
+            isDark ? Color.white.opacity(0.5) : Color(red: 0.60, green: 0.60, blue: 0.65) // More dimmed white for dark mode
         }
         
         static func border(isDark: Bool) -> Color {
-            isDark ? Color(red: 0.224, green: 1.0, blue: 0.078).opacity(0.3) : Color(red: 0.90, green: 0.90, blue: 0.92) // Subtle neon green border
+            isDark ? Color.white.opacity(0.3) : Color(red: 0.90, green: 0.90, blue: 0.92) // Subtle white border for dark mode
         }
         
         static func shadow(isDark: Bool) -> Color {
-            isDark ? Color(red: 0.224, green: 1.0, blue: 0.078).opacity(0.1) : Color.black.opacity(0.03) // Subtle neon glow
+            isDark ? Color.white.opacity(0.1) : Color.black.opacity(0.03) // Subtle white glow for dark mode
         }
         
         static func drawerHandle(isDark: Bool) -> Color {
-            isDark ? Color(red: 0.65, green: 0.7, blue: 1.0) : Color(red: 0.45, green: 0.45, blue: 0.5) // Purple in dark mode, gray in light mode
+            isDark ? Color.white : Color(red: 0.45, green: 0.45, blue: 0.5) // White in dark mode, gray in light mode
+        }
+        
+        static func placeholder(isDark: Bool) -> Color {
+            isDark ? Color.white.opacity(0.6) : Color(red: 0.45, green: 0.45, blue: 0.5).opacity(0.6) // White for dark mode, gray for light mode
+        }
+        
+        static func searchInputBackground(isDark: Bool) -> Color {
+            isDark ? Color.black : Color.white // Black background in dark mode, white in light mode
         }
         
         // MARK: - Static Colors (Theme Independent)
@@ -851,7 +859,7 @@ struct InputField: View {
                         if attributedText.string.isEmpty {
                             Text(placeholder)
                                 .font(GentleLightning.Typography.bodyInput)
-                                .foregroundColor(themeManager.isDarkMode ? GentleLightning.Colors.accentNeutral : GentleLightning.Colors.textSecondary.opacity(0.6))
+                                .foregroundColor(GentleLightning.Colors.placeholder(isDark: themeManager.isDarkMode))
                                 .padding(.top, 8)
                                 .padding(.leading, 4)
                         }
@@ -1253,6 +1261,7 @@ struct ItemRowSimple: View {
     let dataManager: FirebaseDataManager
     let onTap: () -> Void
     
+    @EnvironmentObject var themeManager: ThemeManager
     @State private var isNavigating = false
     
     // Cache expensive computations
@@ -1281,7 +1290,7 @@ struct ItemRowSimple: View {
                 // Title - use content as title if no title exists
                 Text(displayTitle)
                     .font(GentleLightning.Typography.body)
-                    .foregroundColor(GentleLightning.Colors.textPrimary)
+                    .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -1290,7 +1299,7 @@ struct ItemRowSimple: View {
                 if !previewText.isEmpty {
                     Text(previewText)
                         .font(GentleLightning.Typography.secondary)
-                        .foregroundColor(GentleLightning.Colors.textSecondary)
+                        .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1301,7 +1310,9 @@ struct ItemRowSimple: View {
             .padding(.vertical, 12) // Reduced vertical padding
             .background(
                 RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.medium)
-                    .fill(isNavigating ? GentleLightning.Colors.surface.opacity(0.7) : GentleLightning.Colors.surface)
+                    .fill(isNavigating ? 
+                        GentleLightning.Colors.surface(isDark: themeManager.isDarkMode).opacity(0.7) : 
+                        GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
             )
             .scaleEffect(isNavigating ? 0.98 : 1.0)
         }
@@ -2316,6 +2327,8 @@ struct SearchBarView: View {
     let onSearch: () -> Void
     let onReindex: () -> Void
     
+    @EnvironmentObject var themeManager: ThemeManager
+    
     var body: some View {
         VStack(alignment: .trailing, spacing: 8) {
             // Horizontal search bar with magnifying glass
@@ -2325,11 +2338,12 @@ struct SearchBarView: View {
                     HStack {
                         Image(systemName: "magnifyingglass")
                             .font(.system(size: 16))
-                            .foregroundColor(GentleLightning.Colors.textSecondary)
+                            .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
                         
                         TextField("Search your notes...", text: $searchText)
                             .font(GentleLightning.Typography.body)
-                            .foregroundColor(GentleLightning.Colors.textPrimary)
+                            .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+                            .accentColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
                             .focused(isSearchFieldFocused)
                             .onSubmit {
                                 onSearch()
@@ -2376,18 +2390,13 @@ struct SearchBarView: View {
                                     }
                                 }
                             }
-                        
-                        
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
-                    .background(
+                    .padding(8)
+                    .background(GentleLightning.Colors.searchInputBackground(isDark: themeManager.isDarkMode))
+                    .cornerRadius(8)
+                    .overlay(
                         RoundedRectangle(cornerRadius: 8)
-                            .fill(GentleLightning.Colors.surface)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(GentleLightning.Colors.border(isDark: false), lineWidth: 1)
-                            )
+                            .stroke(GentleLightning.Colors.border(isDark: themeManager.isDarkMode), lineWidth: 1)
                     )
                     .transition(.asymmetric(
                         insertion: .move(edge: .trailing).combined(with: .opacity).animation(GentleLightning.Animation.swoosh),
@@ -2431,7 +2440,7 @@ struct SearchBarView: View {
                         // X mark icon
                         Image(systemName: "xmark")
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(GentleLightning.Colors.textSecondary)
+                            .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
                             .scaleEffect(isExpanded ? 1.0 : 0.1)
                             .opacity(isExpanded ? 1.0 : 0.0)
                             .rotationEffect(.degrees(isExpanded ? 0 : -90))
@@ -2440,10 +2449,10 @@ struct SearchBarView: View {
                     .frame(width: 40, height: 40)
                         .background(
                             Circle()
-                                .fill(GentleLightning.Colors.surface)
+                                .fill(GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
                                 .overlay(
                                     Circle()
-                                        .stroke(GentleLightning.Colors.border(isDark: false), lineWidth: 1)
+                                        .stroke(GentleLightning.Colors.border(isDark: themeManager.isDarkMode), lineWidth: 1)
                                 )
                                 .opacity(isExpanded ? 0.0 : 1.0)
                                 .animation(.spring(response: 0.3, dampingFraction: 0.8, blendDuration: 0), value: isExpanded)
@@ -2466,7 +2475,7 @@ struct SearchBarView: View {
                         if searchResults.count > 3 {
                             Text("+ \(searchResults.count - 3) more results")
                                 .font(GentleLightning.Typography.caption)
-                                .foregroundColor(GentleLightning.Colors.textSecondary)
+                                .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
                                 .padding(.top, 4)
                                 .transition(.opacity.combined(with: .scale(scale: 0.95)))
                         }
@@ -2477,15 +2486,15 @@ struct SearchBarView: View {
                             VStack(spacing: 8) {
                                 Image(systemName: "doc.text.magnifyingglass")
                                     .font(.system(size: 24))
-                                    .foregroundColor(GentleLightning.Colors.textSecondary)
+                                    .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
                                 
                                 Text("No results found")
                                     .font(GentleLightning.Typography.heading)
-                                    .foregroundColor(GentleLightning.Colors.textPrimary)
+                                    .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
                                 
                                 Text("Try different keywords or check your spelling")
                                     .font(GentleLightning.Typography.caption)
-                                    .foregroundColor(GentleLightning.Colors.textSecondary)
+                                    .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
                                     .multilineTextAlignment(.center)
                             }
                             Spacer()
@@ -2497,11 +2506,11 @@ struct SearchBarView: View {
                         VStack(spacing: 8) {
                             ProgressView()
                                 .scaleEffect(0.8)
-                                .tint(GentleLightning.Colors.accentNeutral)
+                                .tint(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
                             
                             Text("Searching...")
                                 .font(GentleLightning.Typography.caption)
-                                .foregroundColor(GentleLightning.Colors.textSecondary)
+                                .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
                         }
                         .padding(.vertical, 16)
                         .padding(.horizontal, 8)
@@ -2510,10 +2519,10 @@ struct SearchBarView: View {
                 .padding(8)
                 .background(
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(GentleLightning.Colors.surface)
+                        .fill(GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
                         .overlay(
                             RoundedRectangle(cornerRadius: 8)
-                                .stroke(GentleLightning.Colors.border(isDark: false), lineWidth: 1)
+                                .stroke(GentleLightning.Colors.border(isDark: themeManager.isDarkMode), lineWidth: 1)
                         )
                 )
                 .transition(.asymmetric(
@@ -2530,20 +2539,22 @@ struct SearchResultRow: View {
     let result: SearchResult
     let onTap: () -> Void
     
+    @EnvironmentObject var themeManager: ThemeManager
+    
     var body: some View {
         Button(action: onTap) {
             HStack(alignment: .top, spacing: 8) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(result.previewContent)
                         .font(GentleLightning.Typography.body)
-                        .foregroundColor(GentleLightning.Colors.textPrimary)
+                        .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
                         .multilineTextAlignment(.leading)
                         .lineLimit(2)
                     
                     HStack(spacing: 8) {
                         Text("\(result.confidencePercentage)% match")
                             .font(GentleLightning.Typography.caption)
-                            .foregroundColor(GentleLightning.Colors.textSecondary)
+                            .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
                         
                         if result.isTask {
                             Text("Task")
@@ -2565,7 +2576,7 @@ struct SearchResultRow: View {
                 
                 Image(systemName: "arrow.up.right")
                     .font(.system(size: 12))
-                    .foregroundColor(GentleLightning.Colors.textSecondary)
+                    .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
             }
             .padding(8)
         }
