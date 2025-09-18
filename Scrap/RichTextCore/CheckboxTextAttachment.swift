@@ -129,31 +129,31 @@ class CheckboxManager {
         // Prioritize new RTF-safe markers, but maintain backward compatibility
         let checkboxPattern = "\\[CHECKBOX_CHECKED\\]|\\[CHECKBOX_UNCHECKED\\]|☑CHECKED☑|☐UNCHECKED☐|\\[CHECKED\\]|\\[UNCHECKED\\]|<CHECKED>|<UNCHECKED>|\\(CHECKED\\)|\\(UNCHECKED\\)|\\[\\s*[✓✔︎☑︎]\\s*\\]|\\[\\s*\\]"
         guard let regex = try? NSRegularExpression(pattern: checkboxPattern, options: [.caseInsensitive]) else {
-            print("❌ CheckboxManager: Failed to create regex for checkbox conversion")
+            // Failed to create regex for checkbox conversion
             return attributedString
         }
         
         let matches = regex.matches(in: text, range: NSRange(location: 0, length: text.count))
-        print("🔍 CheckboxManager: Found \(matches.count) formal checkbox markers to convert")
+        // Found \(matches.count) formal checkbox markers to convert
         
         // If no formal markers found, look for plain text checkbox descriptions
         if matches.count == 0 {
-            print("🔍 CheckboxManager: No formal markers found, checking for plain text checkbox descriptions...")
+            // No formal markers found, checking for plain text checkbox descriptions...
             
             // Look for patterns like "check box #1 unchecked", "checkbox 2 checked", etc.
             let plainTextPattern = "\\b(?:check\\s*box|checkbox)\\s*[#\\d]*\\s*(unchecked|checked|\\buncheck|\\bcheck(?!\\w))\\b"
             guard let plainTextRegex = try? NSRegularExpression(pattern: plainTextPattern, options: [.caseInsensitive]) else {
-                print("❌ CheckboxManager: Failed to create plain text regex")
+                // Failed to create plain text regex
                 return attributedString
             }
             
             let plainTextMatches = plainTextRegex.matches(in: text, range: NSRange(location: 0, length: text.count))
-            print("🔍 CheckboxManager: Found \(plainTextMatches.count) plain text checkbox descriptions")
+            // Found \(plainTextMatches.count) plain text checkbox descriptions
             
             // Convert plain text descriptions to proper checkbox attachments
             for match in plainTextMatches.reversed() {
                 let matchText = (text as NSString).substring(with: match.range)
-                print("📝 CheckboxManager: Converting plain text description: '\(matchText)'")
+                // Converting plain text description
                 
                 // Determine if checked based on the description
                 let isChecked = matchText.lowercased().contains("checked") && !matchText.lowercased().contains("unchecked")
@@ -163,7 +163,7 @@ class CheckboxManager {
                 
                 // Set up state change callback for proper synchronization
                 attachment.onStateChange = { newState in
-                    print("🔄 CheckboxManager: Plain text converted checkbox state changed to \(newState)")
+                    // Plain text converted checkbox state changed
                     // The actual text view delegate notification will be set up by toggleCheckbox when first toggled
                 }
                 
@@ -175,14 +175,14 @@ class CheckboxManager {
                 
                 // Replace the plain text description with the attachment
                 mutableString.replaceCharacters(in: match.range, with: attachmentString)
-                print("✅ CheckboxManager: Converted '\(matchText)' to checkbox attachment (checked: \(isChecked))")
+                // Converted to checkbox attachment
             }
             
             return mutableString
         }
         
         if matches.count == 0 {
-            print("⚠️ CheckboxManager: No formal checkbox markers found after checking both formal and plain text patterns")
+            // No formal checkbox markers found
             return mutableString
         }
         
@@ -211,7 +211,7 @@ class CheckboxManager {
                 isChecked = character.range(of: checkedPattern, options: .regularExpression) != nil
             }
             
-            print("📝 CheckboxManager: Converting '\(character)' to attachment (checked: \(isChecked))")
+            // Converting to attachment
             
             // Create checkbox attachment
             let attachment = CheckboxTextAttachment(isChecked: isChecked)
@@ -242,8 +242,7 @@ class CheckboxManager {
     static func convertAttachmentsToUnicodeCheckboxes(_ attributedString: NSAttributedString) -> NSAttributedString {
         let mutableString = NSMutableAttributedString(attributedString: attributedString)
         
-        print("🔄 CheckboxManager: Starting conversion of attachments to RTF-safe markers")
-        print("🔍 CheckboxManager: Input string length: \(attributedString.length)")
+        // Converting attachments to RTF-safe markers
         
         var checkboxCount = 0
         var totalAttachments = 0
@@ -260,24 +259,12 @@ class CheckboxManager {
                 checkboxCount += 1
                 // Use RTF-safe ASCII-only markers that will survive RTF encoding/decoding
                 let checkboxText = checkboxAttachment.isChecked ? "[CHECKBOX_CHECKED]" : "[CHECKBOX_UNCHECKED]"
-                print("📝 CheckboxManager: Converting attachment #\(checkboxCount) at range \(range) to '\(checkboxText)' (checked: \(checkboxAttachment.isChecked))")
-                
                 let replacement = NSAttributedString(string: checkboxText)
                 mutableString.replaceCharacters(in: range, with: replacement)
-                print("✅ CheckboxManager: Converted attachment to RTF-safe marker '\(checkboxText)'")
-            } else if value != nil {
-                print("🔍 CheckboxManager: Found non-checkbox attachment at range \(range): \(type(of: value!))")
             }
         }
         
-        print("🔍 CheckboxManager: Total attachments found: \(totalAttachments)")
-        print("✅ CheckboxManager: Conversion complete - converted \(checkboxCount) checkbox attachments to RTF-safe markers")
-        
-        // Verify the conversion worked by checking the final string
-        let finalString = mutableString.string
-        let checkedCount = finalString.components(separatedBy: "[CHECKBOX_CHECKED]").count - 1
-        let uncheckedCount = finalString.components(separatedBy: "[CHECKBOX_UNCHECKED]").count - 1
-        print("🔍 CheckboxManager: Final string contains \(checkedCount) [CHECKBOX_CHECKED] and \(uncheckedCount) [CHECKBOX_UNCHECKED] markers")
+        // Conversion complete
         
         return mutableString
     }
@@ -288,19 +275,15 @@ class CheckboxManager {
             return
         }
         
-        print("📝 CheckboxManager: Inserting new checkbox at range \(range) (checked: \(isChecked))")
+        // Inserting new checkbox
         
         let attachment = CheckboxTextAttachment(isChecked: isChecked)
         
         // Set up immediate state change callback for future toggles
         attachment.onStateChange = { [weak textView] newState in
             guard let textView = textView else { return }
-            print("🔄 CheckboxManager: New checkbox state changed to \(newState), updating text view")
-            
             // Notify delegate immediately for binding synchronization
             textView.delegate?.textViewDidChange?(textView)
-            
-            print("✅ CheckboxManager: New checkbox binding synchronized for state: \(newState)")
         }
         
         // Create attachment string with proper font context to ensure rendering compatibility
@@ -315,8 +298,6 @@ class CheckboxManager {
         
         // Immediately notify delegate that content has changed
         textView.delegate?.textViewDidChange?(textView)
-        
-        print("✅ CheckboxManager: New checkbox inserted and binding updated")
     }
     
     /// Find checkbox attachment at a given tap location
@@ -345,31 +326,26 @@ class CheckboxManager {
     
     /// Toggle checkbox state and update the text view
     static func toggleCheckbox(_ attachment: CheckboxTextAttachment, in textView: UITextView, at range: NSRange) {
-        print("📝 CheckboxManager: Starting checkbox toggle at range \(range)")
+        // Starting checkbox toggle
         
         // Set up the state change callback to ensure immediate synchronization
         attachment.onStateChange = { [weak textView] newState in
             guard let textView = textView else { return }
-            print("🔄 CheckboxManager: Checkbox state changed to \(newState), updating text view")
             
             // Force immediate visual update
             let layoutManager = textView.layoutManager
             layoutManager.invalidateDisplay(forCharacterRange: range)
             textView.setNeedsDisplay()
             
-            // CRITICAL: Immediately notify delegate of text changes for binding synchronization
+            // Immediately notify delegate of text changes for binding synchronization
             textView.delegate?.textViewDidChange?(textView)
             
             // Ensure layout is committed immediately
             layoutManager.ensureLayout(for: textView.textContainer)
-            
-            print("✅ CheckboxManager: Text view updated and binding synchronized for state: \(newState)")
         }
         
         // Toggle the checkbox state (this will trigger the onStateChange callback)
         attachment.isChecked.toggle()
-        
-        print("✅ CheckboxManager: Checkbox toggle complete - new state: \(attachment.isChecked ? "checked" : "unchecked")")
     }
 }
 

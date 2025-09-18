@@ -40,16 +40,12 @@ struct FixedBottomDrawingArea: View {
                         .stroke(Color(.systemGray4), lineWidth: 1)
                 )
                 .clipped()
-            
-            // Controls
-            drawingControlsView
-                .padding(.top, 8)
         }
         .background(Color(.systemBackground))
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
         .sheet(isPresented: $showingDrawingEditor) {
-            DrawingView(
+            DrawingEditorView(
                 drawingData: $drawingData,
                 canvasHeight: $drawingHeight,
                 selectedColor: $drawingColor,
@@ -96,64 +92,6 @@ struct FixedBottomDrawingArea: View {
         }
     }
     
-    @ViewBuilder
-    private var drawingControlsView: some View {
-        HStack {
-            // Edit button
-            Button(action: {
-                showingDrawingEditor = true
-            }) {
-                Label("Edit", systemImage: "pencil")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.blue)
-            }
-            
-            Spacer()
-            
-            // Height controls
-            HStack(spacing: 8) {
-                Button(action: {
-                    if drawingHeight > minHeight {
-                        drawingHeight = max(minHeight, drawingHeight - 50)
-                    }
-                }) {
-                    Image(systemName: "minus.circle")
-                        .foregroundColor(drawingHeight > minHeight ? .blue : .gray)
-                }
-                .disabled(drawingHeight <= minHeight)
-                
-                Text("\(Int(drawingHeight))px")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.gray)
-                    .frame(width: 50)
-                
-                Button(action: {
-                    if drawingHeight < maxHeight {
-                        drawingHeight = min(maxHeight, drawingHeight + 50)
-                    }
-                }) {
-                    Image(systemName: "plus.circle")
-                        .foregroundColor(drawingHeight < maxHeight ? .blue : .gray)
-                }
-                .disabled(drawingHeight >= maxHeight)
-            }
-            
-            Spacer()
-            
-            // Delete button (only show if drawing exists)
-            if drawingData != nil {
-                Button(action: {
-                    drawingData = nil
-                    onDrawingChanged(nil)
-                }) {
-                    Label("Delete", systemImage: "trash")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.red)
-                }
-            }
-        }
-        .padding(.horizontal, 12)
-    }
 }
 
 /// A view that displays a PencilKit drawing

@@ -211,17 +211,11 @@ public class RichTextContext: ObservableObject {
     
     /// Toggle drawing/whiteboard mode
     public func toggleDrawing() {
-        print("🎨 RichTextContext: toggleDrawing() called, isDrawingActive: \(isDrawingActive)")
-        
         // Track analytics 
         AnalyticsManager.shared.trackDrawingToggled(isActive: true)
         
         // Don't change state here - let coordinator handle the action and reset properly
-        // This prevents UI state cycling issues
-        print("🎨 RichTextContext: Sending drawing action without changing state")
-        
         actionPublisher.send(.toggleBlockFormat(.drawing))
-        print("🎨 RichTextContext: sent .toggleBlockFormat(.drawing) action")
     }
     
     /// Increase indentation
@@ -449,29 +443,20 @@ public class RichTextContext: ObservableObject {
             // don't change the state to avoid button flickering
             if self.isCodeBlockActive && detectedCodeBlock {
                 codeBlockActive = true
-                print("🔒 RichTextContext: Keeping code block state active (preventing flicker)")
             } else {
                 codeBlockActive = detectedCodeBlock
-                print("🔍 RichTextContext: updateBlockFormatState - position: \(selectedRange.location), isCodeBlockActive: \(codeBlockActive)")
             }
         } else {
             codeBlockActive = false
-            print("🔍 RichTextContext: updateBlockFormatState - empty text, isCodeBlockActive: false")
         }
         
-        // Add logging for checkbox state detection
-        if checkboxActive != self.isCheckboxActive {
-            print("📋 RichTextContext: Checkbox state changing from \(self.isCheckboxActive) to \(checkboxActive) at position \(selectedRange.location)")
-        }
+        // Checkbox state detection
         
         // Direct update since we're already in async context from updateFormattingState
         self.isBulletListActive = bulletActive
         self.isCheckboxActive = checkboxActive
         
-        // Add logging to track code block state changes
-        if self.isCodeBlockActive != codeBlockActive {
-            print("🔄 RichTextContext: Code block state changing from \(self.isCodeBlockActive) to \(codeBlockActive)")
-        }
+        // Update code block state
         self.isCodeBlockActive = codeBlockActive
     }
     
@@ -497,13 +482,11 @@ public class RichTextContext: ObservableObject {
     /// Check if the given position is within a code block with more robust detection
     private func isPositionInCodeBlock(_ position: Int) -> Bool {
         guard position >= 0 && attributedString.length > 0 else { 
-            print("🔍 isPositionInCodeBlock: Invalid position \(position) or empty text (length: \(attributedString.length))")
             return false 
         }
         
         // If position is at the end of text, check the previous character
         let checkPosition = min(position, attributedString.length - 1)
-        print("🔍 isPositionInCodeBlock: Checking position \(position), adjusted to \(checkPosition)")
         
         // First check the exact position
         if checkPosition < attributedString.length {
@@ -515,18 +498,8 @@ public class RichTextContext: ObservableObject {
                 let hasMonospaceTrait = font.fontDescriptor.symbolicTraits.contains(.traitMonoSpace)
                 let hasSystemMonospace = font.fontName.contains("SFMono") || font.fontName.contains("Menlo") || font.fontName.contains("Courier")
                 let hasAppleSystemMonospace = font.fontName.contains(".AppleSystemUIFontMonospaced")
-                let fontDescriptor = font.fontDescriptor
-                print("🔍 isPositionInCodeBlock: Font at \(checkPosition):")
-                print("   - Font name: \(font.fontName)")
-                print("   - Font family: \(font.familyName)")
-                print("   - Symbolic traits: \(fontDescriptor.symbolicTraits.rawValue)")
-                print("   - hasMonaco: \(hasMonaco)")
-                print("   - hasMonospaceTrait: \(hasMonospaceTrait)")
-                print("   - hasSystemMonospace: \(hasSystemMonospace)")
-                print("   - hasAppleSystemMonospace: \(hasAppleSystemMonospace)")
                 
                 if hasMonaco || hasMonospaceTrait || hasSystemMonospace || hasAppleSystemMonospace {
-                    print("✅ isPositionInCodeBlock: Found monospaced font -> TRUE")
                     return true
                 }
             }
@@ -534,13 +507,9 @@ public class RichTextContext: ObservableObject {
             // Also check for grey background color (indicates code block)
             if let backgroundColor = attributes[.backgroundColor] as? UIColor {
                 let isCodeBackground = backgroundColor == UIColor.systemGray6
-                print("🔍 isPositionInCodeBlock: Background at \(checkPosition): \(backgroundColor), isCodeBackground: \(isCodeBackground)")
                 if isCodeBackground {
-                    print("✅ isPositionInCodeBlock: Found code background -> TRUE")
                     return true
                 }
-            } else {
-                print("🔍 isPositionInCodeBlock: No background color at \(checkPosition)")
             }
         }
         
@@ -560,7 +529,6 @@ public class RichTextContext: ObservableObject {
                     let hasAppleSystemMonospace = font.fontName.contains(".AppleSystemUIFontMonospaced")
                     
                     if hasMonaco || hasMonospaceTrait || hasSystemMonospace || hasAppleSystemMonospace {
-                        print("✅ isPositionInCodeBlock: Found monospaced font in nearby position \(pos) -> TRUE")
                         return true
                     }
                 }
@@ -568,14 +536,12 @@ public class RichTextContext: ObservableObject {
                 if let backgroundColor = attributes[.backgroundColor] as? UIColor {
                     let isCodeBackground = backgroundColor == UIColor.systemGray6
                     if isCodeBackground {
-                        print("✅ isPositionInCodeBlock: Found code background in nearby position \(pos) -> TRUE")
                         return true
                     }
                 }
             }
         }
         
-        print("❌ isPositionInCodeBlock: No code block detected -> FALSE")
         return false
     }
 }

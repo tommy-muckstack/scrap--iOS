@@ -822,7 +822,7 @@ public class RichTextCoordinator: NSObject {
         let cursorPosition = textView.selectedRange.location
         let isInCodeBlock = checkIfPositionIsInCodeBlock(cursorPosition)
         
-        print("🔍 applyCodeBlockFormat: cursor at \(cursorPosition), isInCodeBlock: \(isInCodeBlock), context.isCodeBlockActive: \(context.isCodeBlockActive)")
+        // Code block format check at cursor position
         
         var newCursorPosition: Int? = nil
         
@@ -859,7 +859,7 @@ public class RichTextCoordinator: NSObject {
             // This prevents the race condition where the button doesn't appear selected
             DispatchQueue.main.async {
                 self.context.isCodeBlockActive = true
-                print("✅ applyCodeBlockFormat: Immediately set context.isCodeBlockActive = true")
+                // Set context.isCodeBlockActive = true
             }
             
             updateBindingFromTextView()
@@ -1267,7 +1267,7 @@ public class RichTextCoordinator: NSObject {
         let textViewCopy = NSAttributedString(attributedString: currentTextViewContent)
         
         if !textBinding.wrappedValue.isEqual(to: textViewCopy) {
-            print("💾 RichTextCoordinator: Updating binding with formatted text (length: \(textViewCopy.length))")
+            // Updating binding with formatted text
             // Create a completely new attributed string to prevent any reference sharing
             textBinding.wrappedValue = NSAttributedString(attributedString: textViewCopy)
         }
@@ -1565,7 +1565,7 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         // Skip updates if we're currently handling newline insertion to avoid race conditions
         guard !isHandlingNewlineInsertion else { return }
         
-        print("📍 textViewDidChangeSelection: Selection changed to \(textView.selectedRange)")
+        // Selection changed
         
         // Disabled cursor-based checkbox detection due to over-triggering
         // Rely on tap gesture recognition instead

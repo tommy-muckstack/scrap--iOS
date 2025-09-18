@@ -23,6 +23,7 @@ struct NoteEditor: View {
     @State private var noteOpenTime = Date()
     @State private var hasTrackedOpen = false
     @State private var isBeingDeleted = false
+    @State private var showingDrawingEditor = false
     
     init(item: SparkItem, dataManager: FirebaseDataManager) {
         self.item = item
@@ -212,18 +213,18 @@ struct NoteEditor: View {
                 AnalyticsManager.shared.trackOptionsMenuOpened(noteId: item.firebaseId ?? item.id)
                 showingOptions = true 
             }) {
-                VStack(spacing: 2) {
+                VStack(spacing: 3) {
                     Circle()
                         .fill(Color.black)
-                        .frame(width: 3, height: 3)
+                        .frame(width: 4, height: 4)
                     Circle()
                         .fill(Color.black)
-                        .frame(width: 3, height: 3)
+                        .frame(width: 4, height: 4)
                     Circle()
                         .fill(Color.black)
-                        .frame(width: 3, height: 3)
+                        .frame(width: 4, height: 4)
                 }
-                .frame(width: 20, height: 20)
+                .frame(width: 24, height: 24)
             }
         )
         .confirmationDialog("Note Options", isPresented: $showingOptions) {
@@ -234,10 +235,14 @@ struct NoteEditor: View {
                 loadCategories()
             }
             
-            // Add Drawing option (only show if note doesn't have drawing yet)
+            // Drawing options - show Add or Edit based on drawing state
             if !item.hasDrawing {
                 Button("Add Drawing") { 
                     addDrawingToNote()
+                }
+            } else {
+                Button("Edit Drawing") {
+                    showingDrawingEditor = true
                 }
             }
             
@@ -276,6 +281,19 @@ struct NoteEditor: View {
                 userCategories: $userCategories,
                 onCategoryUpdate: { categoryIds in
                     updateCategories(categoryIds)
+                }
+            )
+        }
+        .sheet(isPresented: $showingDrawingEditor) {
+            DrawingEditorView(
+                drawingData: .constant(item.drawingData),
+                canvasHeight: .constant(item.drawingHeight),
+                selectedColor: .constant(DrawingColor(rawValue: item.drawingColor) ?? .black),
+                onSave: { data, height, color in
+                    updateDrawing(data: data, height: height, color: color)
+                },
+                onDelete: {
+                    deleteDrawing()
                 }
             )
         }
@@ -559,6 +577,30 @@ struct NoteEditor: View {
         }
     }
     
+    private func updateDrawing(data: Data?, height: CGFloat, color: DrawingColor) {
+        // Don't save if note is being deleted
+        guard !isBeingDeleted else { return }
+        
+        // Update all drawing properties
+        updateDrawingData(data)
+        updateDrawingHeight(height)
+        updateDrawingColor(color.rawValue)
+    }
+    
+    private func deleteDrawing() {
+        // Don't save if note is being deleted
+        guard !isBeingDeleted else { return }
+        
+        // Clear all drawing data
+        updateDrawingData(nil)
+        item.hasDrawing = false
+        
+        // Track drawing deletion
+        if let firebaseId = item.firebaseId {
+            AnalyticsManager.shared.trackDrawingDeleted(noteId: firebaseId)
+        }
+    }
+    
     // MARK: - Helper Functions
     
     /// Create properly formatted NSAttributedString with Space Grotesk font
@@ -589,7 +631,7 @@ struct RichFormattingToolbar: View {
             
             // Calculate equal spacing for all buttons including dismiss
             let totalPadding: CGFloat = 32 // 16pt on each side
-            let totalButtons: CGFloat = 9 // 8 formatting buttons + 1 dismiss button
+            let totalButtons: CGFloat = 8 // 7 formatting buttons + 1 dismiss button
             let totalSpacing = totalButtons - 1 // spaces between buttons
             let buttonSpacing: CGFloat = 6 // Consistent spacing between all buttons
             let usedSpacing = totalSpacing * buttonSpacing
@@ -664,17 +706,6 @@ struct RichFormattingToolbar: View {
                         .cornerRadius(8)
                 }
                 .animation(.easeInOut(duration: 0.1), value: context.isCheckboxActive)
-                
-                // Marker/Drawing button
-                Button(action: { context.toggleDrawing() }) {
-                    Image(systemName: "pencil.tip")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(context.isDrawingActive ? .white : .primary)
-                        .frame(width: buttonWidth, height: 32)
-                        .background(context.isDrawingActive ? Color.black : Color.clear)
-                        .cornerRadius(8)
-                }
-                .animation(.easeInOut(duration: 0.1), value: context.isDrawingActive)
                 
                 // Indent In button
                 Button(action: { context.indentIn() }) {

@@ -261,6 +261,10 @@ struct GentleLightning {
             isDark ? Color(red: 0.224, green: 1.0, blue: 0.078).opacity(0.1) : Color.black.opacity(0.03) // Subtle neon glow
         }
         
+        static func drawerHandle(isDark: Bool) -> Color {
+            isDark ? Color(red: 0.65, green: 0.7, blue: 1.0) : Color(red: 0.45, green: 0.45, blue: 0.5) // Purple in dark mode, gray in light mode
+        }
+        
         // MARK: - Static Colors (Theme Independent)
         static let textBlack = Color.black
         static let accentIdea = Color(red: 1.0, green: 0.85, blue: 0.4)
@@ -268,6 +272,7 @@ struct GentleLightning {
         static let accentNeutral = Color(red: 0.65, green: 0.7, blue: 1.0)
         static let error = Color(red: 0.95, green: 0.26, blue: 0.21)
         static let success = Color(red: 0.29, green: 0.76, blue: 0.49)
+        static let textGreyStatic = Color(red: 0.45, green: 0.45, blue: 0.5) // Static grey for app info in settings
         
         // MARK: - Legacy Static Colors (for backward compatibility)
         static let background = Color.white
@@ -711,6 +716,9 @@ struct InputField: View {
     let onCommit: () -> Void
     var isFieldFocused: FocusState<Bool>.Binding
     
+    // Theme management
+    @StateObject private var themeManager = ThemeManager.shared
+    
     // Rich text state management
     @State private var attributedText = NSAttributedString()
     @StateObject private var richTextContext = RichTextContext()
@@ -733,6 +741,106 @@ struct InputField: View {
     // Dynamic height for text input
     @State private var textHeight: CGFloat = 40
     
+    // Extract complex button to resolve compiler timeout
+    private var actionButton: some View {
+        Button(action: {
+            if isRecording {
+                // Stop recording
+                handleVoiceRecording()
+            } else if hasText {
+                // Save the note (only when not recording)
+                if !attributedText.string.isEmpty {
+                    AnalyticsManager.shared.trackNoteSaved(method: "button", contentLength: attributedText.string.count)
+                    
+                    // Create new item with rich text formatting
+                    dataManager.createItemFromAttributedText(attributedText, creationType: "rich_text")
+                    
+                    // Clear both text fields
+                    text = ""
+                    attributedText = NSAttributedString()
+                }
+            } else {
+                // Start voice recording
+                handleVoiceRecording()
+            }
+        }) {
+            ZStack {
+                // Animated background shape with horizontal collapse/expand
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(isRecording ? Color.red : (themeManager.isDarkMode ? GentleLightning.Colors.textPrimary(isDark: true) : Color.black))
+                    .frame(height: 40)
+                    .frame(width: isRecording ? 40 : (hasText ? 80 : 40))
+                    .scaleEffect(x: 1.0, y: 1.0, anchor: .center)
+                    .animation(
+                        .interpolatingSpring(stiffness: 300, damping: 30)
+                        .speed(1.2),
+                        value: isRecording || hasText
+                    )
+                
+                // Content container with symmetric collapse/expand animations
+                ZStack {
+                    // Save text - appears when hasText is true AND not recording
+                    if hasText && !isRecording {
+                        Text("SAVE")
+                            .font(GentleLightning.Typography.small)
+                            .foregroundColor(themeManager.isDarkMode ? Color.black : .white)
+                            .fontWeight(.semibold)
+                            .scaleEffect(
+                                x: (hasText && !isRecording) ? 1.0 : 0.1, 
+                                y: (hasText && !isRecording) ? 1.0 : 0.1,
+                                anchor: .center
+                            )
+                            .opacity((hasText && !isRecording) ? 1.0 : 0.0)
+                            .animation(
+                                .interpolatingSpring(stiffness: 280, damping: 22)
+                                .delay((hasText && !isRecording) ? 0.08 : 0.08), // Symmetric timing
+                                value: hasText && !isRecording
+                            )
+                    }
+                    
+                    // Stop icon - appears when recording
+                    if isRecording {
+                        Image(systemName: "stop.fill")
+                            .font(GentleLightning.Typography.body)
+                            .foregroundColor(.white)
+                            .scaleEffect(
+                                x: isRecording ? 1.0 : 0.1,
+                                y: isRecording ? 1.0 : 0.1,
+                                anchor: .center
+                            )
+                            .opacity(isRecording ? 1.0 : 0.0)
+                            .animation(
+                                .interpolatingSpring(stiffness: 280, damping: 22)
+                                .delay(0.08), // Consistent symmetric timing
+                                value: isRecording
+                            )
+                    }
+                    
+                    // Microphone icon - default state (when no text and not recording)
+                    if !hasText && !isRecording {
+                        Image(systemName: "mic.fill")
+                            .font(GentleLightning.Typography.title)
+                            .foregroundColor(themeManager.isDarkMode ? Color.black : .white)
+                            .scaleEffect(
+                                x: (!hasText && !isRecording) ? 1.0 : 0.1,
+                                y: (!hasText && !isRecording) ? 1.0 : 0.1,
+                                anchor: .center
+                            )
+                            .opacity((!hasText && !isRecording) ? 1.0 : 0.0)
+                            .animation(
+                                .interpolatingSpring(stiffness: 280, damping: 22)
+                                .delay(0.08), // Consistent symmetric timing
+                                value: hasText || isRecording
+                            )
+                    }
+                }
+            }
+            .scaleEffect(isRecording ? 1.05 : 1.0)
+            .animation(.easeInOut(duration: 0.15), value: isRecording)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 12) {
@@ -743,7 +851,7 @@ struct InputField: View {
                         if attributedText.string.isEmpty {
                             Text(placeholder)
                                 .font(GentleLightning.Typography.bodyInput)
-                                .foregroundColor(GentleLightning.Colors.textSecondary.opacity(0.6))
+                                .foregroundColor(themeManager.isDarkMode ? GentleLightning.Colors.accentNeutral : GentleLightning.Colors.textSecondary.opacity(0.6))
                                 .padding(.top, 8)
                                 .padding(.leading, 4)
                         }
@@ -780,9 +888,6 @@ struct InputField: View {
                                 .font: defaultFont,
                                 .foregroundColor: UIColor.label
                             ]
-                        },
-                        onDrawingManagerReady: { manager in
-                            richTextDrawingManager = manager
                         }
                         )
                         .disabled(isRecording)
@@ -853,106 +958,11 @@ struct InputField: View {
                 }
                 
                 // Microphone/Save button - transforms based on recording state and text content
-                Button(action: {
-                    if isRecording {
-                        // Stop recording
-                        handleVoiceRecording()
-                    } else if hasText {
-                        // Save the note (only when not recording)
-                        if !attributedText.string.isEmpty {
-                            AnalyticsManager.shared.trackNoteSaved(method: "button", contentLength: attributedText.string.count)
-                            
-                            // Create new item with rich text formatting
-                            dataManager.createItemFromAttributedText(attributedText, creationType: "rich_text")
-                            
-                            // Clear both text fields
-                            text = ""
-                            attributedText = NSAttributedString()
-                        }
-                    } else {
-                        // Start voice recording
-                        handleVoiceRecording()
-                    }
-                }) {
-                    ZStack {
-                        // Animated background shape with horizontal collapse/expand
-                        RoundedRectangle(cornerRadius: 20)
-                            .fill(isRecording ? Color.red : Color.black)
-                            .frame(height: 40)
-                            .frame(width: isRecording ? 40 : (hasText ? 80 : 40))
-                            .scaleEffect(x: 1.0, y: 1.0, anchor: .center)
-                            .animation(
-                                .interpolatingSpring(stiffness: 300, damping: 30)
-                                .speed(1.2),
-                                value: isRecording || hasText
-                            )
-                        
-                        // Content container with symmetric collapse/expand animations
-                        ZStack {
-                            // Save text - appears when hasText is true AND not recording
-                            if hasText && !isRecording {
-                                Text("SAVE")
-                                    .font(GentleLightning.Typography.small)
-                                    .foregroundColor(.white)
-                                    .fontWeight(.semibold)
-                                    .scaleEffect(
-                                        x: (hasText && !isRecording) ? 1.0 : 0.1, 
-                                        y: (hasText && !isRecording) ? 1.0 : 0.1,
-                                        anchor: .center
-                                    )
-                                    .opacity((hasText && !isRecording) ? 1.0 : 0.0)
-                                    .animation(
-                                        .interpolatingSpring(stiffness: 280, damping: 22)
-                                        .delay((hasText && !isRecording) ? 0.08 : 0.08), // Symmetric timing
-                                        value: hasText && !isRecording
-                                    )
-                            }
-                            
-                            // Stop icon - appears when recording
-                            if isRecording {
-                                Image(systemName: "stop.fill")
-                                    .font(GentleLightning.Typography.body)
-                                    .foregroundColor(.white)
-                                    .scaleEffect(
-                                        x: isRecording ? 1.0 : 0.1,
-                                        y: isRecording ? 1.0 : 0.1,
-                                        anchor: .center
-                                    )
-                                    .opacity(isRecording ? 1.0 : 0.0)
-                                    .animation(
-                                        .interpolatingSpring(stiffness: 280, damping: 22)
-                                        .delay(0.08), // Consistent symmetric timing
-                                        value: isRecording
-                                    )
-                            }
-                            
-                            // Microphone icon - default state (when no text and not recording)
-                            if !hasText && !isRecording {
-                                Image(systemName: "mic.fill")
-                                    .font(GentleLightning.Typography.title)
-                                    .foregroundColor(.white)
-                                    .scaleEffect(
-                                        x: (!hasText && !isRecording) ? 1.0 : 0.1,
-                                        y: (!hasText && !isRecording) ? 1.0 : 0.1,
-                                        anchor: .center
-                                    )
-                                    .opacity((!hasText && !isRecording) ? 1.0 : 0.0)
-                                    .animation(
-                                        .interpolatingSpring(stiffness: 280, damping: 22)
-                                        .delay(0.08), // Consistent symmetric timing
-                                        value: hasText || isRecording
-                                    )
-                            }
-                        }
-                    }
-                    .scaleEffect(isRecording ? 1.05 : 1.0)
-                    .animation(.easeInOut(duration: 0.15), value: isRecording)
-                }
-                .buttonStyle(PlainButtonStyle())
+                actionButton
             }
             .padding(.horizontal, GentleLightning.Layout.Padding.lg)
             .padding(.vertical, GentleLightning.Layout.Padding.lg)
-            .background(Color.white)
+            .background(themeManager.isDarkMode ? Color.black : Color.white)
             
             // Simple recording indicator that doesn't interfere with transcription
             if isRecording {
@@ -1366,8 +1376,7 @@ struct ItemRowSimple: View {
             // Track analytics for drawing addition
             AnalyticsManager.shared.trackDrawingUpdated(
                 noteId: firebaseId,
-                hasDrawing: true,
-                drawingDataSize: 0
+                hasContent: true
             )
             
         } catch {
@@ -1430,7 +1439,7 @@ struct AccountDrawerView: View {
         VStack(spacing: 0) {
             // Handle bar
             RoundedRectangle(cornerRadius: 2)
-                .fill(GentleLightning.Colors.textSecondary.opacity(0.3))
+                .fill(GentleLightning.Colors.drawerHandle(isDark: themeManager.isDarkMode))
                 .frame(width: 40, height: 4)
                 .padding(.top, 12)
                 .padding(.bottom, 24)
@@ -1533,11 +1542,11 @@ struct AccountDrawerView: View {
                     VStack(spacing: 8) {
                         Text("Scrap")
                             .font(.custom("SpaceGrotesk-Bold", size: 24))
-                            .foregroundColor(GentleLightning.Colors.textBlack)
+                            .foregroundColor(GentleLightning.Colors.textGreyStatic)
                         
                         Text("Version \(appVersion) (\(buildNumber))")
                             .font(GentleLightning.Typography.small)
-                            .foregroundColor(GentleLightning.Colors.textSecondary)
+                            .foregroundColor(GentleLightning.Colors.textGreyStatic)
                     }
                     .padding(.bottom, 40)
                 }
@@ -1803,9 +1812,9 @@ struct ContentView: View {
                         showingAccountDrawer = true
                     }) {
                         Text("...")
-                            .font(.system(size: 32, weight: .medium))
+                            .font(.system(size: 44, weight: .medium))
                             .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
-                            .padding(.vertical, 16)
+                            .padding(.vertical, 20)
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(PlainButtonStyle())

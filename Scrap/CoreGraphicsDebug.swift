@@ -12,17 +12,18 @@ class CoreGraphicsDebugger {
     /// Enable comprehensive CoreGraphics debugging
     /// Call this in your app delegate or early in app lifecycle
     static func enableDebugMode() {
-        // Enable CoreGraphics debugging with detailed backtraces
+        // Enable CoreGraphics debugging with detailed backtraces for production issues only
+        #if DEBUG
         setenv("CG_CONTEXT_SHOW_BACKTRACE", "1", 1)
         setenv("CG_PDF_VERBOSE", "1", 1)
         setenv("CG_NUMERICS_SHOW_BACKTRACE", "1", 1)  // Show backtraces for NaN errors
         setenv("CG_GEOMETRY_VERBOSE", "1", 1)         // Show geometry calculation details
+        #endif
         
+        // Only log in debug builds
+        #if DEBUG
         print("🔍 CoreGraphics Debug Mode Enabled")
-        print("   - Backtraces will show for NaN errors")
-        print("   - CG_NUMERICS_SHOW_BACKTRACE enabled")
-        print("   - CG_GEOMETRY_VERBOSE enabled")
-        print("   - Check Xcode console for detailed stack traces")
+        #endif
     }
     
     /// Validate all numeric values in NSAttributedString attributes
@@ -100,10 +101,8 @@ class CoreGraphicsDebugger {
         let safeSize = safeFontSize(size)
         
         if let customFont = UIFont(name: name, size: safeSize) {
-            print("✅ CoreGraphicsDebugger: Created safe font '\(name)' at size \(safeSize)")
             return customFont
         } else {
-            print("⚠️ CoreGraphicsDebugger: Font '\(name)' not found, using system font at size \(safeSize)")
             return UIFont.systemFont(ofSize: safeSize)
         }
     }
@@ -111,16 +110,11 @@ class CoreGraphicsDebugger {
     /// Safe font size validation
     private static func safeFontSize(_ size: CGFloat) -> CGFloat {
         guard size.isFinite && size > 0 else {
-            print("❌ CoreGraphicsDebugger: Invalid font size \(size), using default 17")
             return 17.0
         }
         let minSize: CGFloat = 8.0
         let maxSize: CGFloat = 72.0
         let clampedSize = max(minSize, min(maxSize, size))
-        
-        if clampedSize != size {
-            print("⚠️ CoreGraphicsDebugger: Font size \(size) clamped to \(clampedSize)")
-        }
         
         return clampedSize
     }
@@ -129,7 +123,6 @@ class CoreGraphicsDebugger {
     static func validateGeometry(_ values: [CGFloat], context: String) -> [CGFloat] {
         return values.map { value in
             guard value.isFinite && !value.isNaN else {
-                print("❌ CoreGraphicsDebugger: Invalid geometry value (\(value)) in \(context), using 0")
                 return 0.0
             }
             return value
@@ -139,13 +132,11 @@ class CoreGraphicsDebugger {
     /// Comprehensive UIFont validation
     static func validateFont(_ font: UIFont?) -> UIFont {
         guard let font = font else {
-            print("❌ CoreGraphicsDebugger: Nil font, using system default")
             return UIFont.systemFont(ofSize: 17)
         }
         
         let size = font.pointSize
         guard size.isFinite && !size.isNaN && size > 0 else {
-            print("❌ CoreGraphicsDebugger: Font has invalid size (\(size)), creating safe replacement")
             return createSafeFont(name: font.fontName, size: 17)
         }
         
@@ -162,8 +153,6 @@ class CoreGraphicsDebugger {
         if let offset = baselineOffset {
             if offset.isFinite && !offset.isNaN {
                 attributes[.baselineOffset] = offset
-            } else {
-                print("❌ CoreGraphicsDebugger: Invalid baseline offset \(offset), skipping")
             }
         }
         
@@ -174,10 +163,9 @@ class CoreGraphicsDebugger {
     static func validateBeforeRender(_ attributedString: NSAttributedString, context: String = "Unknown") -> Bool {
         let issues = validateAttributedString(attributedString)
         if !issues.isEmpty {
-            print("❌ CoreGraphicsDebugger: Found NaN issues in \(context):")
-            for issue in issues {
-                print("   \(issue)")
-            }
+            #if DEBUG
+            print("❌ CoreGraphicsDebugger: Found NaN issues in \(context)")
+            #endif
             return false
         }
         return true
@@ -189,7 +177,9 @@ class CoreGraphicsDebugger {
         let safeY = point.y.isFinite && !point.y.isNaN ? point.y : 0.0
         
         if safeX != point.x || safeY != point.y {
+            #if DEBUG
             print("❌ CoreGraphicsDebugger: Invalid \(context) (\(point.x), \(point.y)), using (\(safeX), \(safeY))")
+            #endif
         }
         
         return CGPoint(x: safeX, y: safeY)

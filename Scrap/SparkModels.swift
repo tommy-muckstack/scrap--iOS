@@ -89,13 +89,7 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
             // For content display, extract plain text only for title bar purposes
             // The actual rich content will be handled by the RTF editor
             do {
-                // Debug: First decode the RTF data to see what we're actually storing
-                print("🔍 SparkItem.init: Loading RTF data from Firebase, size: \(rtfData.count) bytes")
-                if let rtfString = String(data: rtfData, encoding: .utf8) {
-                    print("🔍 SparkItem.init: Raw RTF data contains: \(rtfString.prefix(500))")
-                } else {
-                    print("🔍 SparkItem.init: RTF data is not UTF-8 encoded")
-                }
+                // Loading RTF data from Firebase
                 
                 let loadedAttributedString = try NSAttributedString(
                     data: rtfData,
@@ -103,61 +97,22 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
                     documentAttributes: nil
                 )
                 
-                // Debug: Print what was actually loaded from RTF
-                print("🔍 SparkItem.init: Loaded from RTF - content: '\(loadedAttributedString.string)'")
-                print("🔍 SparkItem.init: Loaded from RTF - length: \(loadedAttributedString.length)")
+                // RTF content loaded successfully
                 
-                // Debug: Check for specific checkbox patterns in the loaded content
+                // Check for specific checkbox patterns in the loaded content
                 let content = loadedAttributedString.string
-                if content.contains("[CHECKBOX_CHECKED]") {
-                    print("🔍 SparkItem.init: Found RTF-safe checked marker [CHECKBOX_CHECKED] in loaded content")
-                }
-                if content.contains("[CHECKBOX_UNCHECKED]") {
-                    print("🔍 SparkItem.init: Found RTF-safe unchecked marker [CHECKBOX_UNCHECKED] in loaded content")
-                }
-                if content.contains("☑CHECKED☑") {
-                    print("🔍 SparkItem.init: Found checked Unicode marker ☑CHECKED☑ in loaded content")
-                }
-                if content.contains("☐UNCHECKED☐") {
-                    print("🔍 SparkItem.init: Found unchecked Unicode marker ☐UNCHECKED☐ in loaded content")
-                }
-                if content.contains("<CHECKED>") {
-                    print("🔍 SparkItem.init: Found checked ASCII marker <CHECKED> in loaded content")
-                }
-                if content.contains("<UNCHECKED>") {
-                    print("🔍 SparkItem.init: Found unchecked ASCII marker <UNCHECKED> in loaded content")
-                }
-                if content.contains("(CHECKED)") {
-                    print("🔍 SparkItem.init: Found checked ASCII marker (CHECKED) in loaded content")
-                }
-                if content.contains("(UNCHECKED)") {
-                    print("🔍 SparkItem.init: Found unchecked ASCII marker (UNCHECKED) in loaded content")
-                }
-                if content.contains("[CHECKED]") {
-                    print("🔍 SparkItem.init: Found checked ASCII marker [CHECKED] in loaded content")
-                }
-                if content.contains("[UNCHECKED]") {
-                    print("🔍 SparkItem.init: Found unchecked ASCII marker [UNCHECKED] in loaded content")
-                }
-                if content.contains("✓") {
-                    print("🔍 SparkItem.init: Found checkmark character ✓ in loaded content")
-                }
-                if content.contains("[ ]") {
-                    print("🔍 SparkItem.init: Found unchecked pattern [ ] in loaded content")
-                }
-                if content.contains("[✓]") {
-                    print("🔍 SparkItem.init: Found checked pattern [✓] in loaded content")
-                }
+                // Silent checkbox pattern detection
+                // Silent checkbox pattern detection continues
                 
                 // CRITICAL FIX: Store original RTF data with drawing markers intact
                 // We need to preserve the original drawing markers in RTF for later processing
                 // when the drawing manager becomes available
-                print("🔍 SparkItem.init: Preserving original RTF data with drawing markers intact")
+                // Preserving original RTF data with drawing markers intact
                 self.rtfData = rtfData // Keep original RTF data with markers
                 
                 // Note: We used to create a display version here, but it's not needed
                 // since the drawing manager will handle proper display when the note is opened
-                print("🔍 SparkItem.init: Skipping display processing to preserve drawing markers")
+                // Skipping display processing to preserve drawing markers
                 
                 // Clean the content for display purposes (remove drawing markers, etc.)
                 let rawContent = loadedAttributedString.string
@@ -363,11 +318,9 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
                 let baseDescriptor = UIFont.systemFont(ofSize: size).fontDescriptor
                 if let italicDescriptor = baseDescriptor.withSymbolicTraits([.traitItalic]) {
                     systemFont = UIFont(descriptor: italicDescriptor, size: size)
-                    print("✅ SparkItem: Created system italic font for RTF save")
                 } else {
                     // Alternative approach using UIFont.italicSystemFont if symbolic traits fail
                     systemFont = UIFont.italicSystemFont(ofSize: size)
-                    print("⚠️ SparkItem: Used UIFont.italicSystemFont fallback for RTF save")
                 }
             } else {
                 // Regular

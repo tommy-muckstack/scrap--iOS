@@ -65,9 +65,6 @@ struct DrawingEditorView: View {
                 ActionSheet(
                     title: Text("Drawing Options"),
                     buttons: [
-                        .default(Text("Resize Canvas")) {
-                            // Height adjustment handled by DrawingCanvasView
-                        },
                         .destructive(Text("Delete Drawing")) {
                             showingDeleteConfirmation = true
                         },
@@ -164,12 +161,10 @@ struct ColorPickerToolbar: View {
     let onColorSelected: (DrawingColor) -> Void
     
     var body: some View {
-        HStack(spacing: 16) {
-            Text("Color:")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.secondary)
+        HStack {
+            Spacer()
             
-            HStack(spacing: 12) {
+            HStack(spacing: 16) {
                 ForEach(DrawingColor.allCases, id: \.rawValue) { color in
                     Button(action: {
                         selectedColor = color
@@ -191,11 +186,6 @@ struct ColorPickerToolbar: View {
             }
             
             Spacer()
-            
-            // Height indicator
-            Text("Height: \(Int(canvasHeight))pt")
-                .font(.system(size: 12))
-                .foregroundColor(.secondary)
         }
     }
 }
