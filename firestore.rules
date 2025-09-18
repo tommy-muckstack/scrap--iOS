@@ -29,6 +29,16 @@ service cloud.firestore {
       allow read, update, delete: if false;
     }
     
+    // Security rules for archived drawings collection
+    match /drawings_archived/{drawingId} {
+      // Only allow writes for archiving - users can only archive drawings from their own notes
+      allow create: if request.auth != null 
+        && validateArchivedDrawingData(request.resource.data);
+      
+      // No read or update access from frontend - archives are storage-only
+      allow read, update, delete: if false;
+    }
+    
     // Security rules for user-specific categories subcollection
     match /users/{userId}/categories/{categoryId} {
       // Users can only access their own categories
@@ -110,4 +120,27 @@ function validateArchivedNoteData(data) {
     && (!('pineconeId' in data.keys()) || data.pineconeId is string)
     && (!('rtfContent' in data.keys()) || data.rtfContent is string)
     && (!('id' in data.keys()) || data.id is string);
+}
+
+// Validate archived drawing data structure
+function validateArchivedDrawingData(data) {
+  // Required fields check
+  let hasRequiredFields = data.keys().hasAll(['drawingId', 'noteId', 'base64Data', 'height', 'color', 'archivedAt', 'originalNoteId']);
+  
+  // All allowed fields
+  let allowedFields = ['drawingId', 'noteId', 'base64Data', 'height', 'color', 'archivedAt', 'originalNoteId'];
+  
+  // Check that all fields in data are allowed
+  let hasOnlyAllowedFields = data.keys().hasOnly(allowedFields);
+  
+  return hasRequiredFields && hasOnlyAllowedFields
+    && data.drawingId is string
+    && data.noteId is string
+    && data.base64Data is string
+    && data.base64Data.size() <= 1000000  // Max 1MB base64 data
+    && data.height is string
+    && data.color is string
+    && data.color.matches('^#[0-9A-Fa-f]{6}$')  // Valid hex color
+    && data.archivedAt is timestamp
+    && data.originalNoteId is string;
 }
