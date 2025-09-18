@@ -939,18 +939,26 @@ struct CategoryCard: View {
     var body: some View {
         Button(action: onToggle) {
             VStack(spacing: 12) {
-                // Color circle
-                Circle()
-                    .fill(category.uiColor)
-                    .frame(width: 40, height: 40)
-                    .overlay(
-                        Circle()
-                            .stroke(.white, lineWidth: isSelected ? 3 : 0)
-                    )
-                    .overlay(
-                        Circle()
-                            .stroke(GentleLightning.Colors.accentNeutral, lineWidth: isSelected ? 2 : 0)
-                    )
+                // Color circle with checkmark when selected
+                ZStack {
+                    Circle()
+                        .fill(category.uiColor)
+                        .frame(width: 40, height: 40)
+                        .overlay(
+                            Circle()
+                                .stroke(.white, lineWidth: isSelected ? 3 : 0)
+                        )
+                        .overlay(
+                            Circle()
+                                .stroke(GentleLightning.Colors.accentNeutral, lineWidth: isSelected ? 2 : 0)
+                        )
+                    
+                    if isSelected {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+                }
                 
                 // Category name
                 Text(category.name)
@@ -959,10 +967,11 @@ struct CategoryCard: View {
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
                 
-                // Usage count
-                Text("\(category.usageCount) notes")
+                // Selection status
+                Text(isSelected ? "Added" : "Tap to add")
                     .font(GentleLightning.Typography.caption)
-                    .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
+                    .foregroundColor(isSelected ? GentleLightning.Colors.accentNeutral : GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
+                    .fontWeight(isSelected ? .medium : .regular)
             }
             .frame(height: 120)
             .frame(maxWidth: .infinity)
