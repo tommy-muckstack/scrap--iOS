@@ -968,10 +968,11 @@ struct CategoryCard: View {
                     .lineLimit(2)
                 
                 // Selection status
-                Text(isSelected ? "Added" : "Tap to add")
+                Text(isSelected ? "Added. Tap to Remove." : "Tap to add")
                     .font(GentleLightning.Typography.caption)
                     .foregroundColor(isSelected ? GentleLightning.Colors.accentNeutral : GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
                     .fontWeight(isSelected ? .medium : .regular)
+                    .multilineTextAlignment(.center)
             }
             .frame(height: 120)
             .frame(maxWidth: .infinity)
