@@ -637,23 +637,26 @@ class FirebaseManager: ObservableObject {
             print("🎨 FirebaseManager: Archived single drawing for note \(noteId)")
         }
         
+        // Get userId for archival authorization
+        let userId = noteData["userId"] as? String ?? ""
+        
         // LEGACY: Check for old inline drawings in RTF content (for backward compatibility)
         if let rtfContentBase64 = noteData["rtfContent"] as? String,
            let rtfData = Data(base64Encoded: rtfContentBase64) {
             
-            await cleanupDrawingsFromRTF(rtfData: rtfData, noteId: noteId)
+            await cleanupDrawingsFromRTF(rtfData: rtfData, noteId: noteId, userId: userId)
         }
         
         // LEGACY: Also check plain content for drawing markers (fallback)
         if let content = noteData["content"] as? String {
-            await cleanupDrawingsFromContent(content: content, noteId: noteId)
+            await cleanupDrawingsFromContent(content: content, noteId: noteId, userId: userId)
         }
         
         print("✅ FirebaseManager: Drawing cleanup completed for note \(noteId)")
     }
     
     /// Extract and archive drawing data from RTF content
-    private func cleanupDrawingsFromRTF(rtfData: Data, noteId: String) async {
+    private func cleanupDrawingsFromRTF(rtfData: Data, noteId: String, userId: String) async {
         do {
             let attributedString = try NSAttributedString(
                 data: rtfData,
@@ -662,7 +665,7 @@ class FirebaseManager: ObservableObject {
             )
             
             let content = attributedString.string
-            await cleanupDrawingsFromContent(content: content, noteId: noteId)
+            await cleanupDrawingsFromContent(content: content, noteId: noteId, userId: userId)
             
         } catch {
             print("⚠️ FirebaseManager: Failed to extract content from RTF for drawing cleanup: \(error)")
@@ -670,7 +673,7 @@ class FirebaseManager: ObservableObject {
     }
     
     /// Extract and archive drawing data from plain text content
-    private func cleanupDrawingsFromContent(content: String, noteId: String) async {
+    private func cleanupDrawingsFromContent(content: String, noteId: String, userId: String) async {
         let drawingPattern = "🎨DRAWING:([^:]*):([^:]*):([^:]*)🎨"
         guard let regex = try? NSRegularExpression(pattern: drawingPattern, options: []) else {
             print("⚠️ FirebaseManager: Failed to create drawing pattern regex")
@@ -700,7 +703,7 @@ class FirebaseManager: ObservableObject {
                     height: heightString,
                     color: colorString,
                     noteId: noteId,
-                    userId: noteData["userId"] as? String ?? ""
+                    userId: userId
                 )
             }
         }
