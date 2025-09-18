@@ -184,32 +184,6 @@ struct DrawingDisplayView: UIViewRepresentable {
 }
 
 
-/// UIViewRepresentable wrapper for PKCanvasView
-struct DrawingCanvasView: UIViewRepresentable {
-    @Binding var canvasView: PKCanvasView
-    @Binding var drawingData: Data?
-    let selectedColor: DrawingColor
-    
-    func makeUIView(context: Context) -> PKCanvasView {
-        canvasView.backgroundColor = UIColor.clear
-        canvasView.isOpaque = false
-        canvasView.drawingPolicy = .anyInput
-        
-        // Set initial tool
-        canvasView.tool = PKInkingTool(.pen, color: selectedColor.uiColor, width: 3)
-        
-        return canvasView
-    }
-    
-    func updateUIView(_ uiView: PKCanvasView, context: Context) {
-        // Update tool color if it changed
-        let newColor = selectedColor.uiColor
-        if let currentTool = uiView.tool as? PKInkingTool,
-           currentTool.color != newColor {
-            uiView.tool = PKInkingTool(.pen, color: newColor, width: 3)
-        }
-    }
-}
 
 // MARK: - Preview
 struct FixedBottomDrawingArea_Previews: PreviewProvider {

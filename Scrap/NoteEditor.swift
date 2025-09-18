@@ -118,11 +118,11 @@ struct NoteEditor: View {
                                 }
                             ),
                             drawingColor: Binding(
-                                get: { item.drawingColor },
+                                get: { DrawingColor(rawValue: item.drawingColor) ?? .black },
                                 set: { newColor in
-                                    item.drawingColor = newColor
+                                    item.drawingColor = newColor.rawValue
                                     // Save color to Firebase
-                                    updateDrawingColor(newColor)
+                                    updateDrawingColor(newColor.rawValue)
                                 }
                             ),
                             onDrawingChanged: { drawingData in
