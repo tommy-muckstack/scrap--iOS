@@ -253,15 +253,14 @@ extension FloatingLabelTextField {
 
 struct AuthenticationView: View {
     @ObservedObject private var firebaseManager = FirebaseManager.shared
-    @EnvironmentObject private var themeManager: ThemeManager
     @State private var showingEmailEntry = false
     @State private var appleSignInCoordinator: AppleSignInCoordinator?
     @State private var errorMessage: String?
     
     var body: some View {
         ZStack {
-            // Background
-            GentleLightning.Colors.background(isDark: themeManager.isDarkMode)
+            // Background - always light mode for login
+            GentleLightning.Colors.background(isDark: false)
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
@@ -273,6 +272,7 @@ struct AuthenticationView: View {
                             .resizable()
                             .aspectRatio(contentMode: .fit)
                             .frame(width: 80, height: 80)
+                            .environment(\.colorScheme, .light) // Force light mode logo
                         
                         Spacer()
                     }
@@ -283,14 +283,14 @@ struct AuthenticationView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Scrap")
                             .font(.custom("SpaceGrotesk-Bold", size: 48))
-                            .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+                            .foregroundColor(GentleLightning.Colors.textPrimary(isDark: false))
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                         
                         Text("The world's simplest notepad")
                             .font(GentleLightning.Typography.title)
-                            .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
+                            .foregroundColor(GentleLightning.Colors.textSecondary(isDark: false))
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .padding(.horizontal, 24)
@@ -324,7 +324,7 @@ struct AuthenticationView: View {
                             
                             Text("Continue with Google")
                                 .font(GentleLightning.Typography.body)
-                                .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+                                .foregroundColor(GentleLightning.Colors.textPrimary(isDark: false))
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: 52)
@@ -348,11 +348,11 @@ struct AuthenticationView: View {
                         HStack(spacing: 12) {
                             Image(systemName: "applelogo")
                                 .font(GentleLightning.Typography.bodyInput)
-                                .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+                                .foregroundColor(GentleLightning.Colors.textPrimary(isDark: false))
                             
                             Text("Continue with Apple")
                                 .font(GentleLightning.Typography.body)
-                                .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+                                .foregroundColor(GentleLightning.Colors.textPrimary(isDark: false))
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: 52)
@@ -376,11 +376,11 @@ struct AuthenticationView: View {
                         HStack(spacing: 12) {
                             Image(systemName: "envelope")
                                 .font(GentleLightning.Typography.bodyInput)
-                                .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+                                .foregroundColor(GentleLightning.Colors.textPrimary(isDark: false))
                             
                             Text("Continue with Email")
                                 .font(GentleLightning.Typography.body)
-                                .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+                                .foregroundColor(GentleLightning.Colors.textPrimary(isDark: false))
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: 52)
@@ -462,6 +462,7 @@ struct AuthenticationView: View {
             // Resume session replay after authentication
             AnalyticsManager.shared.resumeSessionReplay()
         }
+        .preferredColorScheme(.light) // Force light mode for login screen
     }
     
     // MARK: - Authentication Actions
@@ -740,6 +741,7 @@ struct EmailAuthView: View {
             // Resume session replay after authentication
             AnalyticsManager.shared.resumeSessionReplay()
         }
+        .preferredColorScheme(.light) // Force light mode for email auth
     }
     
     // MARK: - Helper Methods

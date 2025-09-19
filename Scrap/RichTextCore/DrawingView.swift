@@ -9,6 +9,7 @@ struct DrawingEditorView: View {
     @Binding var canvasHeight: CGFloat
     @Binding var selectedColor: DrawingColor
     @Environment(\.dismiss) private var dismiss
+    @StateObject private var themeManager = ThemeManager.shared
     
     @State private var showingOptions = false
     @State private var showingDeleteConfirmation = false
@@ -39,26 +40,23 @@ struct DrawingEditorView: View {
                 .padding(.vertical, 8)
                 .background(Color(UIColor.systemGray6))
             }
-            .navigationTitle("Drawing")
+            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
+                    Button(action: { showingOptions = true }) {
+                        Image(systemName: GentleLightning.Icons.navigationOptions)
+                            .font(.system(size: 20, weight: .medium))
+                            .foregroundColor(themeManager.isDarkMode ? .white : .primary)
                     }
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    HStack {
-                        Button(action: { showingOptions = true }) {
-                            Image(systemName: "ellipsis.circle")
-                        }
-                        
-                        Button("Save") {
-                            saveDrawing()
-                        }
-                        .fontWeight(.semibold)
+                    Button("Done") {
+                        saveDrawing()
                     }
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(themeManager.isDarkMode ? .white : .primary)
                 }
             }
             .actionSheet(isPresented: $showingOptions) {

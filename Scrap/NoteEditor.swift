@@ -25,6 +25,7 @@ struct NoteEditor: View {
     @State private var hasTrackedOpen = false
     @State private var isBeingDeleted = false
     @State private var showingDrawingEditor = false
+    @StateObject private var drawingManager = DrawingOverlayManager()
     
     init(item: SparkItem, dataManager: FirebaseDataManager) {
         self.item = item
@@ -82,12 +83,41 @@ struct NoteEditor: View {
                             }
                     }
                     
-                    // Rich Text editor - now without inline drawings since we have fixed bottom drawing
-                    RichTextEditor.forNotes(
+                    // Rich Text editor with drawing manager for inline drawing thumbnail tap detection
+                    RichTextEditor(
                         text: $editedText,
                         context: richTextContext,
-                        showingFormatting: .constant(true)
-                    )
+                        showingFormatting: .constant(true),
+                        drawingManager: drawingManager
+                    ) { textView in
+                        // Apply note-specific optimizations
+                        textView.autocorrectionType = .yes
+                        textView.autocapitalizationType = .sentences
+                        textView.smartQuotesType = .yes
+                        textView.smartDashesType = .yes
+                        textView.spellCheckingType = .yes
+                        
+                        // Set cursor color to black (matching design system)
+                        textView.tintColor = UIColor.label
+                        
+                        // Improve text alignment and padding to match placeholder
+                        textView.textContainerInset = UIEdgeInsets(top: 8, left: 0, bottom: 8, right: 0)
+                        textView.textContainer.lineFragmentPadding = 4
+                        
+                        // Better line spacing for readability
+                        let paragraphStyle = NSMutableParagraphStyle()
+                        paragraphStyle.lineSpacing = 4
+                        paragraphStyle.paragraphSpacing = 8
+                        
+                        // Set default Space Grotesk font for all notes
+                        let defaultFont = UIFont(name: "SpaceGrotesk-Regular", size: 16) ?? UIFont.systemFont(ofSize: 16)
+                        
+                        textView.typingAttributes = [
+                            .paragraphStyle: paragraphStyle,
+                            .font: defaultFont,
+                            .foregroundColor: UIColor.label
+                        ]
+                    }
                     .padding(.horizontal, 16)
                     .focused($isTextFocused)
                     .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
@@ -138,25 +168,6 @@ struct NoteEditor: View {
                     
                     Divider()
                     
-                    // Simple tags display
-                    if !selectedCategories.isEmpty {
-                        HStack {
-                            Text("Tags:")
-                                .font(GentleLightning.Typography.caption)
-                                .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
-                            
-                            // Simple text list of tag names
-                            Text(userCategories.filter { category in
-                                selectedCategories.contains(category.firebaseId ?? category.id)
-                            }.map { $0.name }.joined(separator: ", "))
-                                .font(GentleLightning.Typography.caption)
-                                .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
-                            
-                            Spacer()
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.top, 8)
-                    }
                 }
                 .transition(.opacity)
                 .gesture(
@@ -452,6 +463,9 @@ struct NoteEditor: View {
         isLoadingCategories = true
         Task {
             do {
+                // Run automatic cleanup before loading categories
+                await CategoryService.shared.runAutomaticCleanup()
+                
                 let categories = try await CategoryService.shared.getUserCategories()
                 await MainActor.run {
                     userCategories = categories
@@ -699,7 +713,7 @@ struct RichFormattingToolbar: View {
                 
                 // Checkbox button
                 Button(action: { context.toggleCheckbox() }) {
-                    Image(systemName: "circle.dotted")
+                    Image(systemName: "checklist")
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(context.isCheckboxActive ? .white : .primary)
                         .frame(width: buttonWidth, height: 32)
@@ -707,6 +721,7 @@ struct RichFormattingToolbar: View {
                         .cornerRadius(8)
                 }
                 .animation(.easeInOut(duration: 0.1), value: context.isCheckboxActive)
+                
                 
                 // Indent In button
                 Button(action: { context.indentIn() }) {
@@ -793,58 +808,32 @@ struct CategoryManagerView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 20)
+                    .padding(.top, 8)
                     
-                    // Existing Categories
-                    if userCategories.isEmpty {
-                        VStack(spacing: 16) {
-                            Text("No tags yet")
-                                .font(GentleLightning.Typography.subtitle)
-                                .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
-                            
-                            Text("Create your first tag to organize your notes")
-                                .font(GentleLightning.Typography.secondary)
-                                .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
-                                .multilineTextAlignment(.center)
-                        }
-                        .padding(40)
-                    } else {
-                        ScrollView {
-                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
-                                ForEach(userCategories) { category in
-                                    CategoryCard(
-                                        category: category,
-                                        isSelected: selectedCategories.contains(category.firebaseId ?? category.id),
-                                        onToggle: { toggleCategory(category) }
-                                    )
-                                }
+                    // Tags Grid (includes existing categories and create button)
+                    ScrollView {
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
+                            // Existing Categories
+                            ForEach(userCategories) { category in
+                                CategoryCard(
+                                    category: category,
+                                    isSelected: selectedCategories.contains(category.firebaseId ?? category.id),
+                                    onToggle: { toggleCategory(category) }
+                                )
                             }
-                            .padding(.horizontal, 20)
+                            
+                            // Create New Tag Tile
+                            if userCategories.count < 5 {
+                                CreateTagTile(onTap: {
+                                    loadAvailableColors()
+                                    showingCreateForm = true
+                                })
+                            }
                         }
+                        .padding(.horizontal, 20)
                     }
                     
                     Spacer()
-                    
-                    // Create Tag Button
-                    if userCategories.count < 5 {
-                        Button(action: { 
-                            loadAvailableColors()
-                            showingCreateForm = true 
-                        }) {
-                            HStack {
-                                Image(systemName: GentleLightning.Icons.add)
-                                    .font(.system(size: 18))
-                                Text("Create New Tag")
-                                    .font(GentleLightning.Typography.body)
-                            }
-                            .foregroundColor(.white)
-                            .padding(.vertical, 12)
-                            .frame(maxWidth: .infinity)
-                            .background(GentleLightning.Colors.accentNeutral)
-                            .cornerRadius(12)
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 20)
-                    }
                 }
                 }
             }
@@ -858,6 +847,13 @@ struct CategoryManagerView: View {
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    // Handle bar for pull-to-dismiss indication - centered in toolbar
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(GentleLightning.Colors.drawerHandle(isDark: themeManager.isDarkMode))
+                        .frame(width: 40, height: 4)
+                }
+                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") { dismiss() }
                         .font(GentleLightning.Typography.body)
@@ -875,6 +871,11 @@ struct CategoryManagerView: View {
             // Track category deselection
             AnalyticsManager.shared.trackCategoryDeselected(categoryId: categoryId, categoryName: category.name)
             selectedCategories.removeAll { $0 == categoryId }
+            
+            // Run cleanup after removing category to check if it became unused
+            Task {
+                await CategoryService.shared.runAutomaticCleanup()
+            }
         } else {
             // Track category selection
             AnalyticsManager.shared.trackCategorySelected(categoryId: categoryId, categoryName: category.name)
@@ -979,10 +980,57 @@ struct CategoryCard: View {
             .frame(maxWidth: .infinity)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(GentleLightning.Colors.surface)
+                    .fill(themeManager.isDarkMode ? Color.black : GentleLightning.Colors.surface)
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
                             .stroke(isSelected ? GentleLightning.Colors.accentNeutral : GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode).opacity(0.2), lineWidth: isSelected ? 2 : 1)
+                    )
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Create Tag Tile
+struct CreateTagTile: View {
+    let onTap: () -> Void
+    @EnvironmentObject var themeManager: ThemeManager
+    
+    var body: some View {
+        Button(action: onTap) {
+            VStack(spacing: 12) {
+                // Add icon with dashed circle
+                ZStack {
+                    Circle()
+                        .stroke(GentleLightning.Colors.accentNeutral, style: StrokeStyle(lineWidth: 2, dash: [5]))
+                        .frame(width: 40, height: 40)
+                    
+                    Image(systemName: GentleLightning.Icons.add)
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(GentleLightning.Colors.accentNeutral)
+                }
+                
+                // Text
+                Text("Create New Tag")
+                    .font(GentleLightning.Typography.body)
+                    .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                
+                // Instruction text
+                Text("Tap to create")
+                    .font(GentleLightning.Typography.caption)
+                    .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
+                    .multilineTextAlignment(.center)
+            }
+            .frame(height: 120)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(themeManager.isDarkMode ? Color.black : GentleLightning.Colors.surface)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(GentleLightning.Colors.accentNeutral, style: StrokeStyle(lineWidth: 1, dash: [5]))
                     )
             )
         }

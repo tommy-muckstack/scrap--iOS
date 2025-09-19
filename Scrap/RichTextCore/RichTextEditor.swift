@@ -111,11 +111,27 @@ public struct RichTextEditor: UIViewRepresentable {
             print("⚠️ RichTextEditor: No DrawingOverlayManager available, will use fallback NSTextAttachment method")
         }
         
-        // Add tap gesture for checkbox toggling
+        // Add tap gesture for checkbox and drawing toggling
         let tapGesture = UITapGestureRecognizer(target: coordinator, action: #selector(RichTextCoordinator.handleTap(_:)))
         tapGesture.numberOfTapsRequired = 1
         tapGesture.delegate = coordinator
+        tapGesture.cancelsTouchesInView = false // Dynamic: Will be changed in shouldReceive if needed
+        tapGesture.delaysTouchesBegan = false // Don't delay touch delivery
+        tapGesture.delaysTouchesEnded = false // Don't delay touch end
         textView.addGestureRecognizer(tapGesture)
+        print("🎯 RichTextEditor: Added tap gesture recognizer to textView with enhanced attachment detection")
+        
+        // Also add gesture recognizer to the textView's superview to catch attachment view taps
+        DispatchQueue.main.async {
+            if let containerView = textView.superview {
+                let containerTapGesture = UITapGestureRecognizer(target: coordinator, action: #selector(RichTextCoordinator.handleTap(_:)))
+                containerTapGesture.numberOfTapsRequired = 1
+                containerTapGesture.delegate = coordinator
+                containerTapGesture.cancelsTouchesInView = false
+                containerView.addGestureRecognizer(containerTapGesture)
+                print("🎯 RichTextEditor: Also added tap gesture recognizer to container view")
+            }
+        }
         
         // Use native UITextView behavior for text selection and editing
         // Double-tap, long-press, copy/paste all work natively

@@ -173,6 +173,12 @@ class DrawingTextAttachment: NSTextAttachment, NSCopying {
     
     // MARK: - Image Generation
     
+    // MARK: - Custom View for Attachment
+    
+    // MARK: - Note: Custom viewProvider removed due to TextKit 2 compatibility issues
+    // The gesture recognizer approach in RichTextCoordinator provides reliable tap detection
+    // across all iOS versions without requiring TextKit 2 APIs
+    
     /// Generate the drawing view image with borders and controls
     private func generateDrawingImage(bounds: CGRect) -> UIImage {
         
@@ -213,11 +219,13 @@ class DrawingTextAttachment: NSTextAttachment, NSCopying {
         
         // Ensure minimum visible size and reasonable dimensions
         let actualBounds = CGRect(
-            x: bounds.origin.x,
-            y: bounds.origin.y, 
+            x: 0, // Always start at 0 for proper coordinate system
+            y: 0, // Always start at 0 for proper coordinate system 
             width: max(bounds.width, 300), // Ensure full width for visibility
             height: max(bounds.height, 120) // Ensure minimum canvas height
         )
+        
+        print("🔍 DrawingTextAttachment: Original bounds: \(bounds), Actual bounds: \(actualBounds)")
         
         let renderer = UIGraphicsImageRenderer(bounds: actualBounds)
         let generatedImage = renderer.image { context in
@@ -330,35 +338,55 @@ class DrawingTextAttachment: NSTextAttachment, NSCopying {
         attributedText.draw(in: textRect)
     }
     
-    /// Draw the options button (three dots)
+    /// Draw the "Open" button
     private func drawOptionsButton(in context: CGContext, bounds: CGRect) {
-        let buttonSize: CGFloat = 24
+        let buttonWidth: CGFloat = 50
+        let buttonHeight: CGFloat = 24
+        let padding: CGFloat = 8
         let buttonRect = CGRect(
-            x: bounds.width - buttonSize - 12,
-            y: 4,
-            width: buttonSize,
-            height: buttonSize
+            x: bounds.width - buttonWidth - padding,
+            y: padding, // Move down from very top edge
+            width: buttonWidth,
+            height: buttonHeight
         )
         
-        // Button background
-        context.setFillColor(UIColor.systemGray5.cgColor)
-        let buttonPath = UIBezierPath(roundedRect: buttonRect, cornerRadius: 4)
+        print("🔍 DrawingTextAttachment: Drawing 'Open' button at rect: \(buttonRect) within bounds: \(bounds)")
+        
+        // Button background - use a more prominent blue color
+        context.setFillColor(UIColor.systemBlue.cgColor)
+        let buttonPath = UIBezierPath(roundedRect: buttonRect, cornerRadius: 12)
         context.addPath(buttonPath.cgPath)
         context.fillPath()
         
-        // Three dots
-        context.setFillColor(UIColor.label.cgColor)
-        let dotSize: CGFloat = 2
-        let dotSpacing: CGFloat = 4
-        let centerX = buttonRect.midX
-        let centerY = buttonRect.midY
+        // Add a border to make it more visible
+        context.setStrokeColor(UIColor.white.cgColor)
+        context.setLineWidth(1.0)
+        context.addPath(buttonPath.cgPath)
+        context.strokePath()
         
-        for i in 0..<3 {
-            let dotX = centerX - dotSize/2
-            let dotY = centerY - dotSize/2 + CGFloat(i - 1) * (dotSize + dotSpacing)
-            let dotRect = CGRect(x: dotX, y: dotY, width: dotSize, height: dotSize)
-            context.fillEllipse(in: dotRect)
-        }
+        // "Open" text
+        let text = "Open"
+        let font = UIFont.systemFont(ofSize: 12, weight: .medium)
+        let textColor = UIColor.white
+        
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: textColor
+        ]
+        
+        let attributedText = NSAttributedString(string: text, attributes: attributes)
+        let textSize = attributedText.size()
+        
+        // Center the text in the button
+        let textRect = CGRect(
+            x: buttonRect.midX - textSize.width / 2,
+            y: buttonRect.midY - textSize.height / 2,
+            width: textSize.width,
+            height: textSize.height
+        )
+        
+        attributedText.draw(in: textRect)
+        print("🔍 DrawingTextAttachment: Drew 'Open' text in rect: \(textRect)")
     }
     
     /// Draw resize handle at bottom center
@@ -549,6 +577,49 @@ class DrawingManager {
         let attachment = DrawingTextAttachment()
         print("🎨 DrawingManager: Created DrawingTextAttachment with ID: \(attachment.drawingId)")
         
+        // CRITICAL: Set up the onEditDrawing callback to handle taps
+        attachment.onEditDrawing = { drawingAttachment in
+            print("🎯 DrawingManager: onEditDrawing callback triggered for drawing \(drawingAttachment.drawingId)")
+            
+            // Find the UITextView that contains this attachment and present the drawing editor
+            DispatchQueue.main.async {
+                if let presentingViewController = findTopViewController() {
+                    let drawingEditorView = DrawingEditorView(
+                        drawingData: .constant(drawingAttachment.drawingData),
+                        canvasHeight: .constant(drawingAttachment.canvasHeight),
+                        selectedColor: .constant(drawingAttachment.selectedColor),
+                        onSave: { data, height, color in
+                            // Update the attachment with new data
+                            drawingAttachment.drawingData = data
+                            drawingAttachment.canvasHeight = height
+                            drawingAttachment.selectedColor = color
+                            
+                            // Force text view to refresh the attachment display
+                            textView.setNeedsDisplay()
+                            textView.layoutIfNeeded()
+                        },
+                        onDelete: {
+                            // Remove the attachment from the text view
+                            if let attributedText = textView.attributedText?.mutableCopy() as? NSMutableAttributedString {
+                                attributedText.enumerateAttribute(.attachment, in: NSRange(location: 0, length: attributedText.length), options: [.reverse]) { value, range, _ in
+                                    if let foundAttachment = value as? DrawingTextAttachment,
+                                       foundAttachment.drawingId == drawingAttachment.drawingId {
+                                        attributedText.deleteCharacters(in: range)
+                                    }
+                                }
+                                textView.attributedText = attributedText
+                            }
+                        }
+                    )
+                    
+                    let hostingController = UIHostingController(rootView: drawingEditorView)
+                    presentingViewController.present(hostingController, animated: true)
+                } else {
+                    print("❌ DrawingManager: Could not find presenting view controller")
+                }
+            }
+        }
+        
         // CRITICAL FIX: Create attachment string with proper paragraph formatting
         // to ensure it behaves as a block element
         let attachmentString = NSMutableAttributedString(attachment: attachment)
@@ -734,6 +805,19 @@ class DrawingManager {
     }
 }
 
+/// Helper function to find the top view controller for presenting sheets
+private func findTopViewController() -> UIViewController? {
+    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+       let window = windowScene.windows.first {
+        var topController = window.rootViewController
+        while let presentedViewController = topController?.presentedViewController {
+            topController = presentedViewController
+        }
+        return topController
+    }
+    return nil
+}
+
 // MARK: - UIColor Extension
 extension UIColor {
     convenience init?(hex: String) {
@@ -760,3 +844,4 @@ extension UIColor {
         )
     }
 }
+

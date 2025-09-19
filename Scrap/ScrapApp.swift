@@ -139,6 +139,7 @@ struct RootView: View {
             } else {
                 AuthenticationView()
                     .transition(.opacity)
+                    .preferredColorScheme(.light) // Force light mode for authentication
             }
         }
         .animation(.easeInOut(duration: 0.5), value: firebaseManager.isAuthenticated)

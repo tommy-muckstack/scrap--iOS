@@ -68,11 +68,25 @@ struct FixedBottomDrawingArea: View {
     @ViewBuilder
     private var drawingAreaView: some View {
         if let data = drawingData, !data.isEmpty {
-            // Show existing drawing
-            DrawingDisplayView(drawingData: data)
-                .onTapGesture {
+            // Show existing drawing with Open button overlay
+            ZStack(alignment: .topTrailing) {
+                DrawingDisplayView(drawingData: data)
+                    .onTapGesture {
+                        showingDrawingEditor = true
+                    }
+                
+                // "Open" button in top-right corner
+                Button("Open") {
                     showingDrawingEditor = true
                 }
+                .font(.custom("SpaceGrotesk-Medium", size: 12))
+                .foregroundColor(.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Color.black)
+                .cornerRadius(12)
+                .padding(8)
+            }
         } else {
             // Show empty state with prompt to draw
             VStack(spacing: 12) {

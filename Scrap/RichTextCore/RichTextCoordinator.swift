@@ -40,6 +40,9 @@ public class RichTextCoordinator: NSObject {
     /// Prevents checkbox cursor detection during checkbox toggling
     private var isTogglingSelf = false
     
+    /// Tracks when user has explicitly exited a code block to prevent automatic re-activation
+    private var hasExplicitlyExitedCodeBlock = false
+    
     /// Drawing overlay manager for handling drawings as overlays instead of attachments
     weak var drawingManager: DrawingOverlayManager?
     
@@ -818,6 +821,9 @@ public class RichTextCoordinator: NSObject {
     }
     
     private func applyCodeBlockFormat(_ mutableText: NSMutableAttributedString, _ lineRange: NSRange, _ lineText: String) {
+        // Reset the explicit exit flag since user is manually toggling code block
+        hasExplicitlyExitedCodeBlock = false
+        
         // Check if cursor is currently in a code block using the same reliable detection method
         let cursorPosition = textView.selectedRange.location
         let isInCodeBlock = checkIfPositionIsInCodeBlock(cursorPosition)
@@ -998,22 +1004,65 @@ public class RichTextCoordinator: NSObject {
         let codeBlockRange = NSRange(location: codeBlockStart, length: codeBlockEnd - codeBlockStart)
         print("🔄 exitCodeBlockAndMoveCursor: Found code block at range \(codeBlockRange)")
         
-        // Remove code block formatting and replace with normal text formatting
+        // Remove code block formatting and replace with normal text formatting while preserving text attributes
         if codeBlockRange.length > 0 {
-            // Get the plain text content
-            let codeBlockText = mutableText.attributedSubstring(from: codeBlockRange).string
+            // Process each character in the code block to preserve non-code-block formatting
+            let codeBlockText = mutableText.attributedSubstring(from: codeBlockRange)
+            let normalizedText = NSMutableAttributedString()
             
-            // Create new attributed string with normal formatting
-            let normalFont = UIFont(name: context.fontName, size: safeFontSize(context.fontSize)) ?? UIFont.systemFont(ofSize: safeFontSize(context.fontSize))
-            let normalAttributes: [NSAttributedString.Key: Any] = [
-                .font: normalFont,
-                .foregroundColor: UIColor.label,
-                .backgroundColor: UIColor.clear,
-                .paragraphStyle: NSParagraphStyle.default // Clear any paragraph formatting
-            ]
+            codeBlockText.enumerateAttributes(in: NSRange(location: 0, length: codeBlockText.length), options: []) { attributes, range, _ in
+                let substring = codeBlockText.attributedSubstring(from: range)
+                
+                // Start with normal base attributes
+                let normalFont = UIFont(name: context.fontName, size: safeFontSize(context.fontSize)) ?? UIFont.systemFont(ofSize: safeFontSize(context.fontSize))
+                var normalAttributes: [NSAttributedString.Key: Any] = [
+                    .font: normalFont,
+                    .foregroundColor: UIColor.label,
+                    .backgroundColor: UIColor.clear,
+                    .paragraphStyle: NSParagraphStyle.default
+                ]
+                
+                // Preserve formatting attributes from the original text
+                if let originalFont = attributes[.font] as? UIFont {
+                    let hasTraitBold = originalFont.fontDescriptor.symbolicTraits.contains(.traitBold)
+                    let isExplicitlyBold = originalFont.fontName == "SpaceGrotesk-Bold" || 
+                                         originalFont.fontName == "SpaceGrotesk-SemiBold" ||
+                                         originalFont.fontName == "SpaceGrotesk-Heavy"
+                    let hasTraitItalic = originalFont.fontDescriptor.symbolicTraits.contains(.traitItalic)
+                    
+                    // If text has bold or italic, preserve it
+                    if hasTraitBold || isExplicitlyBold || hasTraitItalic {
+                        var traits = originalFont.fontDescriptor.symbolicTraits
+                        // Remove monospace trait but keep bold/italic
+                        traits.remove(.traitMonoSpace)
+                        
+                        let descriptor = UIFontDescriptor(name: context.fontName, size: safeFontSize(context.fontSize))
+                        if let newDescriptor = descriptor.withSymbolicTraits(traits) {
+                            normalAttributes[.font] = UIFont(descriptor: newDescriptor, size: safeFontSize(context.fontSize))
+                        } else {
+                            // Fallback: manually create font with preserved traits
+                            if hasTraitBold || isExplicitlyBold {
+                                normalAttributes[.font] = UIFont(name: "SpaceGrotesk-Bold", size: safeFontSize(context.fontSize)) ?? normalFont
+                            }
+                        }
+                    }
+                }
+                
+                // Preserve underline formatting
+                if let underlineStyle = attributes[.underlineStyle] as? Int, underlineStyle != 0 {
+                    normalAttributes[.underlineStyle] = underlineStyle
+                }
+                
+                // Preserve strikethrough formatting
+                if let strikethroughStyle = attributes[.strikethroughStyle] as? Int, strikethroughStyle != 0 {
+                    normalAttributes[.strikethroughStyle] = strikethroughStyle
+                }
+                
+                let normalizedSubstring = NSAttributedString(string: substring.string, attributes: normalAttributes)
+                normalizedText.append(normalizedSubstring)
+            }
             
-            let normalText = NSAttributedString(string: codeBlockText, attributes: normalAttributes)
-            mutableText.replaceCharacters(in: codeBlockRange, with: normalText)
+            mutableText.replaceCharacters(in: codeBlockRange, with: normalizedText)
             
             print("✅ exitCodeBlockAndMoveCursor: Removed code block formatting from range \(codeBlockRange)")
         }
@@ -1034,14 +1083,44 @@ public class RichTextCoordinator: NSObject {
         let finalCursorPosition = newCursorPosition + 1
         textView.selectedRange = NSRange(location: finalCursorPosition, length: 0)
         
-        // Force update of typing attributes to normal before updating context
-        let normalTypingAttributes: [NSAttributedString.Key: Any] = [
+        // Check for existing formatting to preserve in typing attributes
+        var typingAttributes: [NSAttributedString.Key: Any] = [
             .font: UIFont(name: context.fontName, size: safeFontSize(context.fontSize)) ?? UIFont.systemFont(ofSize: safeFontSize(context.fontSize)),
             .foregroundColor: UIColor.label,
             .backgroundColor: UIColor.clear,
             .paragraphStyle: NSParagraphStyle.default
         ]
-        textView.typingAttributes = normalTypingAttributes
+        
+        // If there's text at the cursor position, check for formatting to preserve
+        if finalCursorPosition > 0 && finalCursorPosition <= mutableText.length {
+            let checkIndex = min(finalCursorPosition - 1, mutableText.length - 1)
+            if checkIndex >= 0 && checkIndex < mutableText.length {
+                let attributes = mutableText.attributes(at: checkIndex, effectiveRange: nil)
+                
+                // Preserve bold/italic from normalized text
+                if let font = attributes[.font] as? UIFont {
+                    let hasTraitBold = font.fontDescriptor.symbolicTraits.contains(.traitBold)
+                    let isExplicitlyBold = font.fontName == "SpaceGrotesk-Bold" || 
+                                         font.fontName == "SpaceGrotesk-SemiBold" ||
+                                         font.fontName == "SpaceGrotesk-Heavy"
+                    let hasTraitItalic = font.fontDescriptor.symbolicTraits.contains(.traitItalic)
+                    
+                    if hasTraitBold || isExplicitlyBold || hasTraitItalic {
+                        typingAttributes[.font] = font
+                    }
+                }
+                
+                // Preserve underline and strikethrough
+                if let underlineStyle = attributes[.underlineStyle] as? Int, underlineStyle != 0 {
+                    typingAttributes[.underlineStyle] = underlineStyle
+                }
+                if let strikethroughStyle = attributes[.strikethroughStyle] as? Int, strikethroughStyle != 0 {
+                    typingAttributes[.strikethroughStyle] = strikethroughStyle
+                }
+            }
+        }
+        
+        textView.typingAttributes = typingAttributes
         
         // Update context to reflect that we're no longer in a code block
         DispatchQueue.main.async {
@@ -1077,7 +1156,7 @@ public class RichTextCoordinator: NSObject {
         return false
     }
     
-    /// Exit code block on Enter key while preserving existing code block formatting
+    /// Exit code block on Enter key while preserving existing text formatting
     private func exitCodeBlockOnEnterKey(at position: Int, in mutableText: NSMutableAttributedString) {
         // Create a completely clean paragraph style with no indentation
         let normalParagraphStyle = NSMutableParagraphStyle()
@@ -1087,14 +1166,70 @@ public class RichTextCoordinator: NSObject {
         normalParagraphStyle.headIndent = 0
         normalParagraphStyle.tailIndent = 0
         
-        // Insert a newline with normal formatting at the current position
+        // Check for existing text formatting before the cursor to preserve it
+        var preservedAttributes: [NSAttributedString.Key: Any] = [:]
+        
+        if position > 0 && position <= mutableText.length {
+            let prevIndex = position - 1
+            if prevIndex < mutableText.length {
+                let prevAttributes = mutableText.attributes(at: prevIndex, effectiveRange: nil)
+                
+                // Preserve bold formatting
+                if let font = prevAttributes[.font] as? UIFont {
+                    let hasTraitBold = font.fontDescriptor.symbolicTraits.contains(.traitBold)
+                    let isExplicitlyBold = font.fontName == "SpaceGrotesk-Bold" || 
+                                         font.fontName == "SpaceGrotesk-SemiBold" ||
+                                         font.fontName == "SpaceGrotesk-Heavy"
+                    let hasTraitItalic = font.fontDescriptor.symbolicTraits.contains(.traitItalic)
+                    
+                    if hasTraitBold || isExplicitlyBold || hasTraitItalic {
+                        // Create a new font that preserves bold/italic but uses normal font family
+                        var traits = font.fontDescriptor.symbolicTraits
+                        // Remove monospace trait but keep bold/italic
+                        traits.remove(.traitMonoSpace)
+                        
+                        let descriptor = UIFontDescriptor(name: context.fontName, size: safeFontSize(context.fontSize))
+                        if let newDescriptor = descriptor.withSymbolicTraits(traits) {
+                            preservedAttributes[.font] = UIFont(descriptor: newDescriptor, size: safeFontSize(context.fontSize))
+                        } else {
+                            // Fallback: manually create font with preserved traits
+                            var normalFont = UIFont(name: context.fontName, size: safeFontSize(context.fontSize)) ?? UIFont.systemFont(ofSize: safeFontSize(context.fontSize))
+                            if hasTraitBold || isExplicitlyBold {
+                                normalFont = UIFont(name: "SpaceGrotesk-Bold", size: safeFontSize(context.fontSize)) ?? normalFont
+                            }
+                            preservedAttributes[.font] = normalFont
+                        }
+                    }
+                }
+                
+                // Preserve underline formatting
+                if let underlineStyle = prevAttributes[.underlineStyle] as? Int, underlineStyle != 0 {
+                    preservedAttributes[.underlineStyle] = underlineStyle
+                }
+                
+                // Preserve strikethrough formatting
+                if let strikethroughStyle = prevAttributes[.strikethroughStyle] as? Int, strikethroughStyle != 0 {
+                    preservedAttributes[.strikethroughStyle] = strikethroughStyle
+                }
+            }
+        }
+        
+        // Start with normal font and basic attributes
         let normalFont = UIFont(name: context.fontName, size: safeFontSize(context.fontSize)) ?? UIFont.systemFont(ofSize: safeFontSize(context.fontSize))
-        let normalAttributes: [NSAttributedString.Key: Any] = [
-            .font: normalFont,
+        var normalAttributes: [NSAttributedString.Key: Any] = [
+            .font: preservedAttributes[.font] ?? normalFont,
             .foregroundColor: UIColor.label,
             .backgroundColor: UIColor.clear,
             .paragraphStyle: normalParagraphStyle
         ]
+        
+        // Add preserved formatting attributes
+        if let underlineStyle = preservedAttributes[.underlineStyle] {
+            normalAttributes[.underlineStyle] = underlineStyle
+        }
+        if let strikethroughStyle = preservedAttributes[.strikethroughStyle] {
+            normalAttributes[.strikethroughStyle] = strikethroughStyle
+        }
         
         let newlineString = NSAttributedString(string: "\n", attributes: normalAttributes)
         mutableText.insert(newlineString, at: position)
@@ -1103,15 +1238,15 @@ public class RichTextCoordinator: NSObject {
         let newCursorPosition = position + 1
         textView.selectedRange = NSRange(location: newCursorPosition, length: 0)
         
-        // Force update typing attributes to normal formatting for future typing
+        // Force update typing attributes to preserve formatting for future typing
         textView.typingAttributes = normalAttributes
         
         // Update context to indicate code mode is now off for future typing
-        DispatchQueue.main.async {
-            self.context.isCodeBlockActive = false
-        }
+        // Use immediate update to prevent race conditions with other formatting updates
+        context.isCodeBlockActive = false
+        hasExplicitlyExitedCodeBlock = true
         
-        print("✅ exitCodeBlockOnEnterKey: Added newline at position \(position), cursor moved to \(newCursorPosition), code mode disabled for future typing")
+        print("✅ exitCodeBlockOnEnterKey: Added newline at position \(position), cursor moved to \(newCursorPosition), code mode disabled, preserved formatting: \(preservedAttributes.keys)")
     }
     
     /// Exit code block formatting at current cursor position without moving cursor (for button toggle)
@@ -1325,7 +1460,8 @@ public class RichTextCoordinator: NSObject {
         
         // If we detect we're actually in a code block, ensure the context shows active state
         // This prevents flickering when typing in code blocks
-        if isActuallyInCodeBlock {
+        // BUT respect when user has explicitly exited a code block
+        if isActuallyInCodeBlock && !hasExplicitlyExitedCodeBlock {
             // In code block - ensure active state
             
             // Ensure code block state is active - defer to avoid SwiftUI update warnings
@@ -1566,6 +1702,14 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         guard !isHandlingNewlineInsertion else { return }
         
         // Selection changed
+        
+        // If user taps to a position that's NOT in a code block, reset the explicit exit flag
+        // This allows normal code block detection to work again
+        let cursorPosition = textView.selectedRange.location
+        let isInCodeBlock = checkIfPositionIsInCodeBlock(cursorPosition)
+        if !isInCodeBlock {
+            hasExplicitlyExitedCodeBlock = false
+        }
         
         // Disabled cursor-based checkbox detection due to over-triggering
         // Rely on tap gesture recognition instead
@@ -2246,12 +2390,50 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
     
     @objc func handleTap(_ gesture: UITapGestureRecognizer) {
         let location = gesture.location(in: textView)
-        print("👆 handleTap: Tap detected at location \(location)")
+        print("🎯 handleTap: METHOD CALLED! Gesture state: \(gesture.state)")
+        print("👆 handleTap: Tap detected at location \(location) in textView bounds \(textView.bounds)")
         
         // Validate tap location is within bounds
         guard location.x.isFinite && location.y.isFinite else {
             print("⚠️ handleTap: Invalid tap location \(location)")
             return
+        }
+        
+        // Check if we're at the end state
+        guard gesture.state == .ended else { 
+            print("⚠️ handleTap: Gesture state is not .ended, it's \(gesture.state)")
+            return 
+        }
+        
+        // Debug: Log all attachments in the text
+        if let attributedText = textView.attributedText {
+            print("👆 handleTap: Attributed text length: \(attributedText.length)")
+            
+            attributedText.enumerateAttribute(.attachment, in: NSRange(location: 0, length: attributedText.length), options: []) { value, range, _ in
+                if let attachment = value as? NSTextAttachment {
+                    let attachmentType = type(of: attachment)
+                    print("🔍 handleTap: Found attachment type \(attachmentType) at range \(range)")
+                    
+                    // Calculate attachment bounds
+                    let layoutManager = textView.layoutManager
+                    let textContainer = textView.textContainer
+                    let glyphRange = layoutManager.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
+                    let attachmentRect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
+                    let adjustedRect = CGRect(
+                        x: attachmentRect.origin.x + textView.textContainerInset.left,
+                        y: attachmentRect.origin.y + textView.textContainerInset.top,
+                        width: attachmentRect.width,
+                        height: attachmentRect.height
+                    )
+                    print("🔍 handleTap: Attachment frame: \(adjustedRect)")
+                    
+                    if adjustedRect.contains(location) {
+                        print("✅ handleTap: Tap location \(location) IS within attachment bounds \(adjustedRect)")
+                    } else {
+                        print("❌ handleTap: Tap location \(location) is NOT within attachment bounds \(adjustedRect)")
+                    }
+                }
+            }
         }
         
         // First check for new NSTextAttachment checkboxes
@@ -2261,6 +2443,15 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
             print("🎯 RichTextCoordinator: Toggled NSTextAttachment checkbox")
             return
         }
+        
+        // Check for drawing attachments
+        if let (drawingAttachment, range) = findDrawingAttachmentAtLocation(location, in: textView) {
+            print("🎨 handleTap: Found DrawingTextAttachment at location \(location)")
+            openDrawingEditor(for: drawingAttachment, at: range)
+            return
+        }
+        
+        print("❌ handleTap: No attachments found at tap location")
         
         guard let attributedText = textView.attributedText else { return }
         
@@ -2473,15 +2664,36 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
     }
     
     public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
-        // Always receive touch events for potential checkbox detection
         let location = touch.location(in: textView)
         print("🖱️ gestureRecognizer shouldReceive touch at location: \(location)")
+        print("🖱️ gestureRecognizer: touch.view = \(String(describing: touch.view))")
+        
+        // Check if this touch might be on a drawing attachment
+        // If so, we want to ensure our gesture recognizer can handle it
+        if let touchView = touch.view {
+            // Check if this looks like a drawing attachment view
+            let viewClassName = String(describing: type(of: touchView))
+            if viewClassName.contains("Attachment") || touchView.frame.width > 200 {
+                print("🖱️ gestureRecognizer: Detected potential attachment view, ensuring recognition")
+                // Force the gesture recognizer to claim this touch for attachment handling
+                gestureRecognizer.cancelsTouchesInView = true
+                return true
+            }
+        }
+        
+        // For normal text touches, don't interfere with text editing
+        gestureRecognizer.cancelsTouchesInView = false
         return true
     }
     
     public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRequireFailureOf otherGestureRecognizer: UIGestureRecognizer) -> Bool {
         // Don't wait for other gestures to fail - process checkbox taps immediately
         return false
+    }
+    
+    public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive event: UIEvent) -> Bool {
+        print("🖱️ gestureRecognizer shouldReceive event: \(event)")
+        return true
     }
     
     // MARK: - Code Block Helper Methods
@@ -2535,6 +2747,176 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         
         // No code block detected at this position
         return false
+    }
+    
+    // MARK: - Drawing Attachment Helper Methods
+    
+    /// Find drawing attachment at the given tap location
+    private func findDrawingAttachmentAtLocation(_ location: CGPoint, in textView: UITextView) -> (DrawingTextAttachment, NSRange)? {
+        print("🔍 findDrawingAttachmentAtLocation: Searching for drawing button at location \(location)")
+        
+        guard let textPosition = textView.closestPosition(to: location) else { 
+            print("❌ findDrawingAttachmentAtLocation: Could not get text position")
+            return nil 
+        }
+        
+        let tapIndex = textView.offset(from: textView.beginningOfDocument, to: textPosition)
+        guard let attributedText = textView.attributedText else { 
+            print("❌ findDrawingAttachmentAtLocation: No attributed text")
+            return nil 
+        }
+        
+        print("🔍 findDrawingAttachmentAtLocation: Tap index \(tapIndex), text length \(attributedText.length)")
+        
+        // Function to check if tap is in the "Open" button area of a drawing attachment
+        func isInOpenButtonArea(drawingAttachment: DrawingTextAttachment, characterIndex: Int) -> Bool {
+            // Get the attachment bounds from the layout manager
+            let layoutManager = textView.layoutManager
+            let textContainer = textView.textContainer
+            let glyphIndex = layoutManager.glyphIndexForCharacter(at: characterIndex)
+            let attachmentRect = layoutManager.boundingRect(forGlyphRange: NSRange(location: glyphIndex, length: 1), in: textContainer)
+            
+            // Adjust for text container insets
+            let adjustedRect = CGRect(
+                x: attachmentRect.origin.x + textView.textContainerInset.left,
+                y: attachmentRect.origin.y + textView.textContainerInset.top,
+                width: attachmentRect.width,
+                height: attachmentRect.height
+            )
+            
+            print("🔍 findDrawingAttachmentAtLocation: Attachment rect: \(adjustedRect)")
+            
+            // Check if tap is within the attachment bounds first
+            guard adjustedRect.contains(location) else {
+                print("🔍 findDrawingAttachmentAtLocation: Tap not within attachment bounds")
+                return false
+            }
+            
+            // Calculate "Open" button area (top right of attachment)
+            // Button dimensions from drawOptionsButton method: width=50, height=24, positioned at x=bounds.width-50-8, y=4
+            let buttonWidth: CGFloat = 50
+            let buttonHeight: CGFloat = 24
+            let buttonRect = CGRect(
+                x: adjustedRect.maxX - buttonWidth - 8,
+                y: adjustedRect.minY + 4,
+                width: buttonWidth,
+                height: buttonHeight
+            )
+            
+            print("🔍 findDrawingAttachmentAtLocation: Open button rect: \(buttonRect)")
+            
+            let isInButton = buttonRect.contains(location)
+            print("🔍 findDrawingAttachmentAtLocation: Tap \(isInButton ? "IS" : "IS NOT") in Open button area")
+            
+            return isInButton
+        }
+        
+        // Check for attachment at tap position
+        if tapIndex < attributedText.length {
+            let attachment = attributedText.attribute(.attachment, at: tapIndex, effectiveRange: nil)
+            
+            if let drawingAttachment = attachment as? DrawingTextAttachment {
+                print("🔍 findDrawingAttachmentAtLocation: Found DrawingTextAttachment at index \(tapIndex)")
+                
+                // Only return the attachment if the tap is specifically in the "Open" button area
+                if isInOpenButtonArea(drawingAttachment: drawingAttachment, characterIndex: tapIndex) {
+                    print("✅ findDrawingAttachmentAtLocation: Tap is in Open button area!")
+                    return (drawingAttachment, NSRange(location: tapIndex, length: 1))
+                } else {
+                    print("❌ findDrawingAttachmentAtLocation: Tap is not in Open button area, ignoring")
+                    return nil
+                }
+            }
+        }
+        
+        // Check previous character (in case tap was on the edge)
+        if tapIndex > 0 && tapIndex - 1 < attributedText.length {
+            let attachment = attributedText.attribute(.attachment, at: tapIndex - 1, effectiveRange: nil)
+            
+            if let drawingAttachment = attachment as? DrawingTextAttachment {
+                print("🔍 findDrawingAttachmentAtLocation: Found DrawingTextAttachment at index \(tapIndex - 1)")
+                
+                // Only return the attachment if the tap is specifically in the "Open" button area
+                if isInOpenButtonArea(drawingAttachment: drawingAttachment, characterIndex: tapIndex - 1) {
+                    print("✅ findDrawingAttachmentAtLocation: Tap is in Open button area!")
+                    return (drawingAttachment, NSRange(location: tapIndex - 1, length: 1))
+                } else {
+                    print("❌ findDrawingAttachmentAtLocation: Tap is not in Open button area, ignoring")
+                    return nil
+                }
+            }
+        }
+        
+        // Try a broader search around the tap position using layout manager
+        let layoutManager = textView.layoutManager
+        let textContainer = textView.textContainer
+        print("🔍 findDrawingAttachmentAtLocation: Trying layout manager approach")
+        
+        // Convert location to text container coordinates
+        let containerLocation = CGPoint(
+            x: location.x - textView.textContainerInset.left,
+            y: location.y - textView.textContainerInset.top
+        )
+        
+        // Find glyph index
+        let glyphIndex = layoutManager.glyphIndex(for: containerLocation, in: textContainer)
+        let charIndex = layoutManager.characterIndexForGlyph(at: glyphIndex)
+        
+        print("🔍 findDrawingAttachmentAtLocation: Layout manager - glyph index: \(glyphIndex), char index: \(charIndex)")
+        
+        if charIndex < attributedText.length {
+            let attachment = attributedText.attribute(.attachment, at: charIndex, effectiveRange: nil)
+            print("🔍 findDrawingAttachmentAtLocation: Layout manager attachment at \(charIndex): \(String(describing: attachment))")
+            
+            if let drawingAttachment = attachment as? DrawingTextAttachment {
+                print("✅ findDrawingAttachmentAtLocation: Found DrawingTextAttachment via layout manager at \(charIndex)")
+                return (drawingAttachment, NSRange(location: charIndex, length: 1))
+            }
+        }
+        
+        print("❌ findDrawingAttachmentAtLocation: No DrawingTextAttachment found")
+        return nil
+    }
+    
+    /// Open drawing editor for the given drawing attachment
+    private func openDrawingEditor(for attachment: DrawingTextAttachment, at range: NSRange) {
+        // Find the view controller to present the drawing editor
+        guard let viewController = textView.findViewController() else {
+            print("❌ openDrawingEditor: Could not find view controller")
+            return
+        }
+        
+        // Create the drawing editor view
+        let editorView = DrawingEditorView(
+            drawingData: .constant(attachment.drawingData),
+            canvasHeight: .constant(attachment.canvasHeight),
+            selectedColor: .constant(attachment.selectedColor),
+            onSave: { [weak self] data, height, color in
+                // Update the attachment with the new drawing data
+                attachment.drawingData = data
+                attachment.canvasHeight = height
+                attachment.selectedColor = color
+                
+                // Force text view to update
+                self?.textView.setNeedsDisplay()
+                self?.textView.delegate?.textViewDidChange?(self?.textView ?? UITextView())
+            },
+            onDelete: { [weak self] in
+                // Remove the drawing attachment
+                guard let self = self,
+                      let mutableText = self.textView.attributedText?.mutableCopy() as? NSMutableAttributedString else {
+                    return
+                }
+                
+                mutableText.removeAttribute(.attachment, range: range)
+                mutableText.replaceCharacters(in: range, with: NSAttributedString(string: ""))
+                self.textView.attributedText = mutableText
+                self.textView.delegate?.textViewDidChange?(self.textView)
+            }
+        )
+        
+        let hostingController = UIHostingController(rootView: editorView)
+        viewController.present(hostingController, animated: true)
     }
     
 }

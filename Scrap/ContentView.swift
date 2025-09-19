@@ -716,6 +716,87 @@ class ContentViewModel: ObservableObject {
     @Published var placeholderText = "Just type or speak..."
 }
 
+// MARK: - Animated Placeholder Text
+struct AnimatedPlaceholderText: View {
+    let text: String
+    let themeManager: ThemeManager
+    
+    @State private var animatingDotIndex = -1
+    @State private var animationTimer: Timer?
+    
+    private var textWithoutDots: String {
+        String(text.dropLast(3)) // Remove the "..."
+    }
+    
+    var body: some View {
+        HStack(spacing: 0) {
+            // Static text part
+            Text(textWithoutDots)
+                .font(GentleLightning.Typography.bodyInput)
+                .foregroundColor(GentleLightning.Colors.placeholder(isDark: themeManager.isDarkMode))
+            
+            // Animated dots
+            HStack(spacing: 1) {
+                ForEach(0..<3, id: \.self) { index in
+                    Text(".")
+                        .font(GentleLightning.Typography.bodyInput)
+                        .foregroundColor(GentleLightning.Colors.placeholder(isDark: themeManager.isDarkMode))
+                        .scaleEffect(animatingDotIndex == index ? 1.8 : 1.0)
+                        .offset(y: animatingDotIndex == index ? -6 : 0)
+                }
+            }
+        }
+        .onAppear {
+            startAnimation()
+        }
+        .onDisappear {
+            stopAnimation()
+        }
+    }
+    
+    private func startAnimation() {
+        // Initial delay before first animation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            performAnimation()
+        }
+        
+        // Set up repeating timer - full sequence takes ~0.9s (3 dots * 0.3s), then wait 5s
+        animationTimer = Timer.scheduledTimer(withTimeInterval: 6.0, repeats: true) { _ in
+            performAnimation()
+        }
+    }
+    
+    private func stopAnimation() {
+        animationTimer?.invalidate()
+        animationTimer = nil
+    }
+    
+    private func performAnimation() {
+        // Reset to ensure clean state
+        animatingDotIndex = -1
+        
+        // Animate each dot in sequence with proper timing
+        for index in 0..<3 {
+            let delay = Double(index) * 0.3 // Increased delay for clearer effect
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    animatingDotIndex = index
+                }
+                
+                // Reset this specific dot after animation
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay + 0.25) {
+                    withAnimation(.easeInOut(duration: 0.1)) {
+                        if animatingDotIndex == index {
+                            animatingDotIndex = -1
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 // MARK: - Input Field
 struct InputField: View {
     @Binding var text: String
@@ -855,11 +936,9 @@ struct InputField: View {
                 VStack(alignment: .leading, spacing: 8) {
                     // Rich Text Editor
                     ZStack(alignment: .topLeading) {
-                        // Placeholder text
-                        if attributedText.string.isEmpty {
-                            Text(placeholder)
-                                .font(GentleLightning.Typography.bodyInput)
-                                .foregroundColor(GentleLightning.Colors.placeholder(isDark: themeManager.isDarkMode))
+                        // Animated placeholder text
+                        if attributedText.string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            AnimatedPlaceholderText(text: placeholder, themeManager: themeManager)
                                 .padding(.top, 8)
                                 .padding(.leading, 4)
                         }
@@ -1486,12 +1565,6 @@ struct AccountDrawerView: View {
                         .background(
                             RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.medium)
                                 .fill(GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
-                                .shadow(
-                                    color: GentleLightning.Colors.shadow(isDark: themeManager.isDarkMode),
-                                    radius: 8,
-                                    x: 0,
-                                    y: 2
-                                )
                         )
                     }
                     
@@ -1519,7 +1592,6 @@ struct AccountDrawerView: View {
                         .background(
                             RoundedRectangle(cornerRadius: 12)
                                 .fill(themeManager.isDarkMode ? Color.black : GentleLightning.Colors.surface)
-                                .shadow(color: themeManager.isDarkMode ? GentleLightning.Colors.shadow(isDark: true) : GentleLightning.Colors.shadowLight, radius: 4, x: 0, y: 1)
                         )
                     }
                     .buttonStyle(PlainButtonStyle())
@@ -1541,7 +1613,6 @@ struct AccountDrawerView: View {
                         .background(
                             RoundedRectangle(cornerRadius: 12)
                                 .fill(themeManager.isDarkMode ? Color.black : GentleLightning.Colors.surface)
-                                .shadow(color: themeManager.isDarkMode ? GentleLightning.Colors.shadow(isDark: true) : GentleLightning.Colors.shadowLight, radius: 4, x: 0, y: 1)
                         )
                     }
                     .buttonStyle(PlainButtonStyle())
@@ -1564,7 +1635,26 @@ struct AccountDrawerView: View {
                 .padding(.horizontal, 20)
             }
         }
-        .background(GentleLightning.Colors.background(isDark: themeManager.isDarkMode))
+        .background(
+            GentleLightning.Colors.background(isDark: themeManager.isDarkMode)
+                .ignoresSafeArea(.all)
+        )
+        .overlay(
+            // Add shadow only in dark mode
+            Group {
+                if themeManager.isDarkMode {
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
+                        .shadow(
+                            color: Color.white.opacity(0.1),
+                            radius: 12,
+                            x: 0,
+                            y: -4
+                        )
+                        .allowsHitTesting(false)
+                }
+            }
+        )
         .alert("Delete Account", isPresented: $showDeleteConfirmation) {
             Button("Delete", role: .destructive) {
                 isDeletingAccount = true
@@ -1627,7 +1717,6 @@ struct AccountDrawerView: View {
                     .background(
                         RoundedRectangle(cornerRadius: 16)
                             .fill(Color.white)
-                            .shadow(color: GentleLightning.Colors.shadowLight, radius: 20, x: 0, y: 4)
                     )
                 }
             }
@@ -2440,29 +2529,19 @@ struct SearchBarView: View {
                         // X mark icon
                         Image(systemName: "xmark")
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
+                            .foregroundColor(GentleLightning.Colors.textSecondary)
                             .scaleEffect(isExpanded ? 1.0 : 0.1)
                             .opacity(isExpanded ? 1.0 : 0.0)
                             .rotationEffect(.degrees(isExpanded ? 0 : -90))
                             .animation(.spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0).delay(isExpanded ? 0.1 : 0), value: isExpanded)
                     }
-                    .frame(width: 40, height: 40)
-                        .background(
-                            Circle()
-                                .fill(GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
-                                .overlay(
-                                    Circle()
-                                        .stroke(GentleLightning.Colors.border(isDark: themeManager.isDarkMode), lineWidth: 1)
-                                )
-                                .opacity(isExpanded ? 0.0 : 1.0)
-                                .animation(.spring(response: 0.3, dampingFraction: 0.8, blendDuration: 0), value: isExpanded)
-                        )
+                    .frame(width: 20, height: 20)
                 }
                 .buttonStyle(PlainButtonStyle())
             }
             
             // Search results or empty state shown below when expanded
-            if isExpanded {
+            if isExpanded && (!searchResults.isEmpty || (!searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSearching && hasSearched)) {
                 VStack(spacing: 4) {
                     if !searchResults.isEmpty {
                         // Show search results
@@ -2498,19 +2577,6 @@ struct SearchBarView: View {
                                     .multilineTextAlignment(.center)
                             }
                             Spacer()
-                        }
-                        .padding(.vertical, 16)
-                        .padding(.horizontal, 8)
-                    } else if !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && isSearching {
-                        // Show loading state during search
-                        VStack(spacing: 8) {
-                            ProgressView()
-                                .scaleEffect(0.8)
-                                .tint(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
-                            
-                            Text("Searching...")
-                                .font(GentleLightning.Typography.caption)
-                                .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
                         }
                         .padding(.vertical, 16)
                         .padding(.horizontal, 8)

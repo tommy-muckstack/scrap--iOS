@@ -477,6 +477,76 @@ class CategoryService {
         
         return category
     }
+    
+    // MARK: - Automatic Tag Cleanup
+    
+    /// Removes categories that are not assigned to any notes
+    /// 
+    /// This function automatically runs when:
+    /// - Opening the tag manager (loads categories)
+    /// - Removing a tag from a note (toggleCategory deselection)
+    /// 
+    /// The cleanup process:
+    /// 1. Loads all user categories
+    /// 2. Scans all user notes to find which category IDs are in use
+    /// 3. Deletes categories that have no associated notes
+    /// 4. Makes the colors of deleted categories available for new tags
+    func cleanupUnusedCategories() async throws {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            throw CategoryError.notAuthenticated
+        }
+        
+        // Load all categories for this user
+        let categories = try await loadCategories()
+        guard !categories.isEmpty else {
+            print("🧹 CategoryService: No categories to clean up")
+            return
+        }
+        
+        // Load all notes for this user to check category usage
+        let notesSnapshot = try await db.collection("notes")
+            .whereField("userId", isEqualTo: userId)
+            .getDocuments()
+        
+        // Collect all category IDs that are in use
+        var usedCategoryIds = Set<String>()
+        for noteDoc in notesSnapshot.documents {
+            if let categoryIds = noteDoc.data()["categoryIds"] as? [String] {
+                usedCategoryIds.formUnion(categoryIds)
+            }
+        }
+        
+        print("🧹 CategoryService: Found \(usedCategoryIds.count) category IDs in use across \(notesSnapshot.documents.count) notes")
+        
+        // Find categories that are not in use
+        let unusedCategories = categories.filter { category in
+            guard let firebaseId = category.firebaseId else { return false }
+            return !usedCategoryIds.contains(firebaseId)
+        }
+        
+        print("🧹 CategoryService: Found \(unusedCategories.count) unused categories to delete")
+        
+        // Delete unused categories
+        for category in unusedCategories {
+            print("🗑️ CategoryService: Deleting unused category '\(category.name)' (color: \(category.color))")
+            try await deleteCategory(category)
+        }
+        
+        if !unusedCategories.isEmpty {
+            print("✅ CategoryService: Cleaned up \(unusedCategories.count) unused categories")
+        } else {
+            print("🧹 CategoryService: No unused categories found")
+        }
+    }
+    
+    /// Convenience method to run cleanup automatically when needed
+    func runAutomaticCleanup() async {
+        do {
+            try await cleanupUnusedCategories()
+        } catch {
+            print("❌ CategoryService: Automatic cleanup failed: \(error)")
+        }
+    }
 }
 
 // MARK: - OpenAI Models
