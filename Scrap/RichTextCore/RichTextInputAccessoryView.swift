@@ -102,5 +102,11 @@ extension UITextView {
         
         // Ensure the accessory view state is updated
         self.reloadInputViews()
+        
+        // CRITICAL FIX: Restore interactive keyboard dismissal after reloadInputViews
+        // reloadInputViews() can reset the keyboardDismissMode, so we restore it
+        DispatchQueue.main.async {
+            self.keyboardDismissMode = .interactive
+        }
     }
 }

@@ -43,6 +43,10 @@ struct GentleLightning {
         static func border(isDark: Bool) -> Color {
             isDark ? Color.white.opacity(0.2) : Color.black.opacity(0.1)
         }
+        
+        static func searchInputBackground(isDark: Bool) -> Color {
+            isDark ? Color(red: 0.2, green: 0.2, blue: 0.2) : Color(red: 0.95, green: 0.95, blue: 0.97)
+        }
     }
     
     struct Typography {
@@ -293,11 +297,14 @@ struct InputField: View {
 class FirebaseDataManager: ObservableObject {
     @Published var items: [SparkItem] = []
     @Published var isLoading = false
+    @Published var categories: [Category] = []
+    @Published var selectedCategoryFilter: String? = nil
     
     let firebaseManager = FirebaseManager.shared
     
     init() {
         startListening()
+        loadCategories()
     }
     
     func createItem(from text: String, creationType: String = "text") {
@@ -519,6 +526,41 @@ class FirebaseDataManager: ObservableObject {
                     print("⚠️ Failed to test ChromaDB connection or index notes: \(error)")
                 }
             }
+        }
+    }
+    
+    // MARK: - Category Management
+    
+    func loadCategories() {
+        Task {
+            do {
+                let loadedCategories = try await CategoryService.shared.getUserCategories()
+                await MainActor.run {
+                    self.categories = loadedCategories
+                }
+            } catch {
+                print("⚠️ Failed to load categories: \(error)")
+            }
+        }
+    }
+    
+    func setSelectedCategoryFilter(_ categoryId: String?) {
+        selectedCategoryFilter = categoryId
+    }
+    
+    func clearCategoryFilter() {
+        selectedCategoryFilter = nil
+    }
+    
+    // MARK: - Filtering
+    
+    var filteredItems: [SparkItem] {
+        guard let selectedCategory = selectedCategoryFilter else {
+            return items // No filter applied
+        }
+        
+        return items.filter { item in
+            item.categoryIds.contains(selectedCategory)
         }
     }
     

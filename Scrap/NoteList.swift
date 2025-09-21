@@ -7,7 +7,7 @@ struct NoteList: View {
     
     var body: some View {
         LazyVStack(spacing: 12) {
-            ForEach(dataManager.items) { item in
+            ForEach(dataManager.filteredItems) { item in
                 NoteRow(item: item, dataManager: dataManager) {
                     navigationPath.append(item)
                 }

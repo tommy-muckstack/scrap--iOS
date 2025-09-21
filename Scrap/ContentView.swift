@@ -1984,7 +1984,9 @@ struct ContentView: View {
                 isSearchFieldFocused: $isSearchFieldFocused,
                 onResultTap: handleSearchResultTap,
                 onSearch: performSearch,
-                onReindex: triggerReindexing
+                onReindex: triggerReindexing,
+                categories: dataManager.categories,
+                selectedCategoryId: $dataManager.selectedCategoryFilter
             )
             .padding(.trailing, 36) // 20pt (outer) + 16pt (inner) to match microphone button center
         }
@@ -2168,12 +2170,30 @@ struct ContentView: View {
                     limit: 10
                 )
                 
-                searchResults = results
+                // Apply category filter if one is selected
+                let filteredResults: [SearchResult]
+                if let selectedCategoryId = dataManager.selectedCategoryFilter {
+                    // Filter search results by category
+                    filteredResults = results.filter { result in
+                        // Find the corresponding item and check its categories
+                        if let item = dataManager.items.first(where: { $0.firebaseId == result.firebaseId }) {
+                            return item.categoryIds.contains(selectedCategoryId)
+                        }
+                        return false
+                    }
+                } else {
+                    filteredResults = results
+                }
+                
+                searchResults = filteredResults
                 hasSearched = true
                 isSearching = false
                 
-                // Track search analytics
-                AnalyticsManager.shared.trackSearch(query: searchText, resultCount: results.count)
+                // Track search analytics (with category filter info)
+                AnalyticsManager.shared.trackSearch(query: searchText, resultCount: filteredResults.count)
+                if dataManager.selectedCategoryFilter != nil {
+                    AnalyticsManager.shared.trackEvent("search_with_category_filter")
+                }
             } catch {
                 print("Search failed: \(error)")
                 hasSearched = true
@@ -2223,7 +2243,7 @@ struct ContentView: View {
         AnalyticsManager.shared.trackNoteOpened(noteId: result.firebaseId, openMethod: "search_result")
         
         // Find the matching item in dataManager.items and navigate to it
-        if let item = dataManager.items.first(where: { $0.id == result.firebaseId }) {
+        if let item = dataManager.items.first(where: { $0.firebaseId == result.firebaseId }) {
             navigationPath.append(item)
             // Collapse search after navigation
             withAnimation {
@@ -2402,6 +2422,158 @@ struct FormattingToggleButton: View {
     }
 }
 
+// MARK: - Tag Filter Pills View
+struct TagFilterPillsView: View {
+    let categories: [Category]
+    @Binding var selectedCategoryId: String?
+    @Binding var isSearchExpanded: Bool
+    
+    @EnvironmentObject var themeManager: ThemeManager
+    
+    var body: some View {
+        if isSearchExpanded && !categories.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Filter by tag")
+                    .font(GentleLightning.Typography.caption)
+                    .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
+                    .padding(.horizontal, 4)
+                
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        // Clear filter pill (always first)
+                        TagPill(
+                            name: "All notes",
+                            color: "#A0AEC0", // Neutral gray
+                            isSelected: selectedCategoryId == nil,
+                            onTap: {
+                                withAnimation(GentleLightning.Animation.swoosh) {
+                                    selectedCategoryId = nil
+                                }
+                            }
+                        )
+                        
+                        // Category pills
+                        ForEach(categories) { category in
+                            TagPill(
+                                name: category.name,
+                                color: category.color,
+                                isSelected: selectedCategoryId == category.id,
+                                onTap: {
+                                    withAnimation(GentleLightning.Animation.swoosh) {
+                                        selectedCategoryId = selectedCategoryId == category.id ? nil : category.id
+                                    }
+                                }
+                            )
+                        }
+                    }
+                    .padding(.horizontal, 4)
+                }
+            }
+            .padding(.vertical, 12)
+            .padding(.horizontal, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(GentleLightning.Colors.border(isDark: themeManager.isDarkMode), lineWidth: 1)
+                    )
+            )
+            .transition(.asymmetric(
+                insertion: .scale(scale: 0.95, anchor: .top).combined(with: .opacity).animation(GentleLightning.Animation.elastic),
+                removal: .scale(scale: 0.95, anchor: .top).combined(with: .opacity).animation(GentleLightning.Animation.swoosh)
+            ))
+        }
+    }
+}
+
+// MARK: - Individual Tag Pill
+struct TagPill: View {
+    let name: String
+    let color: String
+    let isSelected: Bool
+    let onTap: () -> Void
+    
+    @EnvironmentObject var themeManager: ThemeManager
+    
+    private var pillColor: Color {
+        Color(hex: color) ?? GentleLightning.Colors.accentNeutral
+    }
+    
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 6) {
+                // Color dot
+                Circle()
+                    .fill(pillColor)
+                    .frame(width: 8, height: 8)
+                    .scaleEffect(isSelected ? 1.2 : 1.0)
+                    .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
+                
+                // Tag name
+                Text(name)
+                    .font(GentleLightning.Typography.caption)
+                    .foregroundColor(
+                        isSelected 
+                            ? GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode)
+                            : GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode)
+                    )
+                    .fontWeight(isSelected ? .medium : .regular)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                Capsule()
+                    .fill(
+                        isSelected
+                            ? pillColor.opacity(0.15)
+                            : GentleLightning.Colors.surface(isDark: themeManager.isDarkMode)
+                    )
+                    .overlay(
+                        Capsule()
+                            .stroke(
+                                isSelected
+                                    ? pillColor.opacity(0.3)
+                                    : GentleLightning.Colors.border(isDark: themeManager.isDarkMode),
+                                lineWidth: isSelected ? 1.5 : 1
+                            )
+                    )
+            )
+            .scaleEffect(isSelected ? 1.05 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Color Extension for Hex Support
+extension Color {
+    init?(hex: String) {
+        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+        let a, r, g, b: UInt64
+        switch hex.count {
+        case 3: // RGB (12-bit)
+            (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
+        case 6: // RGB (24-bit)
+            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
+        case 8: // ARGB (32-bit)
+            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
+        default:
+            return nil
+        }
+        
+        self.init(
+            .sRGB,
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue:  Double(b) / 255,
+            opacity: Double(a) / 255
+        )
+    }
+}
+
 
 // MARK: - Search Bar View
 struct SearchBarView: View {
@@ -2415,6 +2587,10 @@ struct SearchBarView: View {
     let onResultTap: (SearchResult) -> Void
     let onSearch: () -> Void
     let onReindex: () -> Void
+    
+    // Category filtering support
+    let categories: [Category]
+    @Binding var selectedCategoryId: String?
     
     @EnvironmentObject var themeManager: ThemeManager
     
@@ -2539,6 +2715,13 @@ struct SearchBarView: View {
                 }
                 .buttonStyle(PlainButtonStyle())
             }
+            
+            // Tag filter pills shown when search is expanded
+            TagFilterPillsView(
+                categories: categories,
+                selectedCategoryId: $selectedCategoryId,
+                isSearchExpanded: $isExpanded
+            )
             
             // Search results or empty state shown below when expanded
             if isExpanded && (!searchResults.isEmpty || (!searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSearching && hasSearched)) {

@@ -83,6 +83,10 @@ public struct RichTextEditor: UIViewRepresentable {
         textView.canCancelContentTouches = true
         textView.delaysContentTouches = true
         
+        // CRITICAL: Enable interactive keyboard dismissal
+        // This allows the native iOS swipe-down-to-dismiss gesture
+        textView.keyboardDismissMode = .interactive
+        
         // Font and appearance
         textView.font = UIFont(name: self.context.fontName, size: self.context.fontSize) ?? 
                         UIFont.systemFont(ofSize: self.context.fontSize)

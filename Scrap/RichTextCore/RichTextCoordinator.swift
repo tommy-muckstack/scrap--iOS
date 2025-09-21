@@ -63,6 +63,12 @@ public class RichTextCoordinator: NSObject {
         super.init()
         
         setupContextObservation()
+        setupKeyboardNotifications()
+    }
+    
+    deinit {
+        // Clean up keyboard notifications
+        NotificationCenter.default.removeObserver(self)
     }
     
     /// Connect this coordinator to the actual textView (called from makeUIView)
@@ -79,6 +85,10 @@ public class RichTextCoordinator: NSObject {
         textView.allowsEditingTextAttributes = true
         textView.isEditable = true
         textView.isSelectable = true
+        
+        // CRITICAL: Ensure keyboard dismissal mode is always set
+        // This can be reset by resignFirstResponder calls
+        textView.keyboardDismissMode = .interactive
         
         // Configure for rich text editing
         textView.typingAttributes = [
@@ -101,6 +111,43 @@ public class RichTextCoordinator: NSObject {
                 self?.handleContextAction(action)
             }
             .store(in: &cancellables)
+    }
+    
+    private func setupKeyboardNotifications() {
+        // Listen for keyboard events to restore interactive dismissal
+        // This fixes the issue where swipe-to-dismiss stops working after the first use
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(keyboardWillShow(_:)),
+            name: UIResponder.keyboardWillShowNotification,
+            object: nil
+        )
+        
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(keyboardDidShow(_:)),
+            name: UIResponder.keyboardDidShowNotification,
+            object: nil
+        )
+    }
+    
+    @objc private func keyboardWillShow(_ notification: Notification) {
+        // Ensure keyboard dismissal mode is restored
+        // This can be reset by manual resignFirstResponder calls
+        DispatchQueue.main.async { [weak self] in
+            self?.textView.keyboardDismissMode = .interactive
+        }
+    }
+    
+    @objc private func keyboardDidShow(_ notification: Notification) {
+        // Double-check that interactive dismissal is still enabled
+        // Some input accessory view operations can reset this
+        DispatchQueue.main.async { [weak self] in
+            if self?.textView.keyboardDismissMode != .interactive {
+                self?.textView.keyboardDismissMode = .interactive
+                print("🔧 RichTextCoordinator: Restored keyboard dismissal mode after keyboard appeared")
+            }
+        }
     }
     
     private func syncInitialState() {
