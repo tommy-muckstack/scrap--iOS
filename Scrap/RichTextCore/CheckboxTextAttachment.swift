@@ -444,11 +444,11 @@ class CheckboxManager {
         textView.delegate?.textViewDidChange?(textView)
     }
     
-    /// Find checkbox attachment at a given tap location with enhanced tap-to-left detection
+    /// Find checkbox attachment at a given tap location - restrictive to checkbox icon area only
     static func findCheckboxAtLocation(_ location: CGPoint, in textView: UITextView) -> (attachment: CheckboxTextAttachment, range: NSRange)? {
         guard let attributedText = textView.attributedText else { return nil }
         
-        // Use layout manager to find more precise location
+        // Use layout manager to find precise location
         let layoutManager = textView.layoutManager
         let textContainer = textView.textContainer
         let locationInTextContainer = CGPoint(
@@ -461,74 +461,41 @@ class CheckboxManager {
         
         print("🎯 CheckboxManager.findCheckboxAtLocation: Tap at location \(location), charIndex: \(charIndex)")
         
-        // ENHANCEMENT: First check direct tap on checkbox
+        // Check direct tap on checkbox attachment only
         if charIndex < attributedText.length {
             if let attachment = attributedText.attribute(.attachment, at: charIndex, effectiveRange: nil) as? CheckboxTextAttachment {
-                print("✅ CheckboxManager.findCheckboxAtLocation: Direct tap on checkbox at index \(charIndex)")
-                return (attachment, NSRange(location: charIndex, length: 1))
-            }
-        }
-        
-        // ENHANCEMENT: Check for tap-to-left behavior with very generous search range
-        // Look for checkboxes to the right of the tap location (very generous range for easy tapping)
-        let searchRangeEnd = min(charIndex + 20, attributedText.length)
-        for index in charIndex..<searchRangeEnd {
-            if let attachment = attributedText.attribute(.attachment, at: index, effectiveRange: nil) as? CheckboxTextAttachment {
-                // Found a checkbox to the right of the tap - this counts as tap-to-left
-                print("🎯 CheckboxManager.findCheckboxAtLocation: Tap-to-left detected - checkbox at index \(index), tap at \(charIndex)")
                 
-                // Set up text view reference if missing
-                if attachment.textView == nil {
-                    attachment.textView = textView
-                    attachment.characterRange = NSRange(location: index, length: 1)
-                    print("🔧 CheckboxManager.findCheckboxAtLocation: Set up missing textView reference for checkbox")
+                // Get the precise bounds of this checkbox attachment
+                let glyphRange = layoutManager.glyphRange(forCharacterRange: NSRange(location: charIndex, length: 1), actualCharacterRange: nil)
+                let attachmentRect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
+                let adjustedRect = CGRect(
+                    x: attachmentRect.minX + textView.textContainerInset.left,
+                    y: attachmentRect.minY + textView.textContainerInset.top,
+                    width: attachmentRect.width,
+                    height: attachmentRect.height
+                )
+                
+                // Only respond if the tap is within the checkbox bounds (28x28 area)
+                if adjustedRect.contains(location) {
+                    print("✅ CheckboxManager.findCheckboxAtLocation: Direct tap within checkbox bounds at index \(charIndex)")
+                    
+                    // Set up text view reference if missing
+                    if attachment.textView == nil {
+                        attachment.textView = textView
+                        attachment.characterRange = NSRange(location: charIndex, length: 1)
+                        print("🔧 CheckboxManager.findCheckboxAtLocation: Set up missing textView reference for checkbox")
+                    }
+                    
+                    return (attachment, NSRange(location: charIndex, length: 1))
+                } else {
+                    print("❌ CheckboxManager.findCheckboxAtLocation: Tap outside checkbox bounds. Tap: \(location), Checkbox rect: \(adjustedRect)")
                 }
-                
-                return (attachment, NSRange(location: index, length: 1))
             }
         }
         
-        // Check a very generous range around the tap location for easy tap targets
-        let checkRange = max(0, charIndex - 10)...min(charIndex + 10, attributedText.length - 1)
-        
-        for index in checkRange {
-            if let attachment = attributedText.attribute(.attachment, at: index, effectiveRange: nil) as? CheckboxTextAttachment {
-                print("✅ CheckboxManager.findCheckboxAtLocation: Found checkbox near tap at index \(index)")
-                
-                // Set up text view reference if missing
-                if attachment.textView == nil {
-                    attachment.textView = textView
-                    attachment.characterRange = NSRange(location: index, length: 1)
-                    print("🔧 CheckboxManager.findCheckboxAtLocation: Set up missing textView reference for checkbox")
-                }
-                
-                return (attachment, NSRange(location: index, length: 1))
-            }
-        }
-        
-        // Also check if we're at the beginning of a line with a checkbox
-        let lineRange = (attributedText.string as NSString).lineRange(for: NSRange(location: min(charIndex, attributedText.length), length: 0))
-        var foundCheckbox: (CheckboxTextAttachment, NSRange)?
-        
-        attributedText.enumerateAttribute(.attachment, in: lineRange, options: []) { value, range, stop in
-            if let checkbox = value as? CheckboxTextAttachment {
-                // Check if this checkbox is anywhere on the line (very generous line-level detection)
-                // This makes it easy to tap anywhere on a checkbox line to toggle it
-                print("✅ CheckboxManager.findCheckboxAtLocation: Found checkbox on line at range \(range)")
-                
-                // Set up text view reference if missing
-                if checkbox.textView == nil {
-                    checkbox.textView = textView
-                    checkbox.characterRange = range
-                    print("🔧 CheckboxManager.findCheckboxAtLocation: Set up missing textView reference for line checkbox")
-                }
-                
-                foundCheckbox = (checkbox, range)
-                stop.pointee = true
-            }
-        }
-        
-        return foundCheckbox
+        // No checkbox found at precise tap location
+        print("❌ CheckboxManager.findCheckboxAtLocation: No checkbox found at tap location")
+        return nil
     }
     
     /// Toggle checkbox state and update the text view using model-backed system

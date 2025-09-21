@@ -363,8 +363,8 @@ struct NoteEditor: View {
                     showingSkeleton = false
                 }
                 
-                // Focus text field without delay
-                isTextFocused = true
+                // Note: Removed automatic text focus to keep keyboard down when opening notes
+                // Users can tap anywhere to start typing or interact with checkboxes
             }
         }
         .onDisappear {

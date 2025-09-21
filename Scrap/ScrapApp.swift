@@ -2,6 +2,7 @@ import SwiftUI
 import Firebase
 import GoogleSignIn
 import UIKit
+import StoreKit
 
 @MainActor
 class AppDelegate: NSObject, UIApplicationDelegate {
@@ -136,6 +137,10 @@ struct RootView: View {
             } else if firebaseManager.isAuthenticated {
                 ContentView()
                     .transition(.opacity)
+                    .onAppear {
+                        // Increment launch count and potentially request review
+                        AppStoreReviewManager.shared.incrementLaunchCountAndRequestReview()
+                    }
             } else {
                 AuthenticationView()
                     .transition(.opacity)

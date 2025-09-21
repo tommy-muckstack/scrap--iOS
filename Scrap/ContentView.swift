@@ -418,113 +418,90 @@ struct GentleLightning {
 // MARK: - Simple Item Model (Compatible with Firebase)
 // SparkItem is now defined in SparkModels.swift
 
+
+// MARK: - Content View Model
+class ContentViewModel: ObservableObject {
+    @Published var inputText = ""
+    @Published var placeholderText = "Just type or speak..."
+}
+
 // MARK: - Firebase Data Manager
 class FirebaseDataManager: ObservableObject {
     @Published var items: [SparkItem] = []
     @Published var isLoading = false
-    @Published var error: String?
+    @Published var categories: [Category] = []
+    @Published var selectedCategoryFilter: String? = nil
     
     let firebaseManager = FirebaseManager.shared
     
     init() {
-        // Start listening for data when manager is created
-        Task {
-            await startListening()
-        }
-    }
-    
-    private func startListening() async {
-        firebaseManager.startListening { [weak self] firebaseNotes in
-            let sparkItems = firebaseNotes.map { SparkItem(from: $0) }
-            withAnimation(GentleLightning.Animation.gentle) {
-                self?.items = sparkItems
-                // Update widget with new note count
-                updateWidgetData(noteCount: sparkItems.count)
-            }
-        }
+        startListening()
+        loadCategories()
     }
     
     func createItem(from text: String, creationType: String = "text") {
-        // Save to Firebase with AI-generated title first, then add to list
+        // Create RTF document from the start
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: UIFont(name: "SpaceGrotesk-Regular", size: 16) ?? UIFont.systemFont(ofSize: 16),
+            .foregroundColor: UIColor.label
+        ]
+        let attributedText = NSAttributedString(string: text, attributes: attributes)
+        
+        // Convert to RTF data using trait preservation
+        var rtfData: Data? = nil
+        do {
+            let rtfCompatibleString = SparkItem.prepareForRTFSave(attributedText)
+            rtfData = try rtfCompatibleString.data(
+                from: NSRange(location: 0, length: rtfCompatibleString.length),
+                documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
+            )
+            print("✅ Created RTF data for voice note: \(rtfData?.count ?? 0) bytes")
+        } catch {
+            print("❌ Failed to create RTF data: \(error)")
+        }
+        
+        let newItem = SparkItem(content: text, isTask: false)
+        newItem.rtfData = rtfData
+        
+        withAnimation(GentleLightning.Animation.elastic) {
+            items.insert(newItem, at: 0)
+        }
+        
         Task {
+            // Generate title
+            let title: String? = await {
+                do {
+                    return try await OpenAIService.shared.generateTitle(for: text)
+                } catch {
+                    print("Title generation failed: \(error)")
+                    return nil
+                }
+            }()
+            
             do {
-                print("📋 DataManager: Starting to save note: '\(text)' type: '\(creationType)'")
-                
-                // Generate title using OpenAI
-                var generatedTitle: String? = nil
-                do {
-                    generatedTitle = try await OpenAIService.shared.generateTitle(for: text)
-                    print("🤖 DataManager: Generated title: '\(generatedTitle!)'")
-                } catch {
-                    print("⚠️ DataManager: Title generation failed: \(error), proceeding without title")
-                }
-                
-                // Get legacy categories for backward compatibility
-                let legacyCategories = await categorizeText(text)
-                print("🏷️ DataManager: Categorized text with legacy categories: \(legacyCategories)")
-                
-                // TODO: Add category suggestion and selection logic here
-                let categoryIds: [String] = [] // Will be populated when categories are implemented
-                
-                // Create RTF data with Space Grotesk font for consistent display
-                var rtfData: Data? = nil
-                do {
-                    let attributes: [NSAttributedString.Key: Any] = [
-                        .font: UIFont(name: "SpaceGrotesk-Regular", size: 16) ?? UIFont.systemFont(ofSize: 16),
-                        .foregroundColor: UIColor.label
-                    ]
-                    let attributedText = NSAttributedString(string: text, attributes: attributes)
-                    let rtfCompatibleString = SparkItem.prepareForRTFSave(attributedText)
-                    rtfData = try rtfCompatibleString.data(
-                        from: NSRange(location: 0, length: rtfCompatibleString.length),
-                        documentAttributes: [NSAttributedString.DocumentAttributeKey.documentType: NSAttributedString.DocumentType.rtf]
-                    )
-                    print("✅ DataManager: Created RTF data (\(rtfData?.count ?? 0) bytes) for \(creationType) note")
-                } catch {
-                    print("❌ DataManager: Failed to create RTF data: \(error)")
-                }
-                
-                let finalTitle = generatedTitle
+                // Create note with RTF content from the start
                 let firebaseId = try await firebaseManager.createNote(
                     content: text,
-                    title: finalTitle,
-                    categoryIds: categoryIds,
-                    isTask: false, 
-                    categories: legacyCategories,
+                    title: title,
+                    categoryIds: [],
+                    isTask: false,
+                    categories: [],
                     creationType: creationType,
                     rtfData: rtfData
                 )
                 
-                print("✅ DataManager: Note saved successfully with Firebase ID: \(firebaseId)")
-                
-                // Track note creation with type
-                let noteType = creationType == "voice" ? "voice" : "text"
-                AnalyticsManager.shared.trackItemCreated(isTask: false, contentLength: text.count, creationType: noteType)
-                
-                // Now create the item with the title and add to list
                 await MainActor.run {
-                    let newItem = SparkItem(content: text, isTask: false)
                     newItem.firebaseId = firebaseId
-                    if let title = finalTitle {
+                    newItem.title = title ?? ""
+                    print("✅ DataManager: Successfully synced note to Firebase with ID: \(firebaseId)")
+                }
+            } catch {
+                await MainActor.run {
+                    // Even if Firebase sync fails, keep the note locally with the generated title
+                    if let title = title {
                         newItem.title = title
                     }
-                    
-                    withAnimation(GentleLightning.Animation.elastic) {
-                        self.items.insert(newItem, at: 0)
-                    }
-                    print("📲 DataManager: Added item to list with title: '\(newItem.title)'")
-                    
-                    // Update widget with new count
-                    updateWidgetData(noteCount: self.items.count)
-                }
-                
-                // TODO: Save to Pinecone for vector search
-                
-            } catch {
-                print("💥 DataManager: Failed to save note: \(error)")
-                await MainActor.run {
-                    self.error = "Failed to save note: \(error.localizedDescription)"
-                    print("🗑️ DataManager: Note creation failed")
+                    print("⚠️ DataManager: Firebase sync failed but note preserved locally: \(error)")
                 }
             }
         }
@@ -533,14 +510,16 @@ class FirebaseDataManager: ObservableObject {
     func createItemFromAttributedText(_ attributedText: NSAttributedString, creationType: String = "rich_text") {
         print("📝 Creating item from NSAttributedString with \(attributedText.length) characters")
         
-        // Convert attributed text to RTF data for storage using trait preservation
+        // Convert attributed text to RTF data for storage using proper trait preservation
         var rtfData: Data? = nil
         do {
+            // Convert custom fonts to system fonts before RTF generation to preserve traits
             let rtfCompatibleString = SparkItem.prepareForRTFSave(attributedText)
             rtfData = try rtfCompatibleString.data(
                 from: NSRange(location: 0, length: rtfCompatibleString.length),
-                documentAttributes: [NSAttributedString.DocumentAttributeKey.documentType: NSAttributedString.DocumentType.rtf]
+                documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
             )
+            print("✅ Successfully created RTF data (\(rtfData?.count ?? 0) bytes) with trait preservation")
         } catch {
             print("❌ Failed to create RTF data: \(error)")
         }
@@ -548,172 +527,179 @@ class FirebaseDataManager: ObservableObject {
         // Extract plain text for display and search
         let plainText = attributedText.string
         
-        // Save to Firebase with AI-generated title first, then add to list
-        Task { [rtfData] in
-            do {
-                print("📋 DataManager: Starting to save formatted note: '\(plainText)' type: '\(creationType)'")
-                
-                // Generate title using OpenAI
-                var generatedTitle: String? = nil
+        // Create new item with plain text content and RTF data
+        let newItem = SparkItem(content: plainText, isTask: false)
+        newItem.rtfData = rtfData
+        
+        withAnimation(GentleLightning.Animation.elastic) {
+            items.insert(newItem, at: 0)
+        }
+        
+        Task {
+            // Generate title from plain text
+            let title: String? = await {
                 do {
-                    generatedTitle = try await OpenAIService.shared.generateTitle(for: plainText)
-                    print("🤖 DataManager: Generated title: '\(generatedTitle!)'")
+                    let generatedTitle = try await OpenAIService.shared.generateTitle(for: plainText)
+                    print("📝 Generated title: '\(generatedTitle)'")
+                    return generatedTitle
                 } catch {
-                    print("⚠️ DataManager: Title generation failed: \(error), proceeding without title")
+                    print("Title generation failed: \(error)")
+                    return nil
                 }
-                
-                // Get legacy categories for backward compatibility
-                let legacyCategories = await categorizeText(plainText)
-                print("🏷️ DataManager: Categorized text with legacy categories: \(legacyCategories)")
-                
-                // TODO: Add category suggestion and selection logic here
-                let categoryIds: [String] = [] // Will be populated when categories are implemented
-                
-                let finalTitle = generatedTitle
+            }()
+            
+            do {
+                // Create note with RTF content
                 let firebaseId = try await firebaseManager.createNote(
                     content: plainText,
-                    title: finalTitle,
-                    categoryIds: categoryIds,
-                    isTask: false, 
-                    categories: legacyCategories,
+                    title: title,
+                    categoryIds: [],
+                    isTask: false,
+                    categories: [],
                     creationType: creationType,
                     rtfData: rtfData
                 )
                 
-                print("✅ DataManager: Formatted note saved successfully with Firebase ID: \(firebaseId)")
-                
-                // Track note creation with type
-                AnalyticsManager.shared.trackItemCreated(isTask: false, contentLength: plainText.count, creationType: creationType)
-                
-                // Now create the item with the title and add to list
                 await MainActor.run {
-                    let newItem = SparkItem(content: plainText, isTask: false)
                     newItem.firebaseId = firebaseId
-                    newItem.rtfData = rtfData
-                    if let title = finalTitle {
+                    newItem.title = title ?? ""
+                }
+                
+                print("✅ Successfully saved formatted note to Firebase")
+            } catch {
+                await MainActor.run {
+                    // Even if Firebase sync fails, keep the note locally with the generated title
+                    if let title = title {
                         newItem.title = title
                     }
-                    
-                    withAnimation(GentleLightning.Animation.elastic) {
-                        self.items.insert(newItem, at: 0)
-                    }
-                    print("📲 DataManager: Added formatted item to list with title: '\(newItem.title)'")
-                    
-                    // Update widget with new count
-                    updateWidgetData(noteCount: self.items.count)
                 }
-                
-                // TODO: Save to Pinecone for vector search
-                
-            } catch {
-                print("💥 DataManager: Failed to save formatted note: \(error)")
-                await MainActor.run {
-                    self.error = "Failed to save note: \(error.localizedDescription)"
-                    print("🗑️ DataManager: Formatted note creation failed")
-                }
+                print("⚠️ DataManager: Firebase sync failed but formatted note preserved locally: \(error)")
             }
         }
     }
     
-    
     func updateItem(_ item: SparkItem, newContent: String) {
-        // Update local item immediately (optimistic) - ensure on main thread
-        DispatchQueue.main.async {
-            item.content = newContent
-        }
+        item.content = newContent
         
-        // Update Firebase
         if let firebaseId = item.firebaseId {
             Task {
-                do {
-                    try await firebaseManager.updateNote(noteId: firebaseId, newContent: newContent)
-                } catch {
-                    await MainActor.run {
-                        self.error = "Failed to update note: \(error.localizedDescription)"
-                    }
-                }
+                try? await firebaseManager.updateNote(noteId: firebaseId, newContent: newContent)
             }
         }
     }
     
     func updateItemWithRTF(_ item: SparkItem, rtfData: Data) {
-        // Extract plain text from RTF for local display/search
+        // Store RTF data in the item for persistence
+        item.rtfData = rtfData
+        
+        // Always extract plain text from RTF for local display/search to prevent showing raw RTF
         do {
             let attributedString = try NSAttributedString(
                 data: rtfData,
-                options: [NSAttributedString.DocumentReadingOptionKey.documentType: NSAttributedString.DocumentType.rtf],
+                options: [.documentType: NSAttributedString.DocumentType.rtf],
                 documentAttributes: nil
             )
-            // Ensure UI updates happen on main thread
-            DispatchQueue.main.async {
-                item.content = attributedString.string
-            }
+            let plainText = attributedString.string
+            item.content = plainText
         } catch {
             print("❌ Failed to extract plain text from RTF: \(error)")
+            // Don't update content if RTF extraction fails to preserve existing content
         }
         
-        // Update Firebase with RTF data
         if let firebaseId = item.firebaseId {
             Task {
-                do {
-                    try await firebaseManager.updateNoteWithRTF(noteId: firebaseId, rtfData: rtfData)
-                } catch {
-                    await MainActor.run {
-                        self.error = "Failed to update note: \(error.localizedDescription)"
-                    }
-                }
+                try? await firebaseManager.updateNoteWithRTF(noteId: firebaseId, rtfData: rtfData)
             }
         }
     }
     
     func deleteItem(_ item: SparkItem) {
-        // Track item deletion before removing
-        AnalyticsManager.shared.trackItemDeleted(isTask: item.isTask)
+        withAnimation(GentleLightning.Animation.gentle) {
+            items.removeAll { $0.id == item.id }
+        }
         
-        // Remove from local array immediately (optimistic)
-        items.removeAll { $0.id == item.id }
-        
-        // Update widget with new count
-        updateWidgetData(noteCount: items.count)
-        
-        // Delete from Firebase
         if let firebaseId = item.firebaseId {
             Task {
+                try? await firebaseManager.deleteNote(noteId: firebaseId)
+            }
+        }
+    }
+    
+    private func startListening() {
+        firebaseManager.startListening { [weak self] firebaseNotes in
+            guard let self = self else { return }
+            
+            // Convert Firebase notes to SparkItems
+            let firebaseSparkItems = firebaseNotes.map(SparkItem.init)
+            
+            // Merge with existing local items that haven't been synced yet
+            var allItems = firebaseSparkItems
+            
+            // Add any local items that don't have Firebase IDs (haven't been synced yet)
+            for localItem in self.items {
+                if localItem.firebaseId == nil {
+                    // This is a local-only item that hasn't been synced to Firebase yet
+                    allItems.insert(localItem, at: 0) // Add at beginning since it's newest
+                    print("📱 DataManager: Preserving local item: '\(localItem.displayTitle)'")
+                }
+            }
+            
+            // Sort by creation date to maintain proper order
+            allItems.sort { $0.createdAt > $1.createdAt }
+            
+            self.items = allItems
+            
+            // Index existing notes for vector search
+            Task {
                 do {
-                    try await firebaseManager.deleteNote(noteId: firebaseId)
-                } catch {
-                    await MainActor.run {
-                        self.error = "Failed to delete note: \(error.localizedDescription)"
-                        // Re-add the item since deletion failed
-                        self.items.insert(item, at: 0)
+                    // Test connection first
+                    let isConnected = try await VectorSearchService.shared.testConnection()
+                    if isConnected {
+                        await VectorSearchService.shared.reindexAllNotes(firebaseNotes)
+                    } else {
+                        print("⚠️ ChromaDB connection failed, vector search will not be available")
                     }
+                } catch {
+                    print("⚠️ Failed to test ChromaDB connection or index notes: \(error)")
                 }
             }
         }
     }
     
-    // Simple categorization (will be enhanced with AI later)
-    private func categorizeText(_ text: String) async -> [String] {
-        var categories: [String] = []
-        
-        if text.lowercased().contains("work") || text.lowercased().contains("meeting") {
-            categories.append("work")
+    // MARK: - Category Management
+    
+    func loadCategories() {
+        Task {
+            do {
+                let loadedCategories = try await CategoryService.shared.getUserCategories()
+                await MainActor.run {
+                    self.categories = loadedCategories
+                }
+            } catch {
+                print("⚠️ Failed to load categories: \(error)")
+            }
         }
-        if text.lowercased().contains("personal") || text.lowercased().contains("family") {
-            categories.append("personal")
-        }
-        if text.lowercased().contains("todo") || text.lowercased().contains("task") {
-            categories.append("task")
-        }
-        
-        return categories.isEmpty ? ["general"] : categories
     }
-}
-
-// MARK: - Content View Model
-class ContentViewModel: ObservableObject {
-    @Published var inputText = ""
-    @Published var placeholderText = "Just type or speak..."
+    
+    func setSelectedCategoryFilter(_ categoryId: String?) {
+        selectedCategoryFilter = categoryId
+    }
+    
+    func clearCategoryFilter() {
+        selectedCategoryFilter = nil
+    }
+    
+    // MARK: - Filtering
+    
+    var filteredItems: [SparkItem] {
+        guard let selectedCategory = selectedCategoryFilter else {
+            return items // No filter applied
+        }
+        
+        return items.filter { item in
+            item.categoryIds.contains(selectedCategory)
+        }
+    }
 }
 
 // MARK: - Animated Placeholder Text
@@ -804,6 +790,7 @@ struct InputField: View {
     let dataManager: FirebaseDataManager
     let onCommit: () -> Void
     var isFieldFocused: FocusState<Bool>.Binding
+    var hideMicrophone: Bool = false
     
     // Theme management
     @StateObject private var themeManager = ThemeManager.shared
@@ -1045,7 +1032,9 @@ struct InputField: View {
                 }
                 
                 // Microphone/Save button - transforms based on recording state and text content
-                actionButton
+                if !hideMicrophone {
+                    actionButton
+                }
             }
             .padding(.horizontal, GentleLightning.Layout.Padding.lg)
             .padding(.vertical, GentleLightning.Layout.Padding.lg)
@@ -1059,16 +1048,16 @@ struct InputField: View {
                         .frame(width: 8, height: 8)
                         .opacity(0.8)
                     
-                    Text("Listening...")
-                        .font(GentleLightning.Typography.small)
-                        .foregroundColor(GentleLightning.Colors.textSecondary)
+                    WaveformView(
+                        isRecording: isRecording,
+                        barCount: 5,
+                        barWidth: 3,
+                        barSpacing: 2,
+                        maxHeight: 16,
+                        color: GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode)
+                    )
                     
                     Spacer()
-                    
-                    Text("Tap red button to stop")
-                        .font(GentleLightning.Typography.small)
-                        .foregroundColor(GentleLightning.Colors.textSecondary)
-                        .opacity(0.7)
                 }
                 .padding(.horizontal, GentleLightning.Layout.Padding.lg)
                 .padding(.top, 4)
@@ -1762,6 +1751,8 @@ struct ContentView: View {
         .padding(.horizontal, GentleLightning.Layout.Padding.xl)
         .padding(.top, GentleLightning.Layout.Padding.xl)
         .padding(.bottom, GentleLightning.Layout.Padding.lg)
+        .opacity(isSearchExpanded ? 0 : 1) // Hide when search is expanded
+        .animation(GentleLightning.Animation.swoosh, value: isSearchExpanded)
     }
     
     @ViewBuilder
@@ -1898,6 +1889,8 @@ struct ContentView: View {
                 inputFieldSection
                 itemsListSection
             }
+            .offset(y: isSearchExpanded ? -120 : 0) // Slide content up when search is expanded
+            .animation(GentleLightning.Animation.swoosh, value: isSearchExpanded)
             
             // Fixed footer at bottom - will be covered by keyboard
             VStack {
@@ -1922,6 +1915,8 @@ struct ContentView: View {
                 }
                 .background(GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
             }
+            .opacity(isSearchExpanded ? 0 : 1) // Hide footer when search is expanded
+            .animation(GentleLightning.Animation.swoosh, value: isSearchExpanded)
             .ignoresSafeArea(.keyboard, edges: .bottom)
             .dismissKeyboardOnDrag()
         }
@@ -1931,14 +1926,15 @@ struct ContentView: View {
     private var inputFieldSection: some View {
         // Input Field - positioned lower on screen
         InputField(text: $viewModel.inputText, 
-                  placeholder: viewModel.placeholderText,
+                  placeholder: isSearchExpanded ? "" : viewModel.placeholderText, // Hide placeholder when search is expanded
                   dataManager: dataManager,
                   onCommit: {
             // No automatic saving - users must use the SAVE button
             // Just dismiss keyboard when pressing return
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         },
-                  isFieldFocused: $isInputFieldFocused)
+                  isFieldFocused: $isInputFieldFocused,
+                  hideMicrophone: isSearchExpanded) // Hide microphone when search is expanded
         .padding(.horizontal, GentleLightning.Layout.Padding.xl)
     }
     
@@ -2046,7 +2042,7 @@ struct ContentView: View {
     @ViewBuilder
     private var mainNotesListContent: some View {
         // Only show notes list when not displaying search results
-        let itemsToDisplay = Array(dataManager.items.prefix(displayedItemsCount))
+        let itemsToDisplay = Array(dataManager.filteredItems.prefix(displayedItemsCount))
         
         ForEach(itemsToDisplay) { item in
             ItemRowSimple(item: item, dataManager: dataManager) {
@@ -2064,16 +2060,16 @@ struct ContentView: View {
             .animation(.easeInOut(duration: 0.15), value: item.id)
             .onAppear {
                 // Load more items when reaching the last item
-                if item.id == dataManager.items.last?.id && displayedItemsCount < dataManager.items.count {
+                if item.id == dataManager.filteredItems.last?.id && displayedItemsCount < dataManager.filteredItems.count {
                     withAnimation(GentleLightning.Animation.gentle) {
-                        displayedItemsCount = min(displayedItemsCount + 10, dataManager.items.count)
+                        displayedItemsCount = min(displayedItemsCount + 10, dataManager.filteredItems.count)
                     }
                 }
             }
         }
         
         // Loading indicator
-        if displayedItemsCount < dataManager.items.count {
+        if displayedItemsCount < dataManager.filteredItems.count {
             HStack {
                 Spacer()
                 ProgressView()
@@ -2141,7 +2137,11 @@ struct ContentView: View {
         }
         .onChange(of: dataManager.items.count) { _ in
             // Reset pagination when items change (new item added or deleted)
-            displayedItemsCount = min(10, dataManager.items.count)
+            displayedItemsCount = min(10, dataManager.filteredItems.count)
+        }
+        .onChange(of: dataManager.selectedCategoryFilter) { _ in
+            // Reset pagination when filter changes
+            displayedItemsCount = min(10, dataManager.filteredItems.count)
         }
         } // NavigationStack
     
@@ -2149,7 +2149,7 @@ struct ContentView: View {
         // Add a small delay to simulate loading
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             withAnimation {
-                displayedItemsCount = min(displayedItemsCount + itemsPerPage, dataManager.items.count)
+                displayedItemsCount = min(displayedItemsCount + itemsPerPage, dataManager.filteredItems.count)
             }
         }
     }
@@ -2432,53 +2432,25 @@ struct TagFilterPillsView: View {
     
     var body: some View {
         if isSearchExpanded && !categories.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Filter by tag")
-                    .font(GentleLightning.Typography.caption)
-                    .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
-                    .padding(.horizontal, 4)
-                
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        // Clear filter pill (always first)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    // Category pills
+                    ForEach(categories) { category in
                         TagPill(
-                            name: "All notes",
-                            color: "#A0AEC0", // Neutral gray
-                            isSelected: selectedCategoryId == nil,
+                            name: category.name,
+                            color: category.color,
+                            isSelected: selectedCategoryId == category.id,
                             onTap: {
                                 withAnimation(GentleLightning.Animation.swoosh) {
-                                    selectedCategoryId = nil
+                                    selectedCategoryId = selectedCategoryId == category.id ? nil : category.id
                                 }
                             }
                         )
-                        
-                        // Category pills
-                        ForEach(categories) { category in
-                            TagPill(
-                                name: category.name,
-                                color: category.color,
-                                isSelected: selectedCategoryId == category.id,
-                                onTap: {
-                                    withAnimation(GentleLightning.Animation.swoosh) {
-                                        selectedCategoryId = selectedCategoryId == category.id ? nil : category.id
-                                    }
-                                }
-                            )
-                        }
                     }
-                    .padding(.horizontal, 4)
                 }
+                .padding(.horizontal, 8) // Match search input field's internal padding
+                .padding(.vertical, 4) // Add vertical padding to prevent border clipping
             }
-            .padding(.vertical, 12)
-            .padding(.horizontal, 8)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(GentleLightning.Colors.border(isDark: themeManager.isDarkMode), lineWidth: 1)
-                    )
-            )
             .transition(.asymmetric(
                 insertion: .scale(scale: 0.95, anchor: .top).combined(with: .opacity).animation(GentleLightning.Animation.elastic),
                 removal: .scale(scale: 0.95, anchor: .top).combined(with: .opacity).animation(GentleLightning.Animation.swoosh)

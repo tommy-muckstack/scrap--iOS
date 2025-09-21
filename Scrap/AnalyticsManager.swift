@@ -441,4 +441,32 @@ class AnalyticsManager: ObservableObject {
             view.accessibilityIdentifier = "amplitude_mask"
         }
     }
+    
+    // MARK: - App Store Review Events
+    func trackReviewPromptShown(launchCount: Int, trigger: String, appVersion: String, daysSinceLastPrompt: Int?, strategy: String = "conservative") {
+        var properties: [String: Any] = [
+            "launch_count": launchCount,
+            "trigger": trigger,
+            "app_version": appVersion,
+            "strategy": strategy
+        ]
+        
+        if let daysSinceLastPrompt = daysSinceLastPrompt {
+            properties["days_since_last_prompt"] = daysSinceLastPrompt
+        }
+        
+        trackEvent("review_prompt_shown", properties: properties)
+    }
+    
+    func trackReviewPageOpened(source: String) {
+        trackEvent("review_page_opened", properties: [
+            "source": source
+        ])
+    }
+    
+    func trackReviewPageOpenFailed(appStoreId: String) {
+        trackEvent("review_page_open_failed", properties: [
+            "app_store_id": appStoreId
+        ])
+    }
 }
