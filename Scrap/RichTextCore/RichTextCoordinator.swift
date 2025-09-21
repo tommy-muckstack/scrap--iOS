@@ -43,6 +43,9 @@ public class RichTextCoordinator: NSObject {
     /// Tracks when user has explicitly exited a code block to prevent automatic re-activation
     private var hasExplicitlyExitedCodeBlock = false
     
+    /// Tracks the timestamp of the last user tap for tap-to-left behavior detection
+    private var lastUserTapTime = Date()
+    
     /// Drawing overlay manager for handling drawings as overlays instead of attachments
     weak var drawingManager: DrawingOverlayManager?
     
@@ -1703,6 +1706,9 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         
         // Selection changed
         
+        // Prevent cursor from being placed to the left of checkboxes or bullets
+        preventCursorLeftOfListMarkers(textView)
+        
         // If user taps to a position that's NOT in a code block, reset the explicit exit flag
         // This allows normal code block detection to work again
         let cursorPosition = textView.selectedRange.location
@@ -2399,6 +2405,9 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
             return
         }
         
+        // Record the timestamp for tap-to-left behavior detection
+        lastUserTapTime = Date()
+        
         // Check if we're at the end state
         guard gesture.state == .ended else { 
             print("⚠️ handleTap: Gesture state is not .ended, it's \(gesture.state)")
@@ -2660,6 +2669,8 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
     
     public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
         // Allow our tap gesture to work alongside UITextView's built-in gestures
+        // BUT also allow SwiftUI drag gestures for keyboard dismissal
+        print("🖱️ shouldRecognizeSimultaneously: \(type(of: gestureRecognizer)) with \(type(of: otherGestureRecognizer))")
         return true
     }
     
@@ -2668,6 +2679,14 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         print("🖱️ gestureRecognizer shouldReceive touch at location: \(location)")
         print("🖱️ gestureRecognizer: touch.view = \(String(describing: touch.view))")
         
+        // Check if this touch might be on a checkbox
+        if let (_, _) = CheckboxManager.findCheckboxAtLocation(location, in: textView) {
+            print("🖱️ gestureRecognizer: Detected touch on checkbox, ensuring our gesture handles it")
+            // DON'T cancel touches - let both our gesture and drag gestures work
+            gestureRecognizer.cancelsTouchesInView = false
+            return true
+        }
+        
         // Check if this touch might be on a drawing attachment
         // If so, we want to ensure our gesture recognizer can handle it
         if let touchView = touch.view {
@@ -2675,13 +2694,13 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
             let viewClassName = String(describing: type(of: touchView))
             if viewClassName.contains("Attachment") || touchView.frame.width > 200 {
                 print("🖱️ gestureRecognizer: Detected potential attachment view, ensuring recognition")
-                // Force the gesture recognizer to claim this touch for attachment handling
-                gestureRecognizer.cancelsTouchesInView = true
+                // DON'T cancel touches - let both gestures work
+                gestureRecognizer.cancelsTouchesInView = false
                 return true
             }
         }
         
-        // For normal text touches, don't interfere with text editing
+        // For normal text touches, don't interfere with text editing or other gestures
         gestureRecognizer.cancelsTouchesInView = false
         return true
     }
@@ -2691,9 +2710,97 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         return false
     }
     
+    public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldBeRequiredToFailBy otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        // Don't require our gesture to fail for other gestures (especially drag gestures for keyboard dismissal)
+        print("🖱️ shouldBeRequiredToFailBy: \(type(of: gestureRecognizer)) by \(type(of: otherGestureRecognizer))")
+        return false
+    }
+    
     public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive event: UIEvent) -> Bool {
         print("🖱️ gestureRecognizer shouldReceive event: \(event)")
         return true
+    }
+    
+    // MARK: - Cursor Position Helpers
+    
+    /// Prevent cursor from being placed to the left of checkboxes or bullets
+    /// Also implements tap-to-left behavior for checkboxes per user requirements
+    private func preventCursorLeftOfListMarkers(_ textView: UITextView) {
+        guard let attributedText = textView.attributedText else { return }
+        
+        let currentPosition = textView.selectedRange.location
+        let currentLine = (attributedText.string as NSString).lineRange(for: NSRange(location: min(currentPosition, attributedText.length), length: 0))
+        
+        // Check if there's a checkbox attachment at the beginning of this line
+        var foundCheckboxAttachment: CheckboxTextAttachment?
+        var foundCheckboxPosition: Int?
+        var foundBulletPosition: Int?
+        
+        // Look for checkbox attachments in this line
+        attributedText.enumerateAttribute(.attachment, in: currentLine, options: []) { value, range, stop in
+            if let checkboxAttachment = value as? CheckboxTextAttachment {
+                // Found a checkbox - check if it's at or near the beginning of the line
+                if range.location <= currentLine.location + 3 {  // Allow for some whitespace
+                    foundCheckboxAttachment = checkboxAttachment
+                    foundCheckboxPosition = range.location
+                    stop.pointee = true
+                }
+            }
+        }
+        
+        // Check for bullet points at the beginning of the line
+        if foundCheckboxPosition == nil {
+            let lineText = (attributedText.string as NSString).substring(with: currentLine)
+            let trimmedLine = lineText.trimmingCharacters(in: .whitespaces)
+            if trimmedLine.hasPrefix("• ") {
+                let leadingWhitespaceCount = lineText.count - lineText.ltrimmed().count
+                foundBulletPosition = currentLine.location + leadingWhitespaceCount
+            }
+        }
+        
+        // Enhanced cursor restriction with tap-to-left checkbox behavior
+        if let checkboxPos = foundCheckboxPosition, 
+           let checkboxAttachment = foundCheckboxAttachment,
+           currentPosition <= checkboxPos {
+            
+            // Check if this was a recent user tap that should toggle the checkbox
+            // (as opposed to programmatic cursor movement)
+            let timeSinceLastTap = Date().timeIntervalSince(lastUserTapTime)
+            let isRecentUserTap = timeSinceLastTap < 0.5 // Within 500ms of user tap
+            
+            if isRecentUserTap {
+                print("🎯 preventCursorLeftOfListMarkers: Detected tap-to-left of checkbox - toggling instead of moving cursor")
+                
+                // Toggle the checkbox without moving the cursor
+                let range = NSRange(location: checkboxPos, length: 1)
+                CheckboxManager.toggleCheckbox(checkboxAttachment, in: textView, at: range)
+                
+                // For tap-to-left behavior, position cursor after the checkbox (not where they tapped)
+                // This prevents the cursor from being left of the checkbox after toggling
+                let newPosition = checkboxPos + 2  // Checkbox + space
+                if newPosition <= attributedText.length {
+                    textView.selectedRange = NSRange(location: newPosition, length: 0)
+                    print("📍 preventCursorLeftOfListMarkers: Toggled checkbox and positioned cursor after checkbox at \(newPosition)")
+                }
+                
+                // Return early to avoid the normal cursor repositioning logic below
+                return
+            } else {
+                // Regular cursor movement - just reposition after checkbox
+                let newPosition = checkboxPos + 2  // Checkbox + space
+                if newPosition <= attributedText.length {
+                    textView.selectedRange = NSRange(location: newPosition, length: 0)
+                    print("📍 preventCursorLeftOfListMarkers: Moved cursor from \(currentPosition) to \(newPosition) (after checkbox)")
+                }
+            }
+        } else if let bulletPos = foundBulletPosition, currentPosition < bulletPos + 2 {
+            // Move cursor after bullet and space (bullets don't toggle)
+            let newPosition = bulletPos + 2  // "• "
+            if newPosition <= attributedText.length {
+                textView.selectedRange = NSRange(location: newPosition, length: 0)
+                print("📍 preventCursorLeftOfListMarkers: Moved cursor from \(currentPosition) to \(newPosition) (after bullet)")
+            }
+        }
     }
     
     // MARK: - Code Block Helper Methods

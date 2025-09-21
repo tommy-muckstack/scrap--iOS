@@ -171,16 +171,25 @@ struct NoteEditor: View {
                 }
                 .transition(.opacity)
                 .gesture(
-                    DragGesture()
+                    DragGesture(minimumDistance: 10, coordinateSpace: .local)
+                        .onChanged { value in
+                            // Only track significant downward drags to avoid conflicts with text selection
+                            if value.translation.height > 30 {
+                                print("🔽 NoteEditor: Detecting pull-down gesture (translation: \(value.translation.height))")
+                            }
+                        }
                         .onEnded { value in
-                            // Dismiss keyboard when user drags down
-                            if value.translation.height > 50 && value.velocity.height > 0 {
+                            // Dismiss keyboard when user drags down with sufficient distance and velocity
+                            if value.translation.height > 50 && value.velocity.height > 200 {
                                 // Track keyboard dismissal
                                 AnalyticsManager.shared.trackKeyboardDismissed(method: "drag")
                                 
-                                isTextFocused = false
-                                isTitleFocused = false
-                                print("🔽 NoteEditor: Dismissed keyboard via pull-down gesture")
+                                // Use UIKit method to dismiss keyboard instead of manipulating FocusState
+                                // This preserves the focus state while dismissing the keyboard
+                                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                                print("🔽 NoteEditor: Dismissed keyboard via pull-down gesture (translation: \(value.translation.height), velocity: \(value.velocity.height))")
+                            } else {
+                                print("🔽 NoteEditor: Pull-down gesture too small or slow (translation: \(value.translation.height), velocity: \(value.velocity.height))")
                             }
                         }
                 )
@@ -309,7 +318,6 @@ struct NoteEditor: View {
                 }
             )
         }
-        .dismissKeyboardOnDrag()
         .onAppear {
             // Track note opened (only once)
             if !hasTrackedOpen {
@@ -861,7 +869,6 @@ struct CategoryManagerView: View {
                 }
             }
         }
-        .dismissKeyboardOnDrag()
     }
     
     private func toggleCategory(_ category: Category) {
