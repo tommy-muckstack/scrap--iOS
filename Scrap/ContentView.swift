@@ -1960,34 +1960,27 @@ struct ContentView: View {
             }
             .animation(GentleLightning.Animation.delightful, value: isSearchExpanded)
             
-            // Fixed footer at bottom - will be covered by keyboard
+            // Floating options button overlay - anchored to bottom like original
             VStack {
                 Spacer()
                 
-                VStack(spacing: 0) {
-                    Divider()
-                        .opacity(0.1)
-                    
-                    Button(action: {
-                        AnalyticsManager.shared.trackAccountDrawerOpened()
-                        showingAccountDrawer = true
-                    }) {
-                        Text("...")
-                            .font(.system(size: 44, weight: .medium))
-                            .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
-                            .padding(.vertical, 20)
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .background(GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
+                Button(action: {
+                    AnalyticsManager.shared.trackAccountDrawerOpened()
+                    showingAccountDrawer = true
+                }) {
+                    Text("...")
+                        .font(.system(size: 28, weight: .medium))
+                        .foregroundColor(.black)
+                        .frame(width: 60, height: 44)
+                        .multilineTextAlignment(.center)
                 }
-                .background(GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
+                .buttonStyle(PlainButtonStyle())
             }
-            .opacity(isSearchExpanded ? 0 : 1) // Hide footer when search is expanded
+            .opacity(isSearchExpanded ? 0 : 1) // Hide when search is expanded
             .scaleEffect(isSearchExpanded ? 0.9 : 1.0) // Subtle scale effect
             .offset(y: isSearchExpanded ? 20 : 0) // Slide down when hiding
             .animation(GentleLightning.Animation.silky, value: isSearchExpanded)
-            .ignoresSafeArea(.keyboard, edges: .bottom)
+            .ignoresSafeArea(.keyboard, edges: .bottom) // Hide when keyboard appears
             .dismissKeyboardOnDrag()
         }
     }
@@ -2072,27 +2065,48 @@ struct ContentView: View {
             notesSectionHeader
         }
         
-        ScrollView {
-            itemsListContent
-        }
-        .scrollDismissesKeyboard(.interactively)
-        .simultaneousGesture(
-            DragGesture()
-                .onChanged { gesture in
-                    // Dismiss keyboard immediately when scrolling starts  
-                    if abs(gesture.translation.height) > 10 && isInputFieldFocused {
-                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                    }
-                }
-        )
-        .onTapGesture {
-            // Also dismiss keyboard when tapping in scroll area
-            if isInputFieldFocused {
-                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        ZStack {
+            ScrollView {
+                itemsListContent
             }
+            .scrollDismissesKeyboard(.interactively)
+            .simultaneousGesture(
+                DragGesture()
+                    .onChanged { gesture in
+                        // Dismiss keyboard immediately when scrolling starts  
+                        if abs(gesture.translation.height) > 10 && isInputFieldFocused {
+                            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                        }
+                    }
+            )
+            .onTapGesture {
+                // Also dismiss keyboard when tapping in scroll area
+                if isInputFieldFocused {
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                }
+            }
+            .buttonStyle(PlainButtonStyle())
+            .background(GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
+            
+            // Gradient overlay for floating button area
+            VStack {
+                Spacer()
+                
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        GentleLightning.Colors.background(isDark: themeManager.isDarkMode).opacity(0),
+                        GentleLightning.Colors.background(isDark: themeManager.isDarkMode).opacity(0.3),
+                        GentleLightning.Colors.background(isDark: themeManager.isDarkMode).opacity(0.7)
+                    ]),
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 100)
+                .allowsHitTesting(false)
+            }
+            .opacity(isSearchExpanded ? 0 : 1)
+            .animation(GentleLightning.Animation.silky, value: isSearchExpanded)
         }
-        .buttonStyle(PlainButtonStyle())
-        .background(GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
     }
     
     @ViewBuilder
@@ -2108,7 +2122,7 @@ struct ContentView: View {
             }
         }
         .padding(.horizontal, GentleLightning.Layout.Padding.xl)
-        .padding(.bottom, 120) // Extra padding for footer
+        .padding(.bottom, 140) // Extra padding for floating button area
         .background(GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
     }
     

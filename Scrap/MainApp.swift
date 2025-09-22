@@ -247,9 +247,7 @@ struct InputField: View {
                     
                     if voiceRecorder.isRecording {
                         HStack(spacing: 6) {
-                            Circle()
-                                .fill(Color.red)
-                                .frame(width: 8, height: 8)
+                            AnimatedWaveform()
                             Text("REC")
                                 .font(GentleLightning.Typography.small)
                                 .foregroundColor(.white)
@@ -586,4 +584,39 @@ class FirebaseDataManager: ObservableObject {
         }
     }
     
+}
+
+// MARK: - Animated Waveform Component
+struct AnimatedWaveform: View {
+    @State private var animationPhase: Double = 0
+    
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(0..<4, id: \.self) { index in
+                RoundedRectangle(cornerRadius: 1)
+                    .fill(Color.white)
+                    .frame(width: 2, height: waveHeight(for: index))
+                    .animation(
+                        Animation.easeInOut(duration: 0.5)
+                            .repeatForever(autoreverses: true)
+                            .delay(Double(index) * 0.1),
+                        value: animationPhase
+                    )
+            }
+        }
+        .frame(width: 16, height: 12)
+        .onAppear {
+            animationPhase = 1.0
+        }
+        .onDisappear {
+            animationPhase = 0.0
+        }
+    }
+    
+    private func waveHeight(for index: Int) -> CGFloat {
+        let baseHeight: CGFloat = 3
+        let maxHeight: CGFloat = 12
+        let animationOffset = sin(animationPhase * .pi * 2 + Double(index) * 0.5) * 0.5 + 0.5
+        return baseHeight + (maxHeight - baseHeight) * animationOffset
+    }
 }
