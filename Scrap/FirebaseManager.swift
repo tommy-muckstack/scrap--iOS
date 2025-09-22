@@ -26,7 +26,6 @@ class FirebaseManager: ObservableObject {
     
     // Debounced vector indexing to prevent multiple operations for the same note
     private var pendingIndexOperations: [String: Task<Void, Never>] = [:]
-    private let indexingQueue = DispatchQueue(label: "vector-indexing", qos: .userInitiated)
     
     // Screenshot demo mode
     private var isScreenshotMode: Bool {
@@ -331,7 +330,7 @@ class FirebaseManager: ObservableObject {
         pendingIndexOperations[noteId]?.cancel()
         
         // Schedule new indexing operation with delay
-        let task = Task {
+        let task = Task { [weak self] in
             // Wait for the debounce delay
             try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             
@@ -341,14 +340,15 @@ class FirebaseManager: ObservableObject {
                 return 
             }
             
-            // Remove from pending operations
-            indexingQueue.async { [weak self] in
+            // Remove from pending operations on main actor to avoid sendable issues
+            await MainActor.run { [weak self] in
                 self?.pendingIndexOperations.removeValue(forKey: noteId)
             }
             
             // Perform the actual indexing
+            guard let self = self else { return }
             do {
-                let noteDoc = try await db.collection("notes").document(noteId).getDocument()
+                let noteDoc = try await self.db.collection("notes").document(noteId).getDocument()
                 if let note = try? noteDoc.data(as: FirebaseNote.self) {
                     try await VectorSearchService.shared.indexNote(note)
                     print("✅ VectorIndexing: Successfully indexed note \(noteId) (debounced)")
@@ -359,9 +359,7 @@ class FirebaseManager: ObservableObject {
         }
         
         // Store the task for potential cancellation
-        indexingQueue.async { [weak self] in
-            self?.pendingIndexOperations[noteId] = task
-        }
+        pendingIndexOperations[noteId] = task
     }
     
     // MARK: - Notes Operations
