@@ -37,6 +37,7 @@ class VectorSearchService: ObservableObject {
             let metadata = ChromaMetadata(
                 firebaseId: note.id ?? "",
                 userId: userId,
+                title: note.title,
                 isTask: note.isTask,
                 categories: note.categoryIds ?? [],
                 createdAt: ISO8601DateFormatter().string(from: note.createdAt)
@@ -255,6 +256,7 @@ class VectorSearchService: ObservableObject {
             
             let result = SearchResult(
                 firebaseId: metadata.firebaseId,
+                title: metadata.title ?? "",
                 content: content,
                 similarity: similarity,
                 isTask: metadata.isTask ?? false,

@@ -24,14 +24,16 @@ struct ChromaQueryResult: Codable {
 struct ChromaMetadata: Codable {
     let firebaseId: String
     let userId: String
+    let title: String?
     let isTask: Bool?
     let categories: [String]?
     let createdAt: String
     
     // Custom initializer to provide defaults
-    init(firebaseId: String, userId: String, isTask: Bool, categories: [String], createdAt: String) {
+    init(firebaseId: String, userId: String, title: String?, isTask: Bool, categories: [String], createdAt: String) {
         self.firebaseId = firebaseId
         self.userId = userId
+        self.title = title
         self.isTask = isTask
         self.categories = categories
         self.createdAt = createdAt

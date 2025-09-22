@@ -55,26 +55,15 @@ struct NoteRow: View {
             onTap()
         }) {
             VStack(alignment: .leading, spacing: 8) {
-                // Title and content with enhanced typography animations
-                VStack(alignment: .leading, spacing: 4) {
-                    if !item.title.isEmpty {
-                        Text(item.title)
-                            .font(GentleLightning.Typography.title)
-                            .foregroundColor(GentleLightning.Colors.textPrimary)
-                            .lineLimit(2)
-                            .multilineTextAlignment(.leading)
-                            .scaleEffect(isPressed ? 0.98 : 1.0)
-                            .animation(GentleLightning.Animation.delightful, value: isPressed)
-                    }
-                    
-                    Text(item.content)
-                        .font(item.title.isEmpty ? GentleLightning.Typography.body : GentleLightning.Typography.secondary)
-                        .foregroundColor(item.title.isEmpty ? GentleLightning.Colors.textPrimary : GentleLightning.Colors.textSecondary)
-                        .lineLimit(item.title.isEmpty ? nil : 3)
-                        .multilineTextAlignment(.leading)
-                        .opacity(isPressed ? 0.8 : 1.0)
-                        .animation(GentleLightning.Animation.silky, value: isPressed)
-                }
+                // Title and content using shared design system component
+                NoteDisplayContent(
+                    title: item.title,
+                    content: item.content,
+                    isDarkMode: false // Using static theme for now
+                )
+                .scaleEffect(isPressed ? 0.98 : 1.0)
+                .opacity(isPressed ? 0.8 : 1.0)
+                .animation(GentleLightning.Animation.delightful, value: isPressed)
                 
                 // Category pills with enhanced animations
                 if !item.categoryIds.isEmpty {

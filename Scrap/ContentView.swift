@@ -13,10 +13,36 @@ import FirebaseAuth
 
 // Ensure NoteEditor is accessible - workaround for target membership issues
 
+// MARK: - Shared Note Display Component (Design System)
+struct NoteDisplayContent: View {
+    let title: String
+    let content: String
+    let isDarkMode: Bool
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if !title.isEmpty {
+                Text(title)
+                    .font(GentleLightning.Typography.heading)
+                    .foregroundColor(GentleLightning.Colors.textPrimary(isDark: isDarkMode))
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+            }
+            
+            Text(content)
+                .font(title.isEmpty ? GentleLightning.Typography.body : GentleLightning.Typography.secondary)
+                .foregroundColor(title.isEmpty ? GentleLightning.Colors.textPrimary(isDark: isDarkMode) : GentleLightning.Colors.textSecondary(isDark: isDarkMode))
+                .lineLimit(title.isEmpty ? nil : 1)
+                .multilineTextAlignment(.leading)
+        }
+    }
+}
+
 // MARK: - Search Result Model (Shared)
 struct SearchResult: Identifiable {
     let id = UUID()
     let firebaseId: String
+    let title: String
     let content: String
     let similarity: Double
     let isTask: Bool
@@ -1825,6 +1851,7 @@ struct ContentView: View {
                     ForEach(searchResults, id: \.firebaseId) { result in
                         SearchResultRow(
                             result: result,
+                            searchText: searchText,
                             onTap: {
                                 handleSearchResultTap(result)
                             }
@@ -2289,6 +2316,7 @@ struct ContentView: View {
         searchResults = filteredItems.map { item in
             SearchResult(
                 firebaseId: item.firebaseId ?? item.id,
+                title: item.title,
                 content: item.content,
                 similarity: 1.0, // Max similarity since we're showing all
                 isTask: item.isTask,
@@ -2835,6 +2863,7 @@ struct SearchBarView: View {
 // MARK: - Search Result Row
 struct SearchResultRow: View {
     let result: SearchResult
+    let searchText: String
     let onTap: () -> Void
     
     @EnvironmentObject var themeManager: ThemeManager
@@ -2843,16 +2872,19 @@ struct SearchResultRow: View {
         Button(action: onTap) {
             HStack(alignment: .top, spacing: 8) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(result.previewContent)
-                        .font(GentleLightning.Typography.body)
-                        .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
-                        .multilineTextAlignment(.leading)
-                        .lineLimit(2)
+                    // Title and content using shared design system component
+                    NoteDisplayContent(
+                        title: result.title,
+                        content: result.previewContent,
+                        isDarkMode: themeManager.isDarkMode
+                    )
                     
                     HStack(spacing: 8) {
-                        Text("\(result.confidencePercentage)% match")
-                            .font(GentleLightning.Typography.caption)
-                            .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
+                        if !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Text("\(result.confidencePercentage)% match")
+                                .font(GentleLightning.Typography.caption)
+                                .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
+                        }
                         
                         if result.isTask {
                             Text("Task")

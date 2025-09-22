@@ -95,6 +95,31 @@ struct GentleLightning {
     }
 }
 
+// MARK: - Shared Note Display Component (Design System)
+struct NoteDisplayContent: View {
+    let title: String
+    let content: String
+    let isDarkMode: Bool
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if !title.isEmpty {
+                Text(title)
+                    .font(GentleLightning.Typography.heading)
+                    .foregroundColor(GentleLightning.Colors.textPrimary(isDark: isDarkMode))
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+            }
+            
+            Text(content)
+                .font(title.isEmpty ? GentleLightning.Typography.body : GentleLightning.Typography.secondary)
+                .foregroundColor(title.isEmpty ? GentleLightning.Colors.textPrimary(isDark: isDarkMode) : GentleLightning.Colors.textSecondary(isDark: isDarkMode))
+                .lineLimit(title.isEmpty ? nil : 1)
+                .multilineTextAlignment(.leading)
+        }
+    }
+}
+
 // MARK: - Main App View
 struct MainApp: View {
     @StateObject private var dataManager = FirebaseDataManager()
