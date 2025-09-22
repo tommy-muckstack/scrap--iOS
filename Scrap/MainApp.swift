@@ -334,9 +334,7 @@ class FirebaseDataManager: ObservableObject {
         let newItem = SparkItem(content: text, isTask: false)
         newItem.rtfData = rtfData
         
-        withAnimation(GentleLightning.Animation.elastic) {
-            items.insert(newItem, at: 0)
-        }
+        items.insert(newItem, at: 0)
         
         Task {
             do {
@@ -400,9 +398,7 @@ class FirebaseDataManager: ObservableObject {
         let newItem = SparkItem(content: plainText, isTask: false)
         newItem.rtfData = rtfData
         
-        withAnimation(GentleLightning.Animation.elastic) {
-            items.insert(newItem, at: 0)
-        }
+        items.insert(newItem, at: 0)
         
         Task {
             do {
@@ -480,9 +476,7 @@ class FirebaseDataManager: ObservableObject {
     }
     
     func deleteItem(_ item: SparkItem) {
-        withAnimation(GentleLightning.Animation.gentle) {
-            items.removeAll { $0.id == item.id }
-        }
+        items.removeAll { $0.id == item.id }
         
         if let firebaseId = item.firebaseId {
             Task {

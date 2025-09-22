@@ -84,7 +84,7 @@ struct NoteEditor: View {
                                     titleFieldScale = 1.0
                                 }
                             }
-                            .onChange(of: isTitleFocused) { _, isFocused in
+                            .onChange(of: isTitleFocused) { isFocused in
                                 withAnimation(GentleLightning.Animation.gentle) {
                                     titleFieldScale = isFocused ? 1.0 : 0.95
                                 }
@@ -255,7 +255,10 @@ struct NoteEditor: View {
                     .font(.system(size: 20, weight: .medium))
                     .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
                     .scaleEffect(navigationButtonScale)
-                    .onTapGesture {
+            }
+            .simultaneousGesture(
+                TapGesture()
+                    .onEnded { _ in
                         withAnimation(GentleLightning.Animation.elastic) {
                             navigationButtonScale = 0.9
                         }
@@ -265,7 +268,7 @@ struct NoteEditor: View {
                             }
                         }
                     }
-            },
+            ),
             trailing: Button(action: { 
                 // Track options menu opened
                 AnalyticsManager.shared.trackOptionsMenuOpened(noteId: item.firebaseId ?? item.id)

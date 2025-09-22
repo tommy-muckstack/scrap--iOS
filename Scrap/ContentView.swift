@@ -371,7 +371,10 @@ struct GentleLightning {
     struct Animation {
         static let gentle = SwiftUI.Animation.easeInOut(duration: 0.4)
         static let elastic = SwiftUI.Animation.spring(response: 0.3, dampingFraction: 0.6)
-        static let swoosh = SwiftUI.Animation.spring(response: 0.5, dampingFraction: 0.8)
+        static let swoosh = SwiftUI.Animation.spring(response: 0.4, dampingFraction: 0.8, blendDuration: 0.1)
+        static let delightful = SwiftUI.Animation.interpolatingSpring(stiffness: 300, damping: 30, initialVelocity: 0)
+        static let silky = SwiftUI.Animation.timingCurve(0.4, 0.0, 0.2, 1.0, duration: 0.35)
+        static let bouncy = SwiftUI.Animation.interpolatingSpring(stiffness: 200, damping: 20, initialVelocity: 5)
     }
     
     struct Sound {
@@ -579,7 +582,10 @@ class FirebaseDataManager: ObservableObject {
     }
     
     func updateItem(_ item: SparkItem, newContent: String) {
-        item.content = newContent
+        // Ensure UI updates happen on main thread
+        DispatchQueue.main.async {
+            item.content = newContent
+        }
         
         if let firebaseId = item.firebaseId {
             Task {
@@ -600,7 +606,11 @@ class FirebaseDataManager: ObservableObject {
                 documentAttributes: nil
             )
             let plainText = attributedString.string
-            item.content = plainText
+            
+            // Ensure UI updates happen on main thread
+            DispatchQueue.main.async {
+                item.content = plainText
+            }
         } catch {
             print("❌ Failed to extract plain text from RTF: \(error)")
             // Don't update content if RTF extraction fails to preserve existing content
@@ -1334,10 +1344,6 @@ struct ItemRowSimple: View {
     let onTap: () -> Void
     
     @EnvironmentObject var themeManager: ThemeManager
-    @State private var isNavigating = false
-    @State private var isVisible = false
-    @State private var isHovered = false
-    @State private var isPulsing = false
     
     // Cache expensive computations
     private var displayTitle: String {
@@ -1350,24 +1356,12 @@ struct ItemRowSimple: View {
     
     var body: some View {
         Button(action: {
-            // Enhanced haptic feedback for button press
+            // Simple haptic feedback for button press
             let impactFeedback = UIImpactFeedbackGenerator(style: .light)
             impactFeedback.impactOccurred()
             
-            // Provide immediate delightful visual feedback
-            withAnimation(GentleLightning.Animation.bouncy) {
-                isNavigating = true
-            }
-            
-            // Navigate after brief delay for smooth feedback
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-                onTap()
-                
-                // Reset navigation state with smooth animation
-                withAnimation(GentleLightning.Animation.silky) {
-                    isNavigating = false
-                }
-            }
+            // Navigate immediately without animation
+            onTap()
         }) {
             VStack(alignment: .leading, spacing: 2) {
                 // Title - use content as title if no title exists
@@ -1390,47 +1384,19 @@ struct ItemRowSimple: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, GentleLightning.Layout.Padding.lg)
-            .padding(.vertical, 12) // Reduced vertical padding
+            .padding(.vertical, 12)
             .background(
                 RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.medium)
-                    .fill(isNavigating ? 
-                        GentleLightning.Colors.surface(isDark: themeManager.isDarkMode).opacity(0.7) : 
-                        GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
+                    .fill(GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
                     .shadow(
                         color: GentleLightning.Colors.shadow(isDark: themeManager.isDarkMode),
-                        radius: isHovered ? 8 : 2,
+                        radius: 2,
                         x: 0,
-                        y: isHovered ? 4 : 1
+                        y: 1
                     )
             )
-            // Enhanced scale effect with more sophisticated animation
-            .scaleEffect(isNavigating ? 0.95 : (isHovered ? 1.02 : 1.0))
-            // Add rotation effect for extra delight
-            .rotationEffect(.degrees(isNavigating ? 1 : 0))
-            // Opacity animation for smooth appearance
-            .opacity(isVisible ? 1.0 : 0.0)
-            // Blur effect for smooth transitions
-            .blur(radius: isVisible ? 0 : 2)
-            // Offset for entrance animation
-            .offset(y: isVisible ? 0 : 10)
         }
         .buttonStyle(PlainButtonStyle())
-        // Enhanced hover effect for interactive states
-        .onHover { hovering in
-            withAnimation(GentleLightning.Animation.elastic) {
-                isHovered = hovering
-            }
-        }
-        // Entrance animation when the row appears
-        .onAppear {
-            withAnimation(GentleLightning.Animation.delightful.delay(0.1)) {
-                isVisible = true
-            }
-            
-            // Start subtle pulsing animation for visual interest
-            startPulsingAnimation()
-        }
-        // Context menu with enhanced animations
         .contextMenu {
             Button(action: {
                 // Add scribble/drawing to this note
@@ -1444,42 +1410,22 @@ struct ItemRowSimple: View {
             Divider()
             
             Button("Delete", role: .destructive) {
-                // Enhanced haptic feedback for destructive action
+                // Haptic feedback for destructive action
                 let notificationFeedback = UINotificationFeedbackGenerator()
                 notificationFeedback.notificationOccurred(.warning)
                 
-                withAnimation(GentleLightning.Animation.gentle) {
-                    dataManager.deleteItem(item)
-                }
+                dataManager.deleteItem(item)
             }
         }
-        // Swipe actions with enhanced animations
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button("Delete") {
-                // Enhanced haptic feedback for swipe delete
+                // Haptic feedback for swipe delete
                 let notificationFeedback = UINotificationFeedbackGenerator()
                 notificationFeedback.notificationOccurred(.warning)
                 
-                withAnimation(GentleLightning.Animation.gentle) {
-                    dataManager.deleteItem(item)
-                }
+                dataManager.deleteItem(item)
             }
             .tint(.red)
-        }
-        // Subtle pulsing effect for visual delight
-        .scaleEffect(isPulsing ? 1.005 : 1.0)
-    }
-    
-    // MARK: - Animation Helpers
-    
-    /// Start a subtle pulsing animation for visual interest
-    private func startPulsingAnimation() {
-        withAnimation(
-            GentleLightning.Animation.gentle
-                .repeatForever(autoreverses: true)
-                .delay(Double.random(in: 0...2)) // Randomize delay for staggered effect
-        ) {
-            isPulsing = true
         }
     }
     
@@ -1860,14 +1806,14 @@ struct ContentView: View {
                     .foregroundColor(GentleLightning.Colors.textSecondary)
             }
             .padding(.top, 20)
-        } else if searchResults.isEmpty && !searchText.isEmpty {
-            // No search results found
+        } else if searchResults.isEmpty && hasSearched {
+            // No search results found (either from search or category filter)
             VStack(spacing: 12) {
                 Text("No results found")
                     .font(GentleLightning.Typography.subtitle)
                     .foregroundColor(GentleLightning.Colors.textSecondary)
                 
-                Text("Try a different search term")
+                Text(searchText.isEmpty ? "No notes match the selected category" : "Try a different search term")
                     .font(GentleLightning.Typography.secondary)
                     .foregroundColor(GentleLightning.Colors.textSecondary)
             }
@@ -1888,11 +1834,6 @@ struct ContentView: View {
                 }
                 .padding(.top, 8)
             }
-            .transition(.asymmetric(
-                insertion: .move(edge: .top).combined(with: .opacity).combined(with: .scale(scale: 0.9)),
-                removal: .move(edge: .top).combined(with: .opacity).combined(with: .scale(scale: 0.9))
-            ))
-            .animation(GentleLightning.Animation.delightful, value: searchResults.count)
         }
     }
     
@@ -1918,16 +1859,10 @@ struct ContentView: View {
                 LazyVStack(spacing: 12) {
                     ForEach(Array(dataManager.items.prefix(displayedItemsCount).enumerated()), id: \.element.id) { index, item in
                         ItemRowSimple(item: item, dataManager: dataManager) {
-                            // Optimize navigation with immediate feedback
-                            withAnimation(.easeInOut(duration: 0.15)) {
-                                navigationPath.append(item)
-                            }
+                            // Navigate without animation to prevent list wobbling
+                            navigationPath.append(item)
                         }
                         .padding(.horizontal, GentleLightning.Layout.Padding.xl)
-                        .transition(.asymmetric(
-                            insertion: .move(edge: .trailing).combined(with: .opacity),
-                            removal: .move(edge: .leading).combined(with: .opacity)
-                        ))
                         .onAppear {
                             // Load more items when approaching the end
                             if index == displayedItemsCount - 3 {
@@ -2267,6 +2202,10 @@ struct ContentView: View {
         .onChange(of: dataManager.selectedCategoryFilter) { _ in
             // Reset pagination when filter changes
             displayedItemsCount = min(10, dataManager.filteredItems.count)
+            // Refresh search results if search is expanded
+            if isSearchExpanded {
+                performSearch()
+            }
         }
         } // NavigationStack
     
@@ -2280,9 +2219,11 @@ struct ContentView: View {
     }
     
     private func performSearch() {
-        guard !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            searchResults = []
-            hasSearched = false
+        let trimmedSearchText = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // If no search text, show all notes (filtered by category if selected)
+        if trimmedSearchText.isEmpty {
+            showAllNotes()
             return
         }
         
@@ -2291,8 +2232,8 @@ struct ContentView: View {
         Task { @MainActor in
             do {
                 let results = try await VectorSearchService.shared.semanticSearch(
-                    query: searchText,
-                    limit: 10
+                    query: trimmedSearchText,
+                    limit: 20
                 )
                 
                 // Apply category filter if one is selected
@@ -2315,7 +2256,7 @@ struct ContentView: View {
                 isSearching = false
                 
                 // Track search analytics (with category filter info)
-                AnalyticsManager.shared.trackSearch(query: searchText, resultCount: filteredResults.count)
+                AnalyticsManager.shared.trackSearch(query: trimmedSearchText, resultCount: filteredResults.count)
                 if dataManager.selectedCategoryFilter != nil {
                     AnalyticsManager.shared.trackEvent("search_with_category_filter")
                 }
@@ -2326,6 +2267,38 @@ struct ContentView: View {
                 // Could show error state here
             }
         }
+    }
+    
+    private func showAllNotes() {
+        // Convert all notes to SearchResult format, sorted by created date
+        let allItems = dataManager.items.sorted { (item1: SparkItem, item2: SparkItem) in
+            item1.createdAt > item2.createdAt
+        }
+        
+        // Apply category filter if one is selected
+        let filteredItems: [SparkItem]
+        if let selectedCategoryId = dataManager.selectedCategoryFilter {
+            filteredItems = allItems.filter { item in
+                item.categoryIds.contains(selectedCategoryId)
+            }
+        } else {
+            filteredItems = allItems
+        }
+        
+        // Convert to SearchResult format
+        searchResults = filteredItems.map { item in
+            SearchResult(
+                firebaseId: item.firebaseId ?? item.id,
+                content: item.content,
+                similarity: 1.0, // Max similarity since we're showing all
+                isTask: item.isTask,
+                categories: item.categoryIds,
+                createdAt: item.createdAt
+            )
+        }
+        
+        hasSearched = true
+        isSearching = false
     }
     
     private func triggerReindexing() {
@@ -2370,15 +2343,8 @@ struct ContentView: View {
         // Find the matching item in dataManager.items and navigate to it
         if let item = dataManager.items.first(where: { $0.firebaseId == result.firebaseId }) {
             navigationPath.append(item)
-            // Collapse search after navigation
-            withAnimation {
-                isSearchExpanded = false
-                searchText = ""
-                searchResults = []
-                hasSearched = false
-                searchTask?.cancel()
-                searchTask = nil
-            }
+            // Keep search state preserved so user can return to search results
+            // Don't clear search state - user should return to their search results when navigating back
         }
     }
 }
@@ -2582,7 +2548,7 @@ struct TagFilterPillsView: View {
                         )
                     }
                 }
-                .padding(.horizontal, 8) // Match search input field's internal padding
+                .padding(.horizontal, 16) // Increased padding to preserve pill borders
                 .padding(.vertical, 4) // Add vertical padding to prevent border clipping
             }
             // Enhanced container transition with parallax effects
@@ -2590,13 +2556,13 @@ struct TagFilterPillsView: View {
             .opacity(isSearchExpanded ? 1.0 : 0.0)
             .offset(y: isSearchExpanded ? 0 : -15)
             .animation(GentleLightning.Animation.delightful.delay(0.1), value: isSearchExpanded)
-            // Fade-out mask for smooth edge transitions
+            // Fade-out mask for smooth edge transitions (preserves pill borders)
             .mask(
                 LinearGradient(
                     gradient: Gradient(stops: [
                         .init(color: .clear, location: 0),
-                        .init(color: .black, location: 0.05),
-                        .init(color: .black, location: 0.95),
+                        .init(color: .black, location: 0.02),
+                        .init(color: .black, location: 0.98),
                         .init(color: .clear, location: 1)
                     ]),
                     startPoint: .leading,
@@ -2756,9 +2722,8 @@ struct SearchBarView: View {
                                 let trimmedValue = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
                                 
                                 if trimmedValue.isEmpty {
-                                    // Clear search results immediately for empty input
-                                    searchResults = []
-                                    hasSearched = false
+                                    // Always show all notes (filtered by tag if one is selected) when search text is empty
+                                    onSearch()
                                     return
                                 }
                                 
@@ -2808,13 +2773,15 @@ struct SearchBarView: View {
                         withAnimation(GentleLightning.Animation.swoosh) {
                             isExpanded = false
                         }
-                        // Clear search when collapsing
+                        // Clear all search parameters when collapsing
                         searchText = ""
                         searchResults = []
                         hasSearched = false
                         searchTask?.cancel()
                         searchTask = nil
                         isSearchFieldFocused.wrappedValue = false
+                        // Clear category filter to return to showing all notes
+                        selectedCategoryId = nil
                     } else {
                         // Expanding search
                         withAnimation(GentleLightning.Animation.swoosh) {
@@ -2822,6 +2789,8 @@ struct SearchBarView: View {
                         }
                         // Focus immediately for better UX - user can start typing right away
                         isSearchFieldFocused.wrappedValue = true
+                        // Show all notes when search is first opened (default state)
+                        onSearch()
                     }
                 }) {
                     ZStack {
@@ -2848,6 +2817,8 @@ struct SearchBarView: View {
                     .frame(width: 20, height: 20)
                 }
                 .buttonStyle(PlainButtonStyle())
+                .frame(width: 44, height: 44) // Increase tap target to Apple's recommended 44pt minimum
+                .contentShape(Rectangle()) // Make entire frame tappable
             }
             
             // Tag filter pills shown when search is expanded
@@ -2857,62 +2828,6 @@ struct SearchBarView: View {
                 isSearchExpanded: $isExpanded
             )
             
-            // Search results or empty state shown below when expanded
-            if isExpanded && (!searchResults.isEmpty || (!searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSearching && hasSearched)) {
-                VStack(spacing: 4) {
-                    if !searchResults.isEmpty {
-                        // Show search results
-                        ForEach(searchResults.prefix(3)) { result in
-                            SearchResultRow(result: result) {
-                                onResultTap(result)
-                            }
-                        }
-                        
-                        if searchResults.count > 3 {
-                            Text("+ \(searchResults.count - 3) more results")
-                                .font(GentleLightning.Typography.caption)
-                                .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
-                                .padding(.top, 4)
-                                .transition(.opacity.combined(with: .scale(scale: 0.95)))
-                        }
-                    } else if !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSearching && hasSearched {
-                        // Show empty state only AFTER search has completed with no results
-                        HStack {
-                            Spacer()
-                            VStack(spacing: 8) {
-                                Image(systemName: "doc.text.magnifyingglass")
-                                    .font(.system(size: 24))
-                                    .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
-                                
-                                Text("No results found")
-                                    .font(GentleLightning.Typography.heading)
-                                    .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
-                                
-                                Text("Try different keywords or check your spelling")
-                                    .font(GentleLightning.Typography.caption)
-                                    .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
-                                    .multilineTextAlignment(.center)
-                            }
-                            Spacer()
-                        }
-                        .padding(.vertical, 16)
-                        .padding(.horizontal, 8)
-                    }
-                }
-                .padding(8)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(GentleLightning.Colors.border(isDark: themeManager.isDarkMode), lineWidth: 1)
-                        )
-                )
-                .transition(.asymmetric(
-                    insertion: .scale(scale: 0.95).combined(with: .opacity).animation(GentleLightning.Animation.swoosh),
-                    removal: .opacity.animation(GentleLightning.Animation.swoosh)
-                ))
-            }
         }
     }
 }
