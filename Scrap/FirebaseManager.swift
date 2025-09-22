@@ -341,7 +341,7 @@ class FirebaseManager: ObservableObject {
             }
             
             // Remove from pending operations on main actor to avoid sendable issues
-            await MainActor.run { [weak self] in
+            _ = await MainActor.run { [weak self] in
                 self?.pendingIndexOperations.removeValue(forKey: noteId)
             }
             
