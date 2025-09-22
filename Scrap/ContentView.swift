@@ -715,28 +715,31 @@ struct AnimatedPlaceholderText: View {
     }
     
     var body: some View {
-        HStack(spacing: 0) {
-            // Static text part
-            Text(textWithoutDots)
-                .font(GentleLightning.Typography.bodyInput)
-                .foregroundColor(GentleLightning.Colors.placeholder(isDark: themeManager.isDarkMode))
-            
-            // Animated dots
-            HStack(spacing: 1) {
-                ForEach(0..<3, id: \.self) { index in
-                    Text(".")
-                        .font(GentleLightning.Typography.bodyInput)
-                        .foregroundColor(GentleLightning.Colors.placeholder(isDark: themeManager.isDarkMode))
-                        .scaleEffect(animatingDotIndex == index ? 1.8 : 1.0)
-                        .offset(y: animatingDotIndex == index ? -6 : 0)
+        // Don't render anything if text is empty
+        if !text.isEmpty {
+            HStack(spacing: 0) {
+                // Static text part
+                Text(textWithoutDots)
+                    .font(GentleLightning.Typography.bodyInput)
+                    .foregroundColor(GentleLightning.Colors.placeholder(isDark: themeManager.isDarkMode))
+                
+                // Animated dots
+                HStack(spacing: 1) {
+                    ForEach(0..<3, id: \.self) { index in
+                        Text(".")
+                            .font(GentleLightning.Typography.bodyInput)
+                            .foregroundColor(GentleLightning.Colors.placeholder(isDark: themeManager.isDarkMode))
+                            .scaleEffect(animatingDotIndex == index ? 1.8 : 1.0)
+                            .offset(y: animatingDotIndex == index ? -6 : 0)
+                    }
                 }
             }
-        }
-        .onAppear {
-            startAnimation()
-        }
-        .onDisappear {
-            stopAnimation()
+            .onAppear {
+                startAnimation()
+            }
+            .onDisappear {
+                stopAnimation()
+            }
         }
     }
     
@@ -791,6 +794,7 @@ struct InputField: View {
     let onCommit: () -> Void
     var isFieldFocused: FocusState<Bool>.Binding
     var hideMicrophone: Bool = false
+    var isSearchExpanded: Bool = false
     
     // Theme management
     @StateObject private var themeManager = ThemeManager.shared
@@ -912,7 +916,7 @@ struct InputField: View {
                 }
             }
             .scaleEffect(isRecording ? 1.05 : 1.0)
-            .animation(.easeInOut(duration: 0.15), value: isRecording)
+            .animation(GentleLightning.Animation.bouncy, value: isRecording)
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -924,7 +928,7 @@ struct InputField: View {
                     // Rich Text Editor
                     ZStack(alignment: .topLeading) {
                         // Animated placeholder text
-                        if attributedText.string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        if attributedText.string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSearchExpanded {
                             AnimatedPlaceholderText(text: placeholder, themeManager: themeManager)
                                 .padding(.top, 8)
                                 .padding(.leading, 4)
@@ -1061,7 +1065,7 @@ struct InputField: View {
                 }
                 .padding(.horizontal, GentleLightning.Layout.Padding.lg)
                 .padding(.top, 4)
-                .transition(.opacity)
+                .transition(.opacity.combined(with: .scale(scale: 0.95)).combined(with: .move(edge: .top)))
             }
             
         }
@@ -1331,6 +1335,9 @@ struct ItemRowSimple: View {
     
     @EnvironmentObject var themeManager: ThemeManager
     @State private var isNavigating = false
+    @State private var isVisible = false
+    @State private var isHovered = false
+    @State private var isPulsing = false
     
     // Cache expensive computations
     private var displayTitle: String {
@@ -1343,15 +1350,23 @@ struct ItemRowSimple: View {
     
     var body: some View {
         Button(action: {
-            // Provide immediate visual feedback
-            withAnimation(.easeInOut(duration: 0.1)) {
+            // Enhanced haptic feedback for button press
+            let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+            impactFeedback.impactOccurred()
+            
+            // Provide immediate delightful visual feedback
+            withAnimation(GentleLightning.Animation.bouncy) {
                 isNavigating = true
             }
             
             // Navigate after brief delay for smooth feedback
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
                 onTap()
-                isNavigating = false
+                
+                // Reset navigation state with smooth animation
+                withAnimation(GentleLightning.Animation.silky) {
+                    isNavigating = false
+                }
             }
         }) {
             VStack(alignment: .leading, spacing: 2) {
@@ -1381,10 +1396,41 @@ struct ItemRowSimple: View {
                     .fill(isNavigating ? 
                         GentleLightning.Colors.surface(isDark: themeManager.isDarkMode).opacity(0.7) : 
                         GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
+                    .shadow(
+                        color: GentleLightning.Colors.shadow(isDark: themeManager.isDarkMode),
+                        radius: isHovered ? 8 : 2,
+                        x: 0,
+                        y: isHovered ? 4 : 1
+                    )
             )
-            .scaleEffect(isNavigating ? 0.98 : 1.0)
+            // Enhanced scale effect with more sophisticated animation
+            .scaleEffect(isNavigating ? 0.95 : (isHovered ? 1.02 : 1.0))
+            // Add rotation effect for extra delight
+            .rotationEffect(.degrees(isNavigating ? 1 : 0))
+            // Opacity animation for smooth appearance
+            .opacity(isVisible ? 1.0 : 0.0)
+            // Blur effect for smooth transitions
+            .blur(radius: isVisible ? 0 : 2)
+            // Offset for entrance animation
+            .offset(y: isVisible ? 0 : 10)
         }
         .buttonStyle(PlainButtonStyle())
+        // Enhanced hover effect for interactive states
+        .onHover { hovering in
+            withAnimation(GentleLightning.Animation.elastic) {
+                isHovered = hovering
+            }
+        }
+        // Entrance animation when the row appears
+        .onAppear {
+            withAnimation(GentleLightning.Animation.delightful.delay(0.1)) {
+                isVisible = true
+            }
+            
+            // Start subtle pulsing animation for visual interest
+            startPulsingAnimation()
+        }
+        // Context menu with enhanced animations
         .contextMenu {
             Button(action: {
                 // Add scribble/drawing to this note
@@ -1398,18 +1444,42 @@ struct ItemRowSimple: View {
             Divider()
             
             Button("Delete", role: .destructive) {
+                // Enhanced haptic feedback for destructive action
+                let notificationFeedback = UINotificationFeedbackGenerator()
+                notificationFeedback.notificationOccurred(.warning)
+                
                 withAnimation(GentleLightning.Animation.gentle) {
                     dataManager.deleteItem(item)
                 }
             }
         }
+        // Swipe actions with enhanced animations
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button("Delete") {
+                // Enhanced haptic feedback for swipe delete
+                let notificationFeedback = UINotificationFeedbackGenerator()
+                notificationFeedback.notificationOccurred(.warning)
+                
                 withAnimation(GentleLightning.Animation.gentle) {
                     dataManager.deleteItem(item)
                 }
             }
             .tint(.red)
+        }
+        // Subtle pulsing effect for visual delight
+        .scaleEffect(isPulsing ? 1.005 : 1.0)
+    }
+    
+    // MARK: - Animation Helpers
+    
+    /// Start a subtle pulsing animation for visual interest
+    private func startPulsingAnimation() {
+        withAnimation(
+            GentleLightning.Animation.gentle
+                .repeatForever(autoreverses: true)
+                .delay(Double.random(in: 0...2)) // Randomize delay for staggered effect
+        ) {
+            isPulsing = true
         }
     }
     
@@ -1752,7 +1822,8 @@ struct ContentView: View {
         .padding(.top, GentleLightning.Layout.Padding.xl)
         .padding(.bottom, GentleLightning.Layout.Padding.lg)
         .opacity(isSearchExpanded ? 0 : 1) // Hide when search is expanded
-        .animation(GentleLightning.Animation.swoosh, value: isSearchExpanded)
+        .scaleEffect(isSearchExpanded ? 0.95 : 1.0) // Subtle scale effect
+        .animation(GentleLightning.Animation.silky, value: isSearchExpanded)
     }
     
     @ViewBuilder
@@ -1818,10 +1889,10 @@ struct ContentView: View {
                 .padding(.top, 8)
             }
             .transition(.asymmetric(
-                insertion: .move(edge: .top).combined(with: .opacity),
-                removal: .move(edge: .top).combined(with: .opacity)
+                insertion: .move(edge: .top).combined(with: .opacity).combined(with: .scale(scale: 0.9)),
+                removal: .move(edge: .top).combined(with: .opacity).combined(with: .scale(scale: 0.9))
             ))
-            .animation(GentleLightning.Animation.swoosh, value: searchResults.count)
+            .animation(GentleLightning.Animation.delightful, value: searchResults.count)
         }
     }
     
@@ -1889,8 +1960,43 @@ struct ContentView: View {
                 inputFieldSection
                 itemsListSection
             }
+            .opacity(isSearchExpanded ? 0 : 1) // Hide entire main content when search is expanded
+            .scaleEffect(isSearchExpanded ? 0.92 : 1.0) // Subtle scale down effect
             .offset(y: isSearchExpanded ? -120 : 0) // Slide content up when search is expanded
-            .animation(GentleLightning.Animation.swoosh, value: isSearchExpanded)
+            .blur(radius: isSearchExpanded ? 2 : 0) // Subtle blur effect when hidden
+            .animation(GentleLightning.Animation.silky, value: isSearchExpanded)
+            
+            // Search bar overlay - always visible but positioned based on search state
+            VStack(spacing: 0) {
+                if isSearchExpanded {
+                    // When search is expanded, position at top
+                    HStack {
+                        SearchBarView(
+                            isExpanded: $isSearchExpanded,
+                            searchText: $searchText,
+                            searchResults: $searchResults,
+                            isSearching: $isSearching,
+                            searchTask: $searchTask,
+                            hasSearched: $hasSearched,
+                            isSearchFieldFocused: $isSearchFieldFocused,
+                            onResultTap: handleSearchResultTap,
+                            onSearch: performSearch,
+                            onReindex: triggerReindexing,
+                            categories: dataManager.categories,
+                            selectedCategoryId: $dataManager.selectedCategoryFilter
+                        )
+                        .padding(.horizontal, GentleLightning.Layout.Padding.xl)
+                        .padding(.top, 16)
+                    }
+                    
+                    // Search results content
+                    ScrollView {
+                        searchResultsView
+                            .padding(.horizontal, GentleLightning.Layout.Padding.xl)
+                    }
+                }
+            }
+            .animation(GentleLightning.Animation.delightful, value: isSearchExpanded)
             
             // Fixed footer at bottom - will be covered by keyboard
             VStack {
@@ -1916,7 +2022,9 @@ struct ContentView: View {
                 .background(GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
             }
             .opacity(isSearchExpanded ? 0 : 1) // Hide footer when search is expanded
-            .animation(GentleLightning.Animation.swoosh, value: isSearchExpanded)
+            .scaleEffect(isSearchExpanded ? 0.9 : 1.0) // Subtle scale effect
+            .offset(y: isSearchExpanded ? 20 : 0) // Slide down when hiding
+            .animation(GentleLightning.Animation.silky, value: isSearchExpanded)
             .ignoresSafeArea(.keyboard, edges: .bottom)
             .dismissKeyboardOnDrag()
         }
@@ -1934,7 +2042,8 @@ struct ContentView: View {
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         },
                   isFieldFocused: $isInputFieldFocused,
-                  hideMicrophone: isSearchExpanded) // Hide microphone when search is expanded
+                  hideMicrophone: isSearchExpanded, // Hide microphone when search is expanded
+                  isSearchExpanded: isSearchExpanded) // Pass search state to InputField
         .padding(.horizontal, GentleLightning.Layout.Padding.xl)
     }
     
@@ -1952,7 +2061,9 @@ struct ContentView: View {
                 Spacer()
             }
             .opacity(isSearchExpanded ? 0 : 1) // Hide when search is expanded
-            .animation(GentleLightning.Animation.swoosh, value: isSearchExpanded)
+            .scaleEffect(isSearchExpanded ? 0.95 : 1.0) // Subtle scale effect
+            .offset(y: isSearchExpanded ? -10 : 0) // Slide up when hiding
+            .animation(GentleLightning.Animation.silky, value: isSearchExpanded)
             
             // Overlay: Search bar
             searchBarOverlay
@@ -2056,8 +2167,11 @@ struct ContentView: View {
                 
                 print("✅ ContentView: Navigation pushed for item.id = '\(item.id)'")
             }
-            .transition(.opacity)
-            .animation(.easeInOut(duration: 0.15), value: item.id)
+            .transition(.asymmetric(
+                insertion: .opacity.combined(with: .move(edge: .top)).combined(with: .scale(scale: 0.95)),
+                removal: .opacity.combined(with: .move(edge: .bottom)).combined(with: .scale(scale: 0.95))
+            ))
+            .animation(GentleLightning.Animation.delightful, value: item.id)
             .onAppear {
                 // Load more items when reaching the last item
                 if item.id == dataManager.filteredItems.last?.id && displayedItemsCount < dataManager.filteredItems.count {
@@ -2094,6 +2208,17 @@ struct ContentView: View {
             .onTapGesture {
                 // Dismiss keyboard when tapping outside input area
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
+            .onChange(of: isSearchExpanded) { newValue in
+                if newValue {
+                    // When search expands, clear focus from main input field
+                    isInputFieldFocused = false
+                } else {
+                    // When search collapses, return focus to main input field
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        isInputFieldFocused = true
+                    }
+                }
             }
             .navigationDestination(for: SparkItem.self) { item in
                 NoteEditor(item: item, dataManager: dataManager)
@@ -2422,7 +2547,7 @@ struct FormattingToggleButton: View {
     }
 }
 
-// MARK: - Tag Filter Pills View
+// MARK: - Tag Filter Pills View with Parallax Animations
 struct TagFilterPillsView: View {
     let categories: [Category]
     @Binding var selectedCategoryId: String?
@@ -2434,27 +2559,50 @@ struct TagFilterPillsView: View {
         if isSearchExpanded && !categories.isEmpty {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
-                    // Category pills
-                    ForEach(categories) { category in
+                    // Category pills with staggered animations
+                    ForEach(Array(categories.enumerated()), id: \.element.id) { index, category in
                         TagPill(
                             name: category.name,
                             color: category.color,
                             isSelected: selectedCategoryId == category.id,
                             onTap: {
-                                withAnimation(GentleLightning.Animation.swoosh) {
+                                withAnimation(GentleLightning.Animation.delightful) {
                                     selectedCategoryId = selectedCategoryId == category.id ? nil : category.id
                                 }
                             }
+                        )
+                        .scaleEffect(isSearchExpanded ? 1.0 : 0.8)
+                        .opacity(isSearchExpanded ? 1.0 : 0.0)
+                        .offset(y: isSearchExpanded ? 0 : -10)
+                        .blur(radius: isSearchExpanded ? 0 : 1)
+                        .animation(
+                            GentleLightning.Animation.delightful
+                                .delay(Double(index) * 0.08), // Staggered parallax entrance
+                            value: isSearchExpanded
                         )
                     }
                 }
                 .padding(.horizontal, 8) // Match search input field's internal padding
                 .padding(.vertical, 4) // Add vertical padding to prevent border clipping
             }
-            .transition(.asymmetric(
-                insertion: .scale(scale: 0.95, anchor: .top).combined(with: .opacity).animation(GentleLightning.Animation.elastic),
-                removal: .scale(scale: 0.95, anchor: .top).combined(with: .opacity).animation(GentleLightning.Animation.swoosh)
-            ))
+            // Enhanced container transition with parallax effects
+            .scaleEffect(isSearchExpanded ? 1.0 : 0.95)
+            .opacity(isSearchExpanded ? 1.0 : 0.0)
+            .offset(y: isSearchExpanded ? 0 : -15)
+            .animation(GentleLightning.Animation.delightful.delay(0.1), value: isSearchExpanded)
+            // Fade-out mask for smooth edge transitions
+            .mask(
+                LinearGradient(
+                    gradient: Gradient(stops: [
+                        .init(color: .clear, location: 0),
+                        .init(color: .black, location: 0.05),
+                        .init(color: .black, location: 0.95),
+                        .init(color: .clear, location: 1)
+                    ]),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
         }
     }
 }
@@ -2475,14 +2623,16 @@ struct TagPill: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 6) {
-                // Color dot
+                // Enhanced color dot with delightful animations
                 Circle()
                     .fill(pillColor)
                     .frame(width: 8, height: 8)
-                    .scaleEffect(isSelected ? 1.2 : 1.0)
-                    .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
+                    .scaleEffect(isSelected ? 1.3 : 1.0)
+                    .rotationEffect(.degrees(isSelected ? 180 : 0))
+                    .brightness(isSelected ? 0.1 : 0)
+                    .animation(GentleLightning.Animation.delightful, value: isSelected)
                 
-                // Tag name
+                // Enhanced tag name with smooth typography transitions
                 Text(name)
                     .font(GentleLightning.Typography.caption)
                     .foregroundColor(
@@ -2491,6 +2641,8 @@ struct TagPill: View {
                             : GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode)
                     )
                     .fontWeight(isSelected ? .medium : .regular)
+                    .scaleEffect(isSelected ? 1.02 : 1.0)
+                    .animation(GentleLightning.Animation.silky, value: isSelected)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
@@ -2509,10 +2661,18 @@ struct TagPill: View {
                                     : GentleLightning.Colors.border(isDark: themeManager.isDarkMode),
                                 lineWidth: isSelected ? 1.5 : 1
                             )
+                            .scaleEffect(isSelected ? 1.02 : 1.0)
+                            .animation(GentleLightning.Animation.delightful.delay(0.05), value: isSelected)
+                    )
+                    .shadow(
+                        color: isSelected ? pillColor.opacity(0.2) : .clear,
+                        radius: isSelected ? 8 : 0,
+                        x: 0,
+                        y: isSelected ? 2 : 0
                     )
             )
-            .scaleEffect(isSelected ? 1.05 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+            .scaleEffect(isSelected ? 1.08 : 1.0)
+            .animation(GentleLightning.Animation.delightful, value: isSelected)
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -2669,19 +2829,21 @@ struct SearchBarView: View {
                         Image(systemName: "magnifyingglass")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(GentleLightning.Colors.textSecondary)
-                            .scaleEffect(isExpanded ? 0.1 : 1.0)
+                            .scaleEffect(isExpanded ? 0.0 : 1.0)
                             .opacity(isExpanded ? 0.0 : 1.0)
-                            .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                            .animation(.spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0), value: isExpanded)
+                            .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                            .blur(radius: isExpanded ? 2 : 0)
+                            .animation(GentleLightning.Animation.delightful, value: isExpanded)
                         
                         // X mark icon
                         Image(systemName: "xmark")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(GentleLightning.Colors.textSecondary)
-                            .scaleEffect(isExpanded ? 1.0 : 0.1)
+                            .scaleEffect(isExpanded ? 1.0 : 0.0)
                             .opacity(isExpanded ? 1.0 : 0.0)
-                            .rotationEffect(.degrees(isExpanded ? 0 : -90))
-                            .animation(.spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0).delay(isExpanded ? 0.1 : 0), value: isExpanded)
+                            .rotationEffect(.degrees(isExpanded ? 0 : -180))
+                            .blur(radius: isExpanded ? 0 : 2)
+                            .animation(GentleLightning.Animation.delightful.delay(isExpanded ? 0.15 : 0), value: isExpanded)
                     }
                     .frame(width: 20, height: 20)
                 }

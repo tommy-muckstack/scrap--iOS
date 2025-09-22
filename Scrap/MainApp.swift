@@ -88,7 +88,10 @@ struct GentleLightning {
     struct Animation {
         static let gentle = SwiftUI.Animation.easeInOut(duration: 0.4)
         static let elastic = SwiftUI.Animation.spring(response: 0.3, dampingFraction: 0.6)
-        static let swoosh = SwiftUI.Animation.easeInOut(duration: 0.25)
+        static let swoosh = SwiftUI.Animation.spring(response: 0.4, dampingFraction: 0.8, blendDuration: 0.1)
+        static let delightful = SwiftUI.Animation.interpolatingSpring(stiffness: 300, damping: 30, initialVelocity: 0)
+        static let silky = SwiftUI.Animation.timingCurve(0.4, 0.0, 0.2, 1.0, duration: 0.35)
+        static let bouncy = SwiftUI.Animation.interpolatingSpring(stiffness: 200, damping: 20, initialVelocity: 5)
     }
 }
 

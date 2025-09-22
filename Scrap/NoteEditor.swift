@@ -27,6 +27,13 @@ struct NoteEditor: View {
     @State private var showingDrawingEditor = false
     @StateObject private var drawingManager = DrawingOverlayManager()
     
+    // MARK: - Animation States
+    @State private var isContentVisible = false
+    @State private var titleFieldScale: CGFloat = 0.95
+    @State private var editorScale: CGFloat = 0.95
+    @State private var navigationButtonScale: CGFloat = 1.0
+    @State private var optionsButtonScale: CGFloat = 1.0
+    
     init(item: SparkItem, dataManager: FirebaseDataManager) {
         self.item = item
         self.dataManager = dataManager
@@ -70,7 +77,18 @@ struct NoteEditor: View {
                             .padding(.top, 16)
                             .padding(.bottom, 16)
                             .frame(minHeight: 60, maxHeight: 120) // Accommodate ~3 lines at 28pt font
+                            .scaleEffect(titleFieldScale)
                             .focused($isTitleFocused)
+                            .onTapGesture {
+                                withAnimation(GentleLightning.Animation.elastic) {
+                                    titleFieldScale = 1.0
+                                }
+                            }
+                            .onChange(of: isTitleFocused) { _, isFocused in
+                                withAnimation(GentleLightning.Animation.gentle) {
+                                    titleFieldScale = isFocused ? 1.0 : 0.95
+                                }
+                            }
                             .onChange(of: editedTitle) { newTitle in
                                 // Track title changes
                                 AnalyticsManager.shared.trackTitleChanged(noteId: item.firebaseId ?? item.id, titleLength: newTitle.count)
@@ -117,6 +135,12 @@ struct NoteEditor: View {
                             .font: defaultFont,
                             .foregroundColor: UIColor.label
                         ]
+                    }
+                    .scaleEffect(editorScale)
+                    .onTapGesture {
+                        withAnimation(GentleLightning.Animation.elastic) {
+                            editorScale = 1.0
+                        }
                     }
                     .padding(.horizontal, 16)
                     .focused($isTextFocused)
@@ -169,6 +193,8 @@ struct NoteEditor: View {
                     Divider()
                     
                 }
+                .opacity(isContentVisible ? 1 : 0)
+                .scaleEffect(isContentVisible ? 1 : 0.95)
                 .transition(.opacity)
                 .gesture(
                     DragGesture(minimumDistance: 10, coordinateSpace: .local)
@@ -228,6 +254,17 @@ struct NoteEditor: View {
                 Image(systemName: GentleLightning.Icons.navigationBack)
                     .font(.system(size: 20, weight: .medium))
                     .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+                    .scaleEffect(navigationButtonScale)
+                    .onTapGesture {
+                        withAnimation(GentleLightning.Animation.elastic) {
+                            navigationButtonScale = 0.9
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            withAnimation(GentleLightning.Animation.gentle) {
+                                navigationButtonScale = 1.0
+                            }
+                        }
+                    }
             },
             trailing: Button(action: { 
                 // Track options menu opened
@@ -246,6 +283,17 @@ struct NoteEditor: View {
                         .frame(width: 4, height: 4)
                 }
                 .frame(width: 24, height: 24)
+                .scaleEffect(optionsButtonScale)
+                .onTapGesture {
+                    withAnimation(GentleLightning.Animation.elastic) {
+                        optionsButtonScale = 0.9
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        withAnimation(GentleLightning.Animation.gentle) {
+                            optionsButtonScale = 1.0
+                        }
+                    }
+                }
             }
         )
         .confirmationDialog("Note Options", isPresented: $showingOptions) {
@@ -324,6 +372,11 @@ struct NoteEditor: View {
                 AnalyticsManager.shared.trackNoteOpened(noteId: item.firebaseId ?? item.id, openMethod: "list_tap")
                 hasTrackedOpen = true
                 noteOpenTime = Date()
+            }
+            
+            // Trigger entrance animation
+            withAnimation(GentleLightning.Animation.gentle) {
+                isContentVisible = true
             }
             
             // Load content immediately without delay for better performance
