@@ -238,17 +238,14 @@ struct NoteEditor: View {
                     showingSkeleton = false
                 }
                 
-                // Save content quickly before dismiss (unless being deleted)
+                // Dismiss immediately for smooth animation, save content in background
+                dismiss()
+                
+                // Save content asynchronously in background (unless being deleted)
                 if !isBeingDeleted {
                     DispatchQueue.global(qos: .userInitiated).async {
                         updateContent(editedText)
-                        
-                        DispatchQueue.main.async {
-                            dismiss()
-                        }
                     }
-                } else {
-                    dismiss()
                 }
             }) {
                 Image(systemName: GentleLightning.Icons.navigationBack)

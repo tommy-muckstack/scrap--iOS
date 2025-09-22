@@ -2119,9 +2119,6 @@ struct ContentView: View {
         
         ForEach(itemsToDisplay) { item in
             ItemRowSimple(item: item, dataManager: dataManager) {
-                // Prevent rapid multiple navigations
-                guard navigationPath.isEmpty || navigationPath.count == 0 else { return }
-                
                 AnalyticsManager.shared.trackNoteEditOpened(noteId: item.id)
                 
                 // Use navigation instead of sheets - bulletproof approach

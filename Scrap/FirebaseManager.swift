@@ -24,6 +24,10 @@ class FirebaseManager: ObservableObject {
     private var authStateListener: AuthStateDidChangeListenerHandle?
     private var currentNonce: String?
     
+    // Debounced vector indexing to prevent multiple operations for the same note
+    private var pendingIndexOperations: [String: Task<Void, Never>] = [:]
+    private let indexingQueue = DispatchQueue(label: "vector-indexing", qos: .userInitiated)
+    
     // Screenshot demo mode
     private var isScreenshotMode: Bool {
         return ProcessInfo.processInfo.environment["SCREENSHOT_MODE"] == "true"
@@ -319,6 +323,47 @@ class FirebaseManager: ObservableObject {
         ])
     }
     
+    // MARK: - Debounced Vector Indexing
+    
+    /// Debounced vector indexing to prevent multiple rapid indexing operations for the same note
+    private func scheduleVectorIndexing(for noteId: String, delay: TimeInterval = 0.5) {
+        // Cancel any existing pending operation for this note
+        pendingIndexOperations[noteId]?.cancel()
+        
+        // Schedule new indexing operation with delay
+        let task = Task {
+            // Wait for the debounce delay
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            
+            // Check if task was cancelled during sleep
+            guard !Task.isCancelled else { 
+                print("🔄 VectorIndexing: Cancelled indexing for note \(noteId)")
+                return 
+            }
+            
+            // Remove from pending operations
+            indexingQueue.async { [weak self] in
+                self?.pendingIndexOperations.removeValue(forKey: noteId)
+            }
+            
+            // Perform the actual indexing
+            do {
+                let noteDoc = try await db.collection("notes").document(noteId).getDocument()
+                if let note = try? noteDoc.data(as: FirebaseNote.self) {
+                    try await VectorSearchService.shared.indexNote(note)
+                    print("✅ VectorIndexing: Successfully indexed note \(noteId) (debounced)")
+                }
+            } catch {
+                print("⚠️ VectorIndexing: Failed to index note \(noteId): \(error)")
+            }
+        }
+        
+        // Store the task for potential cancellation
+        indexingQueue.async { [weak self] in
+            self?.pendingIndexOperations[noteId] = task
+        }
+    }
+    
     // MARK: - Notes Operations
     func createNote(content: String, title: String? = nil, categoryIds: [String] = [], isTask: Bool, categories: [String] = [], creationType: String = "text", rtfData: Data? = nil, hasDrawing: Bool = false, drawingData: Data? = nil, drawingHeight: Double = 200, drawingColor: String = "#000000") async throws -> String {
         
@@ -390,18 +435,8 @@ class FirebaseManager: ObservableObject {
             "updatedAt": Date()
         ])
         
-        // Update vector search index (async, don't block update)
-        Task {
-            do {
-                // Fetch the updated note to get complete data for re-indexing
-                let noteDoc = try await db.collection("notes").document(noteId).getDocument()
-                if let note = try? noteDoc.data(as: FirebaseNote.self) {
-                    try await VectorSearchService.shared.indexNote(note)
-                }
-            } catch {
-                print("⚠️ FirebaseManager: Failed to update vector index after note update: \(error)")
-            }
-        }
+        // Schedule debounced vector indexing to prevent multiple operations
+        scheduleVectorIndexing(for: noteId)
     }
     
     func updateNoteWithRTF(noteId: String, rtfData: Data) async throws {
@@ -456,18 +491,8 @@ class FirebaseManager: ObservableObject {
             "updatedAt": Date()
         ])
         
-        // Update vector search index (async, don't block update)
-        Task {
-            do {
-                // Fetch the updated note to get complete data for re-indexing
-                let noteDoc = try await db.collection("notes").document(noteId).getDocument()
-                if let note = try? noteDoc.data(as: FirebaseNote.self) {
-                    try await VectorSearchService.shared.indexNote(note)
-                }
-            } catch {
-                print("⚠️ FirebaseManager: Failed to update vector index after RTF update: \(error)")
-            }
-        }
+        // Schedule debounced vector indexing to prevent multiple operations
+        scheduleVectorIndexing(for: noteId)
     }
     
     func updateNotePineconeId(noteId: String, pineconeId: String) async throws {
@@ -483,18 +508,8 @@ class FirebaseManager: ObservableObject {
             "updatedAt": Date()
         ])
         
-        // Update vector search index (async, don't block update)
-        Task {
-            do {
-                // Fetch the updated note to get complete data for re-indexing
-                let noteDoc = try await db.collection("notes").document(noteId).getDocument()
-                if let note = try? noteDoc.data(as: FirebaseNote.self) {
-                    try await VectorSearchService.shared.indexNote(note)
-                }
-            } catch {
-                print("⚠️ FirebaseManager: Failed to update vector index after title update: \(error)")
-            }
-        }
+        // Schedule debounced vector indexing to prevent multiple operations
+        scheduleVectorIndexing(for: noteId)
     }
     
     func updateNoteCategories(noteId: String, categoryIds: [String]) async throws {
@@ -522,17 +537,8 @@ class FirebaseManager: ObservableObject {
         
         try await db.collection("notes").document(noteId).updateData(updateData)
         
-        // Update vector search index (async, don't block update)
-        Task {
-            do {
-                let noteDoc = try await db.collection("notes").document(noteId).getDocument()
-                if let note = try? noteDoc.data(as: FirebaseNote.self) {
-                    try await VectorSearchService.shared.indexNote(note)
-                }
-            } catch {
-                print("⚠️ FirebaseManager: Failed to update vector index after drawing update: \(error)")
-            }
-        }
+        // Schedule debounced vector indexing to prevent multiple operations
+        scheduleVectorIndexing(for: noteId)
     }
     
     func updateNoteDrawingHeight(noteId: String, height: CGFloat) async throws {
@@ -843,6 +849,12 @@ class FirebaseManager: ObservableObject {
         if let authStateListener = authStateListener {
             auth.removeStateDidChangeListener(authStateListener)
         }
+        
+        // Cancel all pending vector indexing operations
+        for (_, task) in pendingIndexOperations {
+            task.cancel()
+        }
+        pendingIndexOperations.removeAll()
     }
     
     // MARK: - Screenshot Demo Data
