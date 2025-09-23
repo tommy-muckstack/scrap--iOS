@@ -2770,20 +2770,26 @@ struct ContentView: View {
         
         // Find the matching item in dataManager.items and navigate to it
         if let item = dataManager.items.first(where: { $0.firebaseId == result.firebaseId }) {
-            // Safely collapse search before navigation to prevent overlay conflicts
-            // This preserves all the beautiful animations while preventing crashes
-            if isSearchExpanded {
-                withAnimation(GentleLightning.Animation.swoosh) {
-                    isSearchExpanded = false
-                }
-                // Small delay to let the animation complete before navigation
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    navigationPath.append(item)
-                }
-            } else {
+            // Clear search state and collapse search to ensure back button returns to main view
+            // This provides better UX - users expect to return to main view, not search results
+            withAnimation(GentleLightning.Animation.swoosh) {
+                isSearchExpanded = false
+            }
+            
+            // Clear search state so back navigation goes to main view
+            searchText = ""
+            searchResults = []
+            hasSearched = false
+            searchTask?.cancel()
+            searchTask = nil
+            
+            // Clear navigation path to ensure clean navigation stack
+            navigationPath = NavigationPath()
+            
+            // Small delay to let the search collapse animation complete before navigation
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                 navigationPath.append(item)
             }
-            // Keep search results and text preserved so user can return to their search
         }
     }
 }
