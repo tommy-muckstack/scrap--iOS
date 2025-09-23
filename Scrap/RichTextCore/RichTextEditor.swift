@@ -130,7 +130,7 @@ public struct RichTextEditor: UIViewRepresentable {
         let tapGesture = UITapGestureRecognizer(target: coordinator, action: #selector(RichTextCoordinator.handleTap(_:)))
         tapGesture.numberOfTapsRequired = 1
         tapGesture.delegate = coordinator
-        tapGesture.cancelsTouchesInView = false // Don't interfere with other gestures
+        tapGesture.cancelsTouchesInView = true // Will be dynamically adjusted in delegate method
         tapGesture.delaysTouchesBegan = false // Don't delay touch delivery
         tapGesture.delaysTouchesEnded = false // Don't delay touch end
         textView.addGestureRecognizer(tapGesture)

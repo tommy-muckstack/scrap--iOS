@@ -60,7 +60,7 @@ struct FixedBottomDrawingArea: View {
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
             // Extract keyboard animation duration from notification for perfect sync
             let keyboardDuration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double ?? 0.25
-            let keyboardCurve = notification.userInfo?[UIResponder.keyboardAnimationCurveUserInfoKey] as? UInt ?? 7
+            let _ = notification.userInfo?[UIResponder.keyboardAnimationCurveUserInfoKey] as? UInt ?? 7
             
             withAnimation(.timingCurve(0.25, 0.1, 0.25, 1.0, duration: keyboardDuration)) {
                 isKeyboardVisible = true

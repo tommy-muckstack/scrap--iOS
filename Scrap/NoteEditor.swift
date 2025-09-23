@@ -267,35 +267,38 @@ struct NoteEditor: View {
                     }
             ),
             trailing: Button(action: { 
+                // Animate button press
+                withAnimation(GentleLightning.Animation.elastic) {
+                    optionsButtonScale = 0.9
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    withAnimation(GentleLightning.Animation.gentle) {
+                        optionsButtonScale = 1.0
+                    }
+                }
+                
                 // Track options menu opened
                 AnalyticsManager.shared.trackOptionsMenuOpened(noteId: item.firebaseId ?? item.id)
                 showingOptions = true 
             }) {
-                VStack(spacing: 3) {
+                VStack(spacing: 2) {
                     Circle()
                         .fill(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
-                        .frame(width: 4, height: 4)
+                        .frame(width: 5, height: 5)
                     Circle()
                         .fill(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
-                        .frame(width: 4, height: 4)
+                        .frame(width: 5, height: 5)
                     Circle()
                         .fill(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
-                        .frame(width: 4, height: 4)
+                        .frame(width: 5, height: 5)
                 }
                 .frame(width: 44, height: 44) // Increased from 24x24 to 44x44 for better tap target
                 .contentShape(Rectangle()) // Ensures entire frame is tappable
                 .scaleEffect(optionsButtonScale)
-                .onTapGesture {
-                    withAnimation(GentleLightning.Animation.elastic) {
-                        optionsButtonScale = 0.9
-                    }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        withAnimation(GentleLightning.Animation.gentle) {
-                            optionsButtonScale = 1.0
-                        }
-                    }
-                }
             }
+            .buttonStyle(PlainButtonStyle()) // Prevents default button styling interference
+            .accessibilityLabel("Note options")
+            .accessibilityHint("Opens options menu")
         )
         .confirmationDialog("Note Options", isPresented: $showingOptions) {
             Button("Add Tag") { 
@@ -525,9 +528,7 @@ struct NoteEditor: View {
         isLoadingCategories = true
         Task {
             do {
-                // Run automatic cleanup before loading categories
-                await CategoryService.shared.runAutomaticCleanup()
-                
+                // Load categories without cleanup to preserve standalone tags
                 let categories = try await CategoryService.shared.getUserCategories()
                 await MainActor.run {
                     userCategories = categories
@@ -933,10 +934,7 @@ struct CategoryManagerView: View {
             AnalyticsManager.shared.trackCategoryDeselected(categoryId: categoryId, categoryName: category.name)
             selectedCategories.removeAll { $0 == categoryId }
             
-            // Run cleanup after removing category to check if it became unused
-            Task {
-                await CategoryService.shared.runAutomaticCleanup()
-            }
+            // Note: Cleanup disabled to preserve standalone tags that users can manage independently
         } else {
             // Track category selection
             AnalyticsManager.shared.trackCategorySelected(categoryId: categoryId, categoryName: category.name)

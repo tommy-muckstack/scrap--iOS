@@ -325,6 +325,8 @@ struct GentleLightning {
         static let error = Color(red: 0.95, green: 0.26, blue: 0.21)
         static let success = Color(red: 0.29, green: 0.76, blue: 0.49)
         static let textGreyStatic = Color(red: 0.45, green: 0.45, blue: 0.5) // Static grey for app info in settings
+        static let buttonBrightBackground = Color.white // Bright white button for dark mode visibility
+        static let buttonBrightText = Color.black // Black text for bright white buttons
         
         // MARK: - Legacy Static Colors (for backward compatibility)
         static let background = Color.white
@@ -1649,10 +1651,14 @@ struct ManageTagsView: View {
                                             Text("New Tag")
                                                 .font(GentleLightning.Typography.caption)
                                         }
-                                        .foregroundColor(.white)
+                                        .foregroundColor(themeManager.isDarkMode ? GentleLightning.Colors.buttonBrightText : .white)
                                         .padding(.horizontal, 12)
                                         .padding(.vertical, 6)
-                                        .background(GentleLightning.Colors.accentNeutral)
+                                        .background(themeManager.isDarkMode ? GentleLightning.Colors.buttonBrightBackground : GentleLightning.Colors.accentNeutral)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .stroke(themeManager.isDarkMode ? Color.clear : Color.clear, lineWidth: 1)
+                                        )
                                         .cornerRadius(8)
                                     }
                                 }
@@ -1723,9 +1729,7 @@ struct ManageTagsView: View {
         isLoadingCategories = true
         Task {
             do {
-                // Run automatic cleanup before loading categories
-                await CategoryService.shared.runAutomaticCleanup()
-                
+                // Load categories without cleanup to preserve standalone tags
                 let categories = try await CategoryService.shared.getUserCategories()
                 await MainActor.run {
                     userCategories = categories
@@ -1815,7 +1819,7 @@ struct TagDisplayCard: View {
         .padding(.vertical, 12)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(GentleLightning.Colors.surface)
+                .fill(GentleLightning.Colors.surfaceSecondary(isDark: themeManager.isDarkMode))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
                         .stroke(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode).opacity(0.2), lineWidth: 1)
@@ -1901,12 +1905,12 @@ struct AccountDrawerView: View {
                                 
                                 Text("OPEN")
                                     .font(GentleLightning.Typography.caption)
-                                    .foregroundColor(GentleLightning.Colors.accentNeutral)
+                                    .foregroundColor(themeManager.isDarkMode ? GentleLightning.Colors.textBlack : Color.white)
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 6)
                                     .background(
                                         RoundedRectangle(cornerRadius: 6)
-                                            .fill(GentleLightning.Colors.accentNeutral.opacity(0.1))
+                                            .fill(themeManager.isDarkMode ? Color.white : Color.black)
                                     )
                             }
                         }
@@ -1925,15 +1929,18 @@ struct AccountDrawerView: View {
                         showMoreActions = true
                     }) {
                         HStack {
-                            Image(systemName: "ellipsis.circle")
-                                .font(GentleLightning.Typography.title)
-                            Text("More Actions")
-                                .font(GentleLightning.Typography.body)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("More Actions")
+                                    .font(GentleLightning.Typography.body)
+                                    .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+                            }
+                            
                             Spacer()
+                            
                             Image(systemName: "chevron.right")
                                 .font(GentleLightning.Typography.caption)
+                                .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
                         }
-                        .foregroundColor(themeManager.isDarkMode ? GentleLightning.Colors.textPrimary(isDark: true) : GentleLightning.Colors.textBlack)
                         .padding(.horizontal, 20)
                         .padding(.vertical, 16)
                         .background(
@@ -2316,7 +2323,7 @@ struct ContentView: View {
                     Text("...")
                         .font(.system(size: 28, weight: .medium))
                         .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
-                        .frame(width: 80, height: 60)
+                        .frame(width: 100, height: 80)
                         .multilineTextAlignment(.center)
                 }
                 .buttonStyle(PlainButtonStyle())

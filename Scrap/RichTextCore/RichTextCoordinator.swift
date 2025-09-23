@@ -2740,9 +2740,9 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         
         // Check if this touch might be on a checkbox
         if let (_, _) = CheckboxManager.findCheckboxAtLocation(location, in: textView) {
-            print("🖱️ gestureRecognizer: Detected touch on checkbox, ensuring our gesture handles it")
-            // DON'T cancel touches - let both our gesture and drag gestures work
-            gestureRecognizer.cancelsTouchesInView = false
+            print("🖱️ gestureRecognizer: Detected touch on checkbox, will cancel other touches")
+            // CANCEL touches to prevent UITextView default tap behavior when checkbox is clicked
+            gestureRecognizer.cancelsTouchesInView = true
             return true
         }
         
@@ -2753,8 +2753,8 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
             let viewClassName = String(describing: type(of: touchView))
             if viewClassName.contains("Attachment") || touchView.frame.width > 200 {
                 print("🖱️ gestureRecognizer: Detected potential attachment view, ensuring recognition")
-                // DON'T cancel touches - let both gestures work
-                gestureRecognizer.cancelsTouchesInView = false
+                // CANCEL touches for drawing attachments too
+                gestureRecognizer.cancelsTouchesInView = true
                 return true
             }
         }
