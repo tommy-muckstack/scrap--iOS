@@ -10,6 +10,41 @@ import SwiftUI
 import UIKit
 import Combine
 
+// MARK: - Custom UITextView for Paste Handling
+class PasteHandlingTextView: UITextView {
+    var defaultFont: UIFont = UIFont(name: "SpaceGrotesk-Regular", size: 16) ?? UIFont.systemFont(ofSize: 16)
+    
+    override func paste(_ sender: Any?) {
+        // Get the pasteboard content
+        if let pasteboardString = UIPasteboard.general.string {
+            print("📋 Custom paste: Stripping formatting from pasted text")
+            
+            // Create clean attributed string with default formatting
+            let cleanString = NSMutableAttributedString(string: pasteboardString)
+            let fullRange = NSRange(location: 0, length: cleanString.length)
+            
+            // Apply default formatting
+            cleanString.addAttribute(.font, value: defaultFont, range: fullRange)
+            cleanString.addAttribute(.foregroundColor, value: UIColor.label, range: fullRange)
+            
+            // Get current selection range
+            let selectedRange = self.selectedRange
+            
+            // Replace selected text with clean pasted text
+            if let textStorage = self.textStorage {
+                textStorage.replaceCharacters(in: selectedRange, with: cleanString)
+                
+                // Update cursor position
+                let newPosition = selectedRange.location + cleanString.length
+                self.selectedRange = NSRange(location: newPosition, length: 0)
+            }
+        } else {
+            // Fallback to default paste for non-text content
+            super.paste(sender)
+        }
+    }
+}
+
 /**
  A SwiftUI wrapper for UITextView with rich text editing capabilities.
  
@@ -55,7 +90,7 @@ public struct RichTextEditor: UIViewRepresentable {
     // MARK: - UIViewRepresentable
     
     public func makeUIView(context: Context) -> UITextView {
-        let textView = UITextView()
+        let textView = PasteHandlingTextView()
         
         // Basic configuration
         textView.isEditable = true
@@ -89,8 +124,10 @@ public struct RichTextEditor: UIViewRepresentable {
         textView.delaysContentTouches = false     // Don't delay touch delivery for responsiveness
         
         // Font and appearance
-        textView.font = UIFont(name: self.context.fontName, size: self.context.fontSize) ?? 
-                        UIFont.systemFont(ofSize: self.context.fontSize)
+        let defaultFont = UIFont(name: self.context.fontName, size: self.context.fontSize) ?? 
+                         UIFont.systemFont(ofSize: self.context.fontSize)
+        textView.font = defaultFont
+        textView.defaultFont = defaultFont  // Set for paste handling
         
         // Rich text attributes
         textView.typingAttributes = [
