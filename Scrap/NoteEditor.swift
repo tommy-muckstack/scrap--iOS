@@ -435,6 +435,36 @@ struct NoteEditor: View {
                 updateContent(editedText)
             }
         }
+        #if os(macOS)
+        // Keyboard shortcuts for macOS
+        .onReceive(NotificationCenter.default.publisher(for: .NSEventModifierFlagsChanged)) { _ in
+            // This ensures the view updates when modifier keys change
+        }
+        .background(
+            Group {
+                // Bold shortcut (Cmd+B)
+                Button("") {
+                    richTextContext.toggleBold()
+                }
+                .keyboardShortcut("b", modifiers: .command)
+                .opacity(0)
+                
+                // Italic shortcut (Cmd+I)
+                Button("") {
+                    richTextContext.toggleItalic()
+                }
+                .keyboardShortcut("i", modifiers: .command)
+                .opacity(0)
+                
+                // Underline shortcut (Cmd+U)
+                Button("") {
+                    richTextContext.toggleUnderline()
+                }
+                .keyboardShortcut("u", modifiers: .command)
+                .opacity(0)
+            }
+        )
+        #endif
     }
     
     // MARK: - Actions
