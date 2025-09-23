@@ -868,33 +868,58 @@ struct CategoryManagerView: View {
     @State private var errorMessage: String?
     
     var body: some View {
-        #if os(macOS)
-        // On macOS, avoid NavigationView inside sheets to prevent crashes
-        VStack(spacing: 0) {
-            // Add a top bar for macOS to replace navigation bar
-            HStack {
-                Spacer()
-                // Handle bar for pull-to-dismiss indication
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(GentleLightning.Colors.drawerHandle(isDark: themeManager.isDarkMode))
-                    .frame(width: 40, height: 4)
-                Spacer()
-                Button("Done") { dismiss() }
-                    .font(GentleLightning.Typography.body)
-                    .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+        Group {
+            #if os(macOS)
+            // On macOS, avoid NavigationView inside sheets to prevent crashes
+            VStack(spacing: 0) {
+                // Add a top bar for macOS to replace navigation bar
+                HStack {
+                    Spacer()
+                    // Handle bar for pull-to-dismiss indication
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(GentleLightning.Colors.drawerHandle(isDark: themeManager.isDarkMode))
+                        .frame(width: 40, height: 4)
+                    Spacer()
+                    Button("Done") { dismiss() }
+                        .font(GentleLightning.Typography.body)
+                        .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+                }
+                .padding(.top, 16)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 8)
+                
+                contentView
             }
-            .padding(.top, 16)
-            .padding(.horizontal, 20)
-            .padding(.bottom, 8)
-            
-            contentView
+            #else
+            // On iOS, use NavigationView as before
+            NavigationView {
+                contentView
+                    .navigationTitle("")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .principal) {
+                            // Handle bar for pull-to-dismiss indication - centered in toolbar
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(GentleLightning.Colors.drawerHandle(isDark: themeManager.isDarkMode))
+                                .frame(width: 40, height: 4)
+                        }
+                        
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button("Done") { dismiss() }
+                                .font(GentleLightning.Typography.body)
+                                .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+                        }
+                    }
+            }
+            #endif
         }
-        #else
-        // On iOS, use NavigationView as before
-        NavigationView {
-            contentView
+        .alert("Error", isPresented: .constant(errorMessage != nil)) {
+            Button("OK") { errorMessage = nil }
+        } message: {
+            if let errorMessage = errorMessage {
+                Text(errorMessage)
+            }
         }
-        #endif
     }
     
     private var contentView: some View {
@@ -958,31 +983,6 @@ struct CategoryManagerView: View {
                     Spacer()
                 }
             }
-            .alert("Error", isPresented: .constant(errorMessage != nil)) {
-                Button("OK") { errorMessage = nil }
-            } message: {
-                if let errorMessage = errorMessage {
-                    Text(errorMessage)
-                }
-            }
-            #if os(iOS)
-            .navigationTitle("")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    // Handle bar for pull-to-dismiss indication - centered in toolbar
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(GentleLightning.Colors.drawerHandle(isDark: themeManager.isDarkMode))
-                        .frame(width: 40, height: 4)
-                }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") { dismiss() }
-                        .font(GentleLightning.Typography.body)
-                        .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
-                }
-            }
-            #endif
         }
     }
     
