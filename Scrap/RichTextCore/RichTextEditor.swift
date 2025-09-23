@@ -31,13 +31,12 @@ class PasteHandlingTextView: UITextView {
             let selectedRange = self.selectedRange
             
             // Replace selected text with clean pasted text
-            if let textStorage = self.textStorage {
-                textStorage.replaceCharacters(in: selectedRange, with: cleanString)
-                
-                // Update cursor position
-                let newPosition = selectedRange.location + cleanString.length
-                self.selectedRange = NSRange(location: newPosition, length: 0)
-            }
+            let textStorage = self.textStorage
+            textStorage.replaceCharacters(in: selectedRange, with: cleanString)
+            
+            // Update cursor position
+            let newPosition = selectedRange.location + cleanString.length
+            self.selectedRange = NSRange(location: newPosition, length: 0)
         } else {
             // Fallback to default paste for non-text content
             super.paste(sender)
