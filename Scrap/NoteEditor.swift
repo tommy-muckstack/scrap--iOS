@@ -868,8 +868,37 @@ struct CategoryManagerView: View {
     @State private var errorMessage: String?
     
     var body: some View {
+        #if os(macOS)
+        // On macOS, avoid NavigationView inside sheets to prevent crashes
+        VStack(spacing: 0) {
+            // Add a top bar for macOS to replace navigation bar
+            HStack {
+                Spacer()
+                // Handle bar for pull-to-dismiss indication
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(GentleLightning.Colors.drawerHandle(isDark: themeManager.isDarkMode))
+                    .frame(width: 40, height: 4)
+                Spacer()
+                Button("Done") { dismiss() }
+                    .font(GentleLightning.Typography.body)
+                    .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+            }
+            .padding(.top, 16)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 8)
+            
+            contentView
+        }
+        #else
+        // On iOS, use NavigationView as before
         NavigationView {
-            VStack(spacing: 0) {
+            contentView
+        }
+        #endif
+    }
+    
+    private var contentView: some View {
+        VStack(spacing: 0) {
             if showingCreateForm {
                 // Create Tag Form
                 CreateTagInlineView(
@@ -928,7 +957,6 @@ struct CategoryManagerView: View {
                     
                     Spacer()
                 }
-                }
             }
             .alert("Error", isPresented: .constant(errorMessage != nil)) {
                 Button("OK") { errorMessage = nil }
@@ -937,6 +965,7 @@ struct CategoryManagerView: View {
                     Text(errorMessage)
                 }
             }
+            #if os(iOS)
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -953,6 +982,7 @@ struct CategoryManagerView: View {
                         .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
                 }
             }
+            #endif
         }
     }
     
