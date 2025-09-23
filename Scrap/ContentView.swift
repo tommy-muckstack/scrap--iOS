@@ -874,7 +874,7 @@ struct InputField: View {
     var isSearchExpanded: Bool = false
     
     // Theme management
-    @StateObject private var themeManager = ThemeManager.shared
+    @ObservedObject private var themeManager = ThemeManager.shared
     
     // Rich text state management
     @State private var attributedText = NSAttributedString()
@@ -1858,7 +1858,7 @@ struct AccountDrawerView: View {
                 .padding(.bottom, 24)
             
             ScrollView {
-                VStack(spacing: 24) {
+                VStack(spacing: 12) {
                     // Settings Section (from SettingsView)
                     VStack(alignment: .leading, spacing: 16) {
                         HStack {
@@ -1881,6 +1881,26 @@ struct AccountDrawerView: View {
                             Toggle("", isOn: Binding(
                                 get: { themeManager.isDarkMode },
                                 set: { _ in themeManager.toggleDarkMode() }
+                            ))
+                            .tint(GentleLightning.Colors.accentNeutral)
+                        }
+                        .padding(16)
+                        .background(
+                            RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.medium)
+                                .fill(GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
+                        )
+                        
+                        // Group Notes by Tag Toggle
+                        HStack {
+                            Text("Group Notes by Tag")
+                                .font(GentleLightning.Typography.body)
+                                .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+                            
+                            Spacer()
+                            
+                            Toggle("", isOn: Binding(
+                                get: { themeManager.groupNotesByTag },
+                                set: { _ in themeManager.toggleGroupNotesByTag() }
                             ))
                             .tint(GentleLightning.Colors.accentNeutral)
                         }
@@ -1963,7 +1983,7 @@ struct AccountDrawerView: View {
                             .font(GentleLightning.Typography.small)
                             .foregroundColor(GentleLightning.Colors.textGreyStatic)
                     }
-                    .padding(.bottom, 40)
+                    .padding(.bottom, 60)
                 }
                 .padding(.horizontal, 20)
             }
@@ -2084,7 +2104,7 @@ struct AccountDrawerView: View {
 struct ContentView: View {
     @StateObject private var dataManager = FirebaseDataManager()
     @StateObject private var viewModel = ContentViewModel()
-    @StateObject private var themeManager = ThemeManager.shared
+    @ObservedObject private var themeManager = ThemeManager.shared
     @StateObject private var richTextContext = RichTextContext()
     @State private var attributedText = NSAttributedString()
     @State private var navigationPath = NavigationPath()
@@ -2140,7 +2160,7 @@ struct ContentView: View {
         if hasSearched {
             searchResultsView
         } else {
-            mainNotesListView
+            itemsListContent
         }
     }
     
@@ -2203,6 +2223,7 @@ struct ContentView: View {
     
     @ViewBuilder
     private var mainNotesListView: some View {
+        let _ = print("📋 MainNotesListView: Evaluating with groupNotesByTag = \(themeManager.groupNotesByTag)")
         // Normal notes list or empty state
         if dataManager.items.isEmpty {
             // Empty state
@@ -2218,24 +2239,43 @@ struct ContentView: View {
             }
             .padding(.top, 40)
         } else {
-            // Notes list
+            // Conditional notes list - grouped or regular based on setting
+            let _ = print("🔄 ContentView: Evaluating conditional view with groupNotesByTag = \(themeManager.groupNotesByTag)")
             ScrollView {
-                LazyVStack(spacing: 12) {
-                    ForEach(Array(dataManager.items.prefix(displayedItemsCount).enumerated()), id: \.element.id) { index, item in
-                        ItemRowSimple(item: item, dataManager: dataManager) {
+                if themeManager.groupNotesByTag {
+                    // Show grouped notes view
+                    let _ = print("📋 ContentView: Showing grouped notes view (groupNotesByTag = \(themeManager.groupNotesByTag))")
+                    GroupedNotesView(
+                        items: Array(dataManager.items.prefix(displayedItemsCount)),
+                        categories: dataManager.categories,
+                        dataManager: dataManager,
+                        onItemTap: { item in
                             // Navigate without animation to prevent list wobbling
                             navigationPath.append(item)
-                        }
-                        .padding(.horizontal, GentleLightning.Layout.Padding.xl)
-                        .onAppear {
-                            // Load more items when approaching the end
-                            if index == displayedItemsCount - 3 {
-                                loadMoreItems()
+                        },
+                        themeManager: themeManager
+                    )
+                    .padding(.top, 8)
+                } else {
+                    // Show regular notes list
+                    let _ = print("📋 ContentView: Showing regular notes list (groupNotesByTag = \(themeManager.groupNotesByTag))")
+                    LazyVStack(spacing: 12) {
+                        ForEach(Array(dataManager.items.prefix(displayedItemsCount).enumerated()), id: \.element.id) { index, item in
+                            ItemRowSimple(item: item, dataManager: dataManager) {
+                                // Navigate without animation to prevent list wobbling
+                                navigationPath.append(item)
+                            }
+                            .padding(.horizontal, GentleLightning.Layout.Padding.xl)
+                            .onAppear {
+                                // Load more items when approaching the end
+                                if index == displayedItemsCount - 3 {
+                                    loadMoreItems()
+                                }
                             }
                         }
                     }
+                    .padding(.top, 8)
                 }
-                .padding(.top, 8)
             }
             .onTapGesture {
                 // Also dismiss keyboard when tapping in scroll area
@@ -2323,10 +2363,13 @@ struct ContentView: View {
                     Text("...")
                         .font(.system(size: 28, weight: .medium))
                         .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
-                        .frame(width: 100, height: 80)
+                        .frame(width: 120, height: 100) // Increased from 100x80 to 120x100
                         .multilineTextAlignment(.center)
+                        .contentShape(Rectangle()) // Ensure entire frame area is tappable
                 }
                 .buttonStyle(PlainButtonStyle())
+                .padding(.horizontal, 20) // Add extra padding for larger tap area
+                .padding(.bottom, 10) // Add bottom padding for easier thumb reach
             }
             .opacity(isSearchExpanded ? 0 : 1) // Hide when search is expanded
             .scaleEffect(isSearchExpanded ? 0.9 : 1.0) // Subtle scale effect
@@ -2364,7 +2407,7 @@ struct ContentView: View {
         HStack {
             Text("My Notes")
                 .font(GentleLightning.Typography.caption)
-                .foregroundColor(GentleLightning.Colors.textSecondary)
+                .foregroundColor(GentleLightning.Colors.textBlack)
                 .padding(.leading, GentleLightning.Layout.Padding.xl + GentleLightning.Layout.Padding.lg)
             
             Spacer()
@@ -2486,50 +2529,71 @@ struct ContentView: View {
     
     @ViewBuilder
     private var mainNotesListContent: some View {
-        // Only show notes list when not displaying search results
-        let itemsToDisplay = Array(dataManager.filteredItems.prefix(displayedItemsCount))
+        let _ = print("📋 MainNotesListContent: Evaluating with groupNotesByTag = \(themeManager.groupNotesByTag)")
         
-        ForEach(itemsToDisplay) { item in
-            ItemRowSimple(item: item, dataManager: dataManager) {
-                AnalyticsManager.shared.trackNoteEditOpened(noteId: item.id)
-                
-                // Use navigation instead of sheets - bulletproof approach
-                navigationPath.append(item)
-                
-                print("✅ ContentView: Navigation pushed for item.id = '\(item.id)'")
-            }
-            .transition(.asymmetric(
-                insertion: .opacity.combined(with: .move(edge: .top)).combined(with: .scale(scale: 0.95)),
-                removal: .opacity.combined(with: .move(edge: .bottom)).combined(with: .scale(scale: 0.95))
-            ))
-            .animation(GentleLightning.Animation.delightful, value: item.id)
-            .onAppear {
-                // Load more items when reaching the last item
-                if item.id == dataManager.filteredItems.last?.id && displayedItemsCount < dataManager.filteredItems.count {
-                    withAnimation(GentleLightning.Animation.gentle) {
-                        displayedItemsCount = min(displayedItemsCount + 10, dataManager.filteredItems.count)
+        // Conditional notes list - grouped or regular based on setting
+        if themeManager.groupNotesByTag {
+            // Show grouped notes view
+            let _ = print("📋 ContentView: Showing grouped notes view (groupNotesByTag = \(themeManager.groupNotesByTag))")
+            GroupedNotesView(
+                items: Array(dataManager.filteredItems.prefix(displayedItemsCount)),
+                categories: dataManager.categories,
+                dataManager: dataManager,
+                onItemTap: { item in
+                    AnalyticsManager.shared.trackNoteEditOpened(noteId: item.id)
+                    navigationPath.append(item)
+                    print("✅ ContentView: Navigation pushed for item.id = '\(item.id)'")
+                },
+                themeManager: themeManager
+            )
+        } else {
+            // Show regular notes list
+            let _ = print("📋 ContentView: Showing regular notes list (groupNotesByTag = \(themeManager.groupNotesByTag))")
+            let itemsToDisplay = Array(dataManager.filteredItems.prefix(displayedItemsCount))
+            
+            ForEach(itemsToDisplay) { item in
+                ItemRowSimple(item: item, dataManager: dataManager) {
+                    AnalyticsManager.shared.trackNoteEditOpened(noteId: item.id)
+                    
+                    // Use navigation instead of sheets - bulletproof approach
+                    navigationPath.append(item)
+                    
+                    print("✅ ContentView: Navigation pushed for item.id = '\(item.id)'")
+                }
+                .transition(.asymmetric(
+                    insertion: .opacity.combined(with: .move(edge: .top)).combined(with: .scale(scale: 0.95)),
+                    removal: .opacity.combined(with: .move(edge: .bottom)).combined(with: .scale(scale: 0.95))
+                ))
+                .animation(GentleLightning.Animation.delightful, value: item.id)
+                .onAppear {
+                    // Load more items when reaching the last item
+                    if item.id == dataManager.filteredItems.last?.id && displayedItemsCount < dataManager.filteredItems.count {
+                        withAnimation(GentleLightning.Animation.gentle) {
+                            displayedItemsCount = min(displayedItemsCount + 10, dataManager.filteredItems.count)
+                        }
                     }
                 }
             }
-        }
-        
-        // Loading indicator
-        if displayedItemsCount < dataManager.filteredItems.count {
-            HStack {
-                Spacer()
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle())
-                    .scaleEffect(0.8)
-                Spacer()
-            }
-            .padding(.vertical, 20)
-            .onAppear {
-                loadMoreItems()
+            
+            // Loading indicator
+            if displayedItemsCount < dataManager.filteredItems.count {
+                HStack {
+                    Spacer()
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle())
+                        .scaleEffect(0.8)
+                    Spacer()
+                }
+                .padding(.vertical, 20)
+                .onAppear {
+                    loadMoreItems()
+                }
             }
         }
     }
 
     var body: some View {
+        let _ = print("🔄 MAIN ContentView.body: Rendering with groupNotesByTag = \(themeManager.groupNotesByTag)")
         NavigationStack(path: $navigationPath) {
             ZStack {
                 mainContent
@@ -3392,6 +3456,133 @@ struct SearchResultRow: View {
             .padding(8)
         }
         .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Grouped Notes View
+struct GroupedNotesView: View {
+    let items: [SparkItem]
+    let categories: [Category]
+    let dataManager: FirebaseDataManager
+    let onItemTap: (SparkItem) -> Void
+    @ObservedObject var themeManager: ThemeManager
+    @State private var expandedSections: Set<String> = []
+    
+    private var groupedItems: [(String, String, [SparkItem])] {
+        print("🏷️ GroupedNotesView: Computing groupedItems with \(items.count) items")
+        var groups: [String: [SparkItem]] = [:]
+        var categoryInfo: [String: (String, String)] = [:] // categoryId -> (name, color)
+        
+        // Create category lookup
+        for category in categories {
+            categoryInfo[category.id] = (category.name, category.color)
+        }
+        
+        // Group items by categories
+        for item in items {
+            if item.categoryIds.isEmpty {
+                // No tag group
+                groups["no_tag", default: []].append(item)
+            } else {
+                // Add to each category the item belongs to
+                for categoryId in item.categoryIds {
+                    groups[categoryId, default: []].append(item)
+                }
+            }
+        }
+        
+        // Convert to sorted array with category info
+        var result: [(String, String, [SparkItem])] = []
+        
+        // Add "No Tag" section first if it exists
+        if let noTagItems = groups["no_tag"] {
+            result.append(("no_tag", "No Tag", noTagItems.sorted { $0.createdAt > $1.createdAt }))
+        }
+        
+        // Add category sections sorted by category name
+        for categoryId in groups.keys.sorted() {
+            guard categoryId != "no_tag", let items = groups[categoryId] else { continue }
+            let categoryName = categoryInfo[categoryId]?.0 ?? "Unknown Tag"
+            result.append((categoryId, categoryName, items.sorted { $0.createdAt > $1.createdAt }))
+        }
+        
+        return result
+    }
+    
+    var body: some View {
+        let _ = print("🏷️ GroupedNotesView: Rendering grouped view with \(groupedItems.count) sections")
+        LazyVStack(spacing: 16) {
+            ForEach(groupedItems, id: \.0) { categoryId, categoryName, categoryItems in
+                VStack(spacing: 8) {
+                    // Section header
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            if expandedSections.contains(categoryId) {
+                                expandedSections.remove(categoryId)
+                            } else {
+                                expandedSections.insert(categoryId)
+                            }
+                        }
+                    }) {
+                        HStack {
+                            // Category indicator
+                            if categoryId == "no_tag" {
+                                Circle()
+                                    .fill(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
+                                    .frame(width: 8, height: 8)
+                            } else if let category = categories.first(where: { $0.id == categoryId }) {
+                                Circle()
+                                    .fill(category.uiColor)
+                                    .frame(width: 8, height: 8)
+                            }
+                            
+                            Text(categoryName)
+                                .font(GentleLightning.Typography.heading)
+                                .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+                            
+                            Text("(\(categoryItems.count))")
+                                .font(GentleLightning.Typography.caption)
+                                .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
+                            
+                            Spacer()
+                            
+                            Image(systemName: expandedSections.contains(categoryId) ? "chevron.down" : "chevron.right")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
+                                .rotationEffect(.degrees(expandedSections.contains(categoryId) ? 0 : -90))
+                                .animation(.easeInOut(duration: 0.2), value: expandedSections.contains(categoryId))
+                        }
+                        .padding(.horizontal, GentleLightning.Layout.Padding.xl)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
+                        )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    
+                    // Section content
+                    if expandedSections.contains(categoryId) {
+                        VStack(spacing: 12) {
+                            ForEach(categoryItems) { item in
+                                ItemRowSimple(item: item, dataManager: dataManager) {
+                                    onItemTap(item)
+                                }
+                                .padding(.horizontal, GentleLightning.Layout.Padding.xl)
+                            }
+                        }
+                        .transition(.asymmetric(
+                            insertion: .opacity.combined(with: .move(edge: .top)),
+                            removal: .opacity.combined(with: .move(edge: .top))
+                        ))
+                    }
+                }
+            }
+        }
+        .onAppear {
+            // Expand all sections by default
+            expandedSections = Set(groupedItems.map { $0.0 })
+        }
     }
 }
 

@@ -13,6 +13,9 @@ import Combine
 // MARK: - Custom UITextView for Paste Handling
 class PasteHandlingTextView: UITextView {
     var defaultFont: UIFont = UIFont(name: "SpaceGrotesk-Regular", size: 16) ?? UIFont.systemFont(ofSize: 16)
+    var preventFirstResponder = false
+    var lockCursorPosition = false
+    private var lockedCursorRange: NSRange?
     
     override func paste(_ sender: Any?) {
         // Get the pasteboard content
@@ -41,6 +44,42 @@ class PasteHandlingTextView: UITextView {
             // Fallback to default paste for non-text content
             super.paste(sender)
         }
+    }
+    
+    override func becomeFirstResponder() -> Bool {
+        if preventFirstResponder {
+            print("🚫 PasteHandlingTextView: Prevented becomeFirstResponder due to checkbox tap")
+            return false
+        }
+        return super.becomeFirstResponder()
+    }
+    
+    override var selectedRange: NSRange {
+        get {
+            if lockCursorPosition && lockedCursorRange != nil {
+                return lockedCursorRange!
+            }
+            return super.selectedRange
+        }
+        set {
+            if lockCursorPosition && lockedCursorRange != nil {
+                print("🔒 PasteHandlingTextView: Cursor locked, ignoring selectedRange change to \\(newValue)")
+                return
+            }
+            super.selectedRange = newValue
+        }
+    }
+    
+    func lockCursor(at range: NSRange) {
+        lockedCursorRange = range
+        lockCursorPosition = true
+        print("🔒 PasteHandlingTextView: Locked cursor at range \\(range)")
+    }
+    
+    func unlockCursor() {
+        lockCursorPosition = false
+        lockedCursorRange = nil
+        print("🔓 PasteHandlingTextView: Unlocked cursor")
     }
 }
 
@@ -98,6 +137,15 @@ public struct RichTextEditor: UIViewRepresentable {
         textView.backgroundColor = .clear
         textView.textContainerInset = .zero
         textView.textContainer.lineFragmentPadding = 0
+        
+        // Enable scrolling
+        textView.isScrollEnabled = true
+        textView.showsVerticalScrollIndicator = true
+        textView.bounces = true
+        textView.alwaysBounceVertical = true
+        
+        // Ensure proper scrolling behavior for keyboard
+        textView.contentInsetAdjustmentBehavior = .automatic
         
         // CRITICAL: Configure text container for proper attachment display
         textView.textContainer.widthTracksTextView = true

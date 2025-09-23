@@ -119,7 +119,8 @@ struct NoteEditor: View {
                         textView.tintColor = UIColor.label
                         
                         // Improve text alignment and padding to match placeholder
-                        textView.textContainerInset = UIEdgeInsets(top: 8, left: 0, bottom: 8, right: 0)
+                        // Reasonable bottom padding for keyboard accessibility without excessive scrolling
+                        textView.textContainerInset = UIEdgeInsets(top: 8, left: 0, bottom: 60, right: 0)
                         textView.textContainer.lineFragmentPadding = 4
                         
                         // Better line spacing for readability

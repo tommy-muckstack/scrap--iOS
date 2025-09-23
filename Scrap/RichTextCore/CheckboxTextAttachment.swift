@@ -42,13 +42,16 @@ class CheckboxTextAttachment: NSTextAttachment {
     // MARK: - Text Storage Integration
     
     /// Update the text storage to reflect the current checkbox state
-    /// This ensures the checkbox state persists in the document
+    /// This ensures the checkbox state persists in the document and applies strikethrough formatting
     private func updateTextStorage() {
         guard let textView = textView,
               characterRange.location != NSNotFound else {
             print("⚠️ CheckboxTextAttachment.updateTextStorage: Missing textView or invalid range")
             return
         }
+        
+        // Save current cursor position to prevent jumping
+        let savedSelectedRange = textView.selectedRange
         
         let textStorage = textView.textStorage
         
@@ -63,18 +66,71 @@ class CheckboxTextAttachment: NSTextAttachment {
         
         print("🔄 CheckboxTextAttachment.updateTextStorage: Updating character range \(characterRange) to state \(isChecked)")
         
+        // Apply strikethrough formatting to the entire line containing this checkbox
+        applyStrikethroughToLine()
+        
         // Force layout manager to update the display for this attachment
         let layoutManager = textView.layoutManager
         layoutManager.invalidateDisplay(forCharacterRange: characterRange)
         layoutManager.invalidateLayout(forCharacterRange: characterRange, actualCharacterRange: nil)
+        
+        // Restore cursor position immediately to prevent jumping
+        textView.selectedRange = savedSelectedRange
         
         // Force immediate redraw
         textView.setNeedsDisplay()
         
         // Notify text view delegate of content changes for state persistence
         DispatchQueue.main.async {
+            // Restore cursor one more time after delegate notification
+            textView.selectedRange = savedSelectedRange
             textView.delegate?.textViewDidChange?(textView)
+            print("📍 CheckboxTextAttachment.updateTextStorage: Restored cursor after delegate notification")
         }
+    }
+    
+    /// Apply or remove strikethrough formatting to the entire line containing this checkbox
+    private func applyStrikethroughToLine() {
+        guard let textView = textView else { return }
+        
+        let textStorage = textView.textStorage
+        let text = textStorage.string as NSString
+        
+        // Find the line range containing this checkbox
+        let lineRange = text.lineRange(for: characterRange)
+        
+        // Validate line range
+        guard lineRange.location >= 0 && 
+              lineRange.location + lineRange.length <= textStorage.length else {
+            print("⚠️ CheckboxTextAttachment.applyStrikethroughToLine: Invalid line range")
+            return
+        }
+        
+        print("📝 CheckboxTextAttachment.applyStrikethroughToLine: Applying strikethrough=\(isChecked) to line range \(lineRange)")
+        
+        // Apply or remove strikethrough formatting to the entire line
+        if isChecked {
+            // Add strikethrough
+            textStorage.addAttribute(.strikethroughStyle, 
+                                   value: NSUnderlineStyle.single.rawValue, 
+                                   range: lineRange)
+            // Optionally dim the text color for checked items
+            textStorage.addAttribute(.foregroundColor, 
+                                   value: UIColor.secondaryLabel, 
+                                   range: lineRange)
+        } else {
+            // Remove strikethrough
+            textStorage.removeAttribute(.strikethroughStyle, range: lineRange)
+            // Restore normal text color
+            textStorage.addAttribute(.foregroundColor, 
+                                   value: UIColor.label, 
+                                   range: lineRange)
+        }
+        
+        // Invalidate layout for the entire line to ensure proper redraw
+        let layoutManager = textView.layoutManager
+        layoutManager.invalidateDisplay(forCharacterRange: lineRange)
+        layoutManager.invalidateLayout(forCharacterRange: lineRange, actualCharacterRange: nil)
     }
     
     /// Unique identifier for this checkbox
@@ -102,13 +158,12 @@ class CheckboxTextAttachment: NSTextAttachment {
         
         // Validate and sanitize all values to prevent CoreGraphics NaN errors
         let safeOriginX: CGFloat = 0.0
-        let safeOriginY: CGFloat = -2.0
         let safeWidth = checkboxSize.width.isFinite ? checkboxSize.width : 24.0
         let safeHeight = checkboxSize.height.isFinite ? checkboxSize.height : 24.0
         
-        // Position checkbox slightly below baseline for better text alignment
+        // Position checkbox to center-align with text baseline
         return CGRect(
-            origin: CGPoint(x: safeOriginX, y: safeOriginY), 
+            origin: CGPoint(x: safeOriginX, y: -10.0), 
             size: CGSize(width: safeWidth, height: safeHeight)
         )
     }
@@ -500,7 +555,15 @@ class CheckboxManager {
     
     /// Toggle checkbox state and update the text view using model-backed system
     static func toggleCheckbox(_ attachment: CheckboxTextAttachment, in textView: UITextView, at range: NSRange) {
-        print("🎯 CheckboxManager: Starting model-backed checkbox toggle for attachment at range \(range)")
+        print("🎯 CheckboxManager: Starting checkbox toggle for attachment at range \(range)")
+        
+        // Save the current cursor position to restore it after toggle
+        let originalSelectedRange = textView.selectedRange
+        print("📍 CheckboxManager: Saving original cursor position: \(originalSelectedRange)")
+        
+        // CRITICAL: Completely disable all touch handling during checkbox toggle
+        // This prevents UITextView from processing ANY touches that could move the cursor
+        textView.isUserInteractionEnabled = false
         
         // CRITICAL: Ensure text view reference and range are properly set
         if attachment.textView == nil {
@@ -517,20 +580,32 @@ class CheckboxManager {
         attachment.onStateChange = { [weak textView] newState in
             guard let textView = textView else { return }
             
-            print("🔄 CheckboxManager: Model-backed state change callback triggered - new state: \(newState)")
+            print("🔄 CheckboxManager: State change callback triggered - new state: \(newState)")
             
-            // The attachment's updateTextStorage method handles most of the update logic
-            // We just need to ensure the text view delegate is notified for persistence
+            // Notify delegate for persistence
             DispatchQueue.main.async {
                 textView.delegate?.textViewDidChange?(textView)
-                print("✅ CheckboxManager: Notified delegate of model-backed checkbox state change")
+                print("✅ CheckboxManager: Notified delegate of checkbox state change")
             }
         }
         
-        // Toggle the checkbox state (this will trigger the onStateChange callback and updateTextStorage)
+        // Toggle the checkbox state immediately (this will trigger the onStateChange callback and updateTextStorage)
         let oldState = attachment.isChecked
         attachment.isChecked.toggle()
-        print("🔄 CheckboxManager: Model-backed toggle from \(oldState) to \(attachment.isChecked)")
+        print("🔄 CheckboxManager: Toggle from \(oldState) to \(attachment.isChecked)")
+        
+        // Re-enable interaction and restore cursor position immediately
+        DispatchQueue.main.async {
+            // CRITICAL: Re-enable interaction first
+            textView.isUserInteractionEnabled = true
+            
+            // CRITICAL: Restore cursor position EXACTLY where it was
+            textView.selectedRange = originalSelectedRange
+            print("📍 CheckboxManager: Restored cursor to original position: \(originalSelectedRange)")
+            
+            // Force immediate redraw to show checkbox state change
+            textView.setNeedsDisplay()
+        }
     }
 }
 

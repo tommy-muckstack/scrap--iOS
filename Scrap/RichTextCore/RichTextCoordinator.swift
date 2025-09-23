@@ -2507,8 +2507,21 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         // First check for new NSTextAttachment checkboxes
         if let (attachment, range) = CheckboxManager.findCheckboxAtLocation(location, in: textView) {
             print("✅ handleTap: Found NSTextAttachment checkbox at location \(location)")
+            
+            // CRITICAL: Prevent first responder activation during checkbox toggle
+            if let pasteTextView = textView as? PasteHandlingTextView {
+                pasteTextView.preventFirstResponder = true
+            }
+            
             CheckboxManager.toggleCheckbox(attachment, in: textView, at: range)
             print("🎯 RichTextCoordinator: Toggled NSTextAttachment checkbox")
+            
+            // Reset the flag after toggle is complete
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                if let pasteTextView = self.textView as? PasteHandlingTextView {
+                    pasteTextView.preventFirstResponder = false
+                }
+            }
             return
         }
         
@@ -2740,9 +2753,20 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         
         // Check if this touch might be on a checkbox
         if let (_, _) = CheckboxManager.findCheckboxAtLocation(location, in: textView) {
-            print("🖱️ gestureRecognizer: Detected touch on checkbox, will cancel other touches")
+            print("🖱️ gestureRecognizer: Detected touch on checkbox, preventing first responder")
             // CANCEL touches to prevent UITextView default tap behavior when checkbox is clicked
             gestureRecognizer.cancelsTouchesInView = true
+            
+            // CRITICAL: Prevent text view from becoming first responder on checkbox taps
+            // This prevents cursor movement and keyboard activation
+            if let pasteTextView = textView as? PasteHandlingTextView {
+                pasteTextView.preventFirstResponder = true
+                
+                // Reset the flag after a short delay to allow normal editing behavior later
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    pasteTextView.preventFirstResponder = false
+                }
+            }
             return true
         }
         
