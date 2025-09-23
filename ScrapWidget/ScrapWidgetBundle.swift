@@ -12,5 +12,6 @@ import SwiftUI
 struct ScrapWidgetBundle: WidgetBundle {
     var body: some Widget {
         ScrapWidget()
+        QuickNoteWidget()
     }
 }

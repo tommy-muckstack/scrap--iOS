@@ -106,6 +106,10 @@ class AnalyticsManager: ObservableObject {
         ])
     }
     
+    func trackSearchInitiated() {
+        trackEvent("search_initiated")
+    }
+    
     // MARK: - Voice Recording Events
     func trackVoiceRecordingStarted() {
         trackEvent("voice_recording_started")

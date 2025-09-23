@@ -282,7 +282,8 @@ struct NoteEditor: View {
                         .fill(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
                         .frame(width: 4, height: 4)
                 }
-                .frame(width: 24, height: 24)
+                .frame(width: 44, height: 44) // Increased from 24x24 to 44x44 for better tap target
+                .contentShape(Rectangle()) // Ensures entire frame is tappable
                 .scaleEffect(optionsButtonScale)
                 .onTapGesture {
                     withAnimation(GentleLightning.Animation.elastic) {
@@ -306,11 +307,11 @@ struct NoteEditor: View {
             
             // Drawing options - show Add or Edit based on drawing state
             if !item.hasDrawing {
-                Button("Add Drawing") { 
+                Button("Add Scribble") { 
                     addDrawingToNote()
                 }
             } else {
-                Button("Edit Drawing") {
+                Button("Edit Scribble") {
                     showingDrawingEditor = true
                 }
             }
@@ -975,6 +976,20 @@ struct CategoryManagerView: View {
                 
                 await MainActor.run {
                     userCategories.append(newCategory)
+                    
+                    // Automatically add the newly created category to the current note
+                    let categoryId = newCategory.firebaseId ?? newCategory.id
+                    if !selectedCategories.contains(categoryId) {
+                        selectedCategories.append(categoryId)
+                        onCategoryUpdate(selectedCategories)
+                        
+                        // Track automatic category selection
+                        AnalyticsManager.shared.trackCategorySelected(categoryId: categoryId, categoryName: newCategory.name)
+                    }
+                    
+                    // Notify other views that categories have been updated
+                    NotificationCenter.default.post(name: .categoriesUpdated, object: nil)
+                    
                     // Reset form but stay in tags view
                     showingCreateForm = false
                     newCategoryName = ""
@@ -1123,13 +1138,27 @@ struct CreateTagInlineView: View {
             .padding(.top, 10)
             
             // Tag Name Input
-            TextField("Tag Name", text: $categoryName)
-                .font(GentleLightning.Typography.bodyInput)
-                .padding(.vertical, 12)
-                .padding(.horizontal, 16)
-                .background(Color.gray.opacity(0.1))
-                .cornerRadius(8)
-                .padding(.horizontal, 20)
+            VStack(alignment: .trailing, spacing: 4) {
+                TextField("Tag Name", text: $categoryName)
+                    .font(GentleLightning.Typography.bodyInput)
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 16)
+                    .background(Color.gray.opacity(0.1))
+                    .cornerRadius(8)
+                    .onChange(of: categoryName) { newValue in
+                        // Limit to 30 characters
+                        if newValue.count > 30 {
+                            categoryName = String(newValue.prefix(30))
+                        }
+                    }
+                
+                // Character counter
+                Text("\(categoryName.count)/30")
+                    .font(GentleLightning.Typography.small)
+                    .foregroundColor(categoryName.count >= 25 ? GentleLightning.Colors.error : GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
+                    .padding(.horizontal, 4)
+            }
+            .padding(.horizontal, 20)
             
             // Color Selection
             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 5), spacing: 12) {

@@ -206,9 +206,22 @@ class AppStoreReviewManager {
         // Request the review
         print("⭐ Requesting App Store review (conservative approach) - Launch count: \(launchCount)")
         
-        // Request review using SKStoreReviewController
-        if #available(iOS 14.0, *) {
-            SKStoreReviewController.requestReview(in: windowScene)
+        // CRITICAL: Dismiss keyboard before showing rating modal to ensure user can interact with stars
+        Task { @MainActor in
+            // Find any active text view and resign first responder
+            if let keyWindow = windowScene.windows.first(where: { $0.isKeyWindow }) {
+                keyWindow.endEditing(true)
+                print("⌨️ AppStoreReviewManager: Dismissed keyboard before showing rating modal")
+            }
+            
+            // Small delay to ensure keyboard dismissal animation completes
+            try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+            
+            // Request review using SKStoreReviewController
+            if #available(iOS 14.0, *) {
+                SKStoreReviewController.requestReview(in: windowScene)
+                print("✅ AppStoreReviewManager: Showing rating modal after keyboard dismissal")
+            }
         }
         
         // Update tracking data

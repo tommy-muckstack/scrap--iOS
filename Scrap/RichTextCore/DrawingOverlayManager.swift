@@ -82,8 +82,30 @@ public class DrawingOverlayManager: ObservableObject {
     public init() {}
     
     public func connectTextView(_ textView: UITextView) {
+        // Prevent duplicate connections to the same text view
+        if self.textView === textView {
+            print("⚠️ DrawingOverlayManager: Already connected to this text view, skipping")
+            return
+        }
+        
+        // Clean up previous connection if exists
+        if let previousTextView = self.textView {
+            print("🧹 DrawingOverlayManager: Disconnecting from previous text view \(previousTextView)")
+            disconnectTextView()
+        }
+        
         self.textView = textView
         print("🔗 DrawingOverlayManager: Connected to text view \(textView)")
+    }
+    
+    /// Clean up connections and resources
+    public func disconnectTextView() {
+        if let textView = self.textView {
+            print("🔌 DrawingOverlayManager: Disconnecting from text view \(textView)")
+        }
+        self.textView = nil
+        // Clear any drawing overlays that might be retained
+        drawingMarkers.removeAll()
     }
     
     // MARK: - Drawing Management

@@ -72,6 +72,8 @@ extension UITextView {
     
     /// Set up rich text input accessory view
     func setupRichTextInputAccessory(context: RichTextContext, showingFormatting: Binding<Bool>) {
+        // Don't show input accessory view on macOS - iOS only feature
+        #if os(iOS)
         // Only create and set the input accessory view if formatting should be shown
         if showingFormatting.wrappedValue {
             let accessoryView = RichTextInputAccessoryView(
@@ -99,6 +101,10 @@ extension UITextView {
                 .OBJC_ASSOCIATION_RETAIN_NONATOMIC
             )
         }
+        #else
+        // On macOS, always ensure no input accessory view
+        self.inputAccessoryView = nil
+        #endif
         
         // Ensure the accessory view state is updated
         self.reloadInputViews()

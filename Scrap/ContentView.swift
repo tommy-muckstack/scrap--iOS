@@ -19,6 +19,25 @@ struct NoteDisplayContent: View {
     let content: String
     let isDarkMode: Bool
     
+    // Helper to create theme-aware text with visible ellipsis
+    private var styledContent: Text {
+        if content.hasSuffix("...") {
+            // Split content and ellipsis for better visibility
+            let mainContent = String(content.dropLast(3))
+            let mainText = Text(mainContent)
+                .foregroundColor(title.isEmpty ? GentleLightning.Colors.textPrimary(isDark: isDarkMode) : GentleLightning.Colors.textSecondary(isDark: isDarkMode))
+            
+            // Make ellipsis more visible in dark mode with primary text color
+            let ellipsisText = Text("…") // Using Unicode ellipsis character
+                .foregroundColor(GentleLightning.Colors.textPrimary(isDark: isDarkMode))
+            
+            return mainText + ellipsisText
+        } else {
+            return Text(content)
+                .foregroundColor(title.isEmpty ? GentleLightning.Colors.textPrimary(isDark: isDarkMode) : GentleLightning.Colors.textSecondary(isDark: isDarkMode))
+        }
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             if !title.isEmpty {
@@ -29,9 +48,8 @@ struct NoteDisplayContent: View {
                     .multilineTextAlignment(.leading)
             }
             
-            Text(content)
+            styledContent
                 .font(title.isEmpty ? GentleLightning.Typography.body : GentleLightning.Typography.secondary)
-                .foregroundColor(title.isEmpty ? GentleLightning.Colors.textPrimary(isDark: isDarkMode) : GentleLightning.Colors.textSecondary(isDark: isDarkMode))
                 .lineLimit(title.isEmpty ? nil : 1)
                 .multilineTextAlignment(.leading)
         }
@@ -357,6 +375,27 @@ struct GentleLightning {
         }
         struct Spacing {
             static let comfortable: CGFloat = 12
+        }
+        
+        /// Critical alignment specifications to maintain consistent UI layout
+        struct Alignment {
+            /// Search icon to microphone icon vertical alignment
+            /// 
+            /// **Context:** The search magnifying glass in notesSectionHeader must align with 
+            /// the microphone button in inputFieldSection for visual consistency.
+            ///
+            /// **Calculation:**
+            /// - Microphone center position: xl(20) + lg(16) + buttonRadius(20) = 56pt from right edge
+            /// - Search icon trailing padding: micCenter(56) - searchRadius(22) = 34pt
+            ///
+            /// **Dependencies:**
+            /// - InputField container: `.padding(.horizontal, xl)` = 20pt
+            /// - InputField internal: `.padding(.horizontal, lg)` = 16pt  
+            /// - Microphone button width: 40pt (radius: 20pt)
+            /// - Search icon width: 44pt (radius: 22pt)
+            ///
+            /// **⚠️ Critical:** If any padding values change, this must be recalculated
+            static let searchToMicrophoneTrailing: CGFloat = 34
         }
     }
     
@@ -1538,6 +1577,253 @@ struct CategoryPillSimple: View {
 
 // MARK: - Note Edit View
 
+// MARK: - Manage Tags View
+struct ManageTagsView: View {
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var themeManager = ThemeManager.shared
+    @State private var userCategories: [Category] = []
+    @State private var selectedCategories: [String] = [] // Not used but required for CategoryManagerView
+    @State private var isLoadingCategories = false
+    @State private var showingCreateForm = false
+    @State private var newCategoryName = ""
+    @State private var selectedColorKey = ""
+    @State private var availableColors: [(key: String, hex: String, name: String)] = []
+    @State private var isLoading = false
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                GentleLightning.Colors.background(isDark: themeManager.isDarkMode)
+                    .ignoresSafeArea()
+                
+                if isLoadingCategories {
+                    VStack {
+                        ProgressView()
+                            .scaleEffect(1.2)
+                            .tint(GentleLightning.Colors.accentNeutral)
+                        Text("Loading Tags...")
+                            .font(GentleLightning.Typography.caption)
+                            .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
+                            .padding(.top, 8)
+                    }
+                } else {
+                    VStack(spacing: 0) {
+                        if showingCreateForm {
+                            // Create Tag Form
+                            CreateTagInlineView(
+                                categoryName: $newCategoryName,
+                                selectedColorKey: $selectedColorKey,
+                                availableColors: availableColors,
+                                onCancel: {
+                                    showingCreateForm = false
+                                    newCategoryName = ""
+                                    selectedColorKey = ""
+                                },
+                                onCreate: { name, colorKey in
+                                    createCategory(name: name, colorKey: colorKey)
+                                }
+                            )
+                        } else {
+                            // Header section with create button
+                            VStack(spacing: 16) {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Manage Tags")
+                                            .font(GentleLightning.Typography.heading)
+                                            .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+                                        
+                                        Text("View and organize your tags")
+                                            .font(GentleLightning.Typography.caption)
+                                            .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    Button(action: {
+                                        showingCreateForm = true
+                                        loadAvailableColors()
+                                    }) {
+                                        HStack(spacing: 6) {
+                                            Image(systemName: "plus")
+                                                .font(.system(size: 12, weight: .medium))
+                                            Text("New Tag")
+                                                .font(GentleLightning.Typography.caption)
+                                        }
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(GentleLightning.Colors.accentNeutral)
+                                        .cornerRadius(8)
+                                    }
+                                }
+                                .padding(.horizontal, 24)
+                                .padding(.top, 20)
+                                
+                                Divider()
+                                    .background(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode).opacity(0.2))
+                                    .padding(.horizontal, 24)
+                            }
+                            
+                            // Tags grid
+                            ScrollView {
+                                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
+                                    ForEach(userCategories) { category in
+                                        TagDisplayCard(category: category)
+                                    }
+                                }
+                                .padding(.horizontal, 24)
+                                .padding(.top, 20)
+                            }
+                            
+                            if userCategories.isEmpty {
+                                VStack(spacing: 16) {
+                                    Spacer()
+                                    
+                                    Image(systemName: "tag")
+                                        .font(.system(size: 48))
+                                        .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode).opacity(0.6))
+                                    
+                                    VStack(spacing: 8) {
+                                        Text("No tags yet")
+                                            .font(GentleLightning.Typography.title)
+                                            .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+                                        
+                                        Text("Create your first tag to organize your notes")
+                                            .font(GentleLightning.Typography.body)
+                                            .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
+                                            .multilineTextAlignment(.center)
+                                    }
+                                    
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 24)
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .foregroundColor(GentleLightning.Colors.accentNeutral)
+                }
+            }
+        }
+        .preferredColorScheme(themeManager.isDarkMode ? .dark : .light)
+        .onAppear {
+            loadCategories()
+        }
+    }
+    
+    private func loadCategories() {
+        isLoadingCategories = true
+        Task {
+            do {
+                // Run automatic cleanup before loading categories
+                await CategoryService.shared.runAutomaticCleanup()
+                
+                let categories = try await CategoryService.shared.getUserCategories()
+                await MainActor.run {
+                    userCategories = categories
+                    isLoadingCategories = false
+                }
+            } catch {
+                await MainActor.run {
+                    userCategories = []
+                    isLoadingCategories = false
+                }
+            }
+        }
+    }
+    
+    private func loadAvailableColors() {
+        Task {
+            do {
+                let colors = try await CategoryService.shared.getAvailableColors()
+                await MainActor.run {
+                    availableColors = colors.isEmpty ? CategoryService.availableColors : colors
+                    selectedColorKey = availableColors.first?.key ?? ""
+                }
+            } catch {
+                await MainActor.run {
+                    availableColors = CategoryService.availableColors
+                    selectedColorKey = availableColors.first?.key ?? ""
+                }
+            }
+        }
+    }
+    
+    private func createCategory(name: String, colorKey: String) {
+        isLoading = true
+        Task {
+            do {
+                let newCategory = try await CategoryService.shared.createCustomCategory(name: name, colorKey: colorKey)
+                
+                // Track category creation
+                AnalyticsManager.shared.trackCategoryCreated(categoryName: name, colorKey: colorKey)
+                
+                await MainActor.run {
+                    userCategories.append(newCategory)
+                    
+                    // Notify other views that categories have been updated
+                    NotificationCenter.default.post(name: .categoriesUpdated, object: nil)
+                    
+                    // Reset form but stay in tags view
+                    showingCreateForm = false
+                    newCategoryName = ""
+                    selectedColorKey = ""
+                    isLoading = false
+                }
+            } catch {
+                await MainActor.run {
+                    isLoading = false
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Tag Display Card (Read-only version for manage tags)
+struct TagDisplayCard: View {
+    let category: Category
+    @EnvironmentObject var themeManager: ThemeManager
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            // Color indicator
+            Circle()
+                .fill(category.uiColor)
+                .frame(width: 12, height: 12)
+                .overlay(
+                    Circle()
+                        .stroke(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode).opacity(0.2), lineWidth: 1)
+                )
+            
+            // Category name
+            Text(category.name)
+                .font(GentleLightning.Typography.body)
+                .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+                .lineLimit(1)
+            
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(GentleLightning.Colors.surface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode).opacity(0.2), lineWidth: 1)
+                )
+        )
+    }
+}
+
 // MARK: - Account Drawer View
 struct AccountDrawerView: View {
     @Binding var isPresented: Bool
@@ -1545,6 +1831,8 @@ struct AccountDrawerView: View {
     @State private var isDeletingAccount = false
     @State private var deleteError: String?
     @State private var showDeleteResult = false
+    @State private var showManageTags = false
+    @State private var showMoreActions = false
     @StateObject private var themeManager = ThemeManager.shared
     
     // Get app version info
@@ -1597,48 +1885,55 @@ struct AccountDrawerView: View {
                             RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.medium)
                                 .fill(GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
                         )
+                        
+                        // Manage Tags option
+                        Button(action: {
+                            showManageTags = true
+                        }) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Manage Tags")
+                                        .font(GentleLightning.Typography.body)
+                                        .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+                                }
+                                
+                                Spacer()
+                                
+                                Text("OPEN")
+                                    .font(GentleLightning.Typography.caption)
+                                    .foregroundColor(GentleLightning.Colors.accentNeutral)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .fill(GentleLightning.Colors.accentNeutral.opacity(0.1))
+                                    )
+                            }
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .padding(16)
+                        .background(
+                            RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.medium)
+                                .fill(GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
+                        )
                     }
                     
                     // Account actions
                     VStack(spacing: 16) {
-                    // Logout button
+                    // More Actions button
                     Button(action: {
-                        do {
-                            try FirebaseManager.shared.signOut()
-                        } catch {
-                            print("Sign out error: \(error)")
-                        }
-                        isPresented = false
+                        showMoreActions = true
                     }) {
                         HStack {
-                            Image(systemName: "arrow.right.square")
+                            Image(systemName: "ellipsis.circle")
                                 .font(GentleLightning.Typography.title)
-                            Text("Logout")
+                            Text("More Actions")
                                 .font(GentleLightning.Typography.body)
                             Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(GentleLightning.Typography.caption)
                         }
                         .foregroundColor(themeManager.isDarkMode ? GentleLightning.Colors.textPrimary(isDark: true) : GentleLightning.Colors.textBlack)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 16)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(themeManager.isDarkMode ? Color.black : GentleLightning.Colors.surface)
-                        )
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    
-                    // Delete Account button
-                    Button(action: {
-                        showDeleteConfirmation = true
-                    }) {
-                        HStack {
-                            Image(systemName: "trash")
-                                .font(GentleLightning.Typography.title)
-                            Text("Delete Account")
-                                .font(GentleLightning.Typography.body)
-                            Spacer()
-                        }
-                        .foregroundColor(GentleLightning.Colors.error)
                         .padding(.horizontal, 20)
                         .padding(.vertical, 16)
                         .background(
@@ -1686,6 +1981,28 @@ struct AccountDrawerView: View {
                 }
             }
         )
+        .sheet(isPresented: $showManageTags) {
+            ManageTagsView()
+        }
+        .actionSheet(isPresented: $showMoreActions) {
+            ActionSheet(
+                title: Text("More Actions"),
+                buttons: [
+                    .default(Text("Logout")) {
+                        do {
+                            try FirebaseManager.shared.signOut()
+                        } catch {
+                            print("Sign out error: \(error)")
+                        }
+                        isPresented = false
+                    },
+                    .destructive(Text("Delete Account")) {
+                        showDeleteConfirmation = true
+                    },
+                    .cancel()
+                ]
+            )
+        }
         .alert("Delete Account", isPresented: $showDeleteConfirmation) {
             Button("Delete", role: .destructive) {
                 isDeletingAccount = true
@@ -1845,18 +2162,31 @@ struct ContentView: View {
             }
             .padding(.top, 20)
         } else {
-            // Search results list
+            // Search results list - use different styling based on whether it's actual search vs showing all notes
+            let hasSearchText = !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            
             ScrollView {
-                LazyVStack(spacing: 8) {
+                LazyVStack(spacing: hasSearchText ? 8 : 12) {
                     ForEach(searchResults, id: \.firebaseId) { result in
-                        SearchResultRow(
-                            result: result,
-                            searchText: searchText,
-                            onTap: {
-                                handleSearchResultTap(result)
+                        if hasSearchText {
+                            // When there's search text, show SearchResultRow with relevance scores
+                            SearchResultRow(
+                                result: result,
+                                searchText: searchText,
+                                onTap: {
+                                    handleSearchResultTap(result)
+                                }
+                            )
+                            .padding(.horizontal, GentleLightning.Layout.Padding.xl)
+                        } else {
+                            // When showing all notes (category filter or no filter), use main app styling
+                            if let item = dataManager.items.first(where: { $0.firebaseId == result.firebaseId || $0.id == result.firebaseId }) {
+                                ItemRowSimple(item: item, dataManager: dataManager) {
+                                    handleSearchResultTap(result)
+                                }
+                                .padding(.horizontal, GentleLightning.Layout.Padding.xl)
                             }
-                        )
-                        .padding(.horizontal, GentleLightning.Layout.Padding.xl)
+                        }
                     }
                 }
                 .padding(.top, 8)
@@ -1903,7 +2233,9 @@ struct ContentView: View {
             .onTapGesture {
                 // Also dismiss keyboard when tapping in scroll area
                 if isInputFieldFocused {
+                    #if os(iOS)
                     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    #endif
                 }
             }
         }
@@ -1922,16 +2254,16 @@ struct ContentView: View {
                 inputFieldSection
                 itemsListSection
             }
-            .opacity(isSearchExpanded ? 0 : 1) // Hide entire main content when search is expanded
+            .opacity(isSearchExpanded ? 0.0 : 1.0) // Completely hide main content when search is expanded
             .scaleEffect(isSearchExpanded ? 0.92 : 1.0) // Subtle scale down effect
             .offset(y: isSearchExpanded ? -120 : 0) // Slide content up when search is expanded
             .blur(radius: isSearchExpanded ? 2 : 0) // Subtle blur effect when hidden
-            .animation(GentleLightning.Animation.silky, value: isSearchExpanded)
+            .animation(GentleLightning.Animation.swoosh, value: isSearchExpanded)
             
-            // Search bar overlay - always visible but positioned based on search state
+            // UNIFIED Search System - single SearchBarView with results below in proper VStack
             VStack(spacing: 0) {
                 if isSearchExpanded {
-                    // When search is expanded, position at top
+                    // Search bar at top
                     HStack {
                         SearchBarView(
                             isExpanded: $isSearchExpanded,
@@ -1947,18 +2279,31 @@ struct ContentView: View {
                             categories: dataManager.categories,
                             selectedCategoryId: $dataManager.selectedCategoryFilter
                         )
+                        .id("unique-search-bar") // Unique ID since this is the only SearchBarView instance
                         .padding(.horizontal, GentleLightning.Layout.Padding.xl)
                         .padding(.top, 16)
+                        .onAppear {
+                            print("🔍 ContentView: ONLY SearchBarView instance shown in EXPANDED mode")
+                        }
                     }
+                    .background(GentleLightning.Colors.background(isDark: themeManager.isDarkMode))
                     
-                    // Search results content
+                    // Search results content BELOW the search bar
                     ScrollView {
                         searchResultsView
                             .padding(.horizontal, GentleLightning.Layout.Padding.xl)
                     }
+                    .background(
+                        // Solid background to prevent transparency issues
+                        Rectangle()
+                            .fill(GentleLightning.Colors.background(isDark: themeManager.isDarkMode))
+                            .ignoresSafeArea(.all)
+                    )
                 }
+                
+                Spacer()
             }
-            .animation(GentleLightning.Animation.delightful, value: isSearchExpanded)
+            .animation(GentleLightning.Animation.swoosh, value: isSearchExpanded)
             
             // Floating options button overlay - anchored to bottom like original
             VStack {
@@ -1970,8 +2315,8 @@ struct ContentView: View {
                 }) {
                     Text("...")
                         .font(.system(size: 28, weight: .medium))
-                        .foregroundColor(.black)
-                        .frame(width: 60, height: 44)
+                        .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+                        .frame(width: 80, height: 60)
                         .multilineTextAlignment(.center)
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -1980,7 +2325,9 @@ struct ContentView: View {
             .scaleEffect(isSearchExpanded ? 0.9 : 1.0) // Subtle scale effect
             .offset(y: isSearchExpanded ? 20 : 0) // Slide down when hiding
             .animation(GentleLightning.Animation.silky, value: isSearchExpanded)
-            .ignoresSafeArea(.keyboard, edges: .bottom) // Hide when keyboard appears
+            #if os(iOS)
+            .ignoresSafeArea(.keyboard, edges: .bottom) // Hide when keyboard appears - iOS only
+            #endif
             .dismissKeyboardOnDrag()
         }
     }
@@ -1994,7 +2341,9 @@ struct ContentView: View {
                   onCommit: {
             // No automatic saving - users must use the SAVE button
             // Just dismiss keyboard when pressing return
+            #if os(iOS)
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            #endif
         },
                   isFieldFocused: $isInputFieldFocused,
                   hideMicrophone: isSearchExpanded, // Hide microphone when search is expanded
@@ -2004,54 +2353,50 @@ struct ContentView: View {
     
     @ViewBuilder
     private var notesSectionHeader: some View {
-        // My Notes header with search functionality overlay
-        ZStack {
-            // Base content: My Notes text and horizontal line
-            HStack {
-                Text("My Notes")
-                    .font(GentleLightning.Typography.caption)
-                    .foregroundColor(GentleLightning.Colors.textSecondary)
-                    .padding(.leading, GentleLightning.Layout.Padding.xl + GentleLightning.Layout.Padding.lg)
-                
-                Spacer()
-            }
-            .opacity(isSearchExpanded ? 0 : 1) // Hide when search is expanded
-            .scaleEffect(isSearchExpanded ? 0.95 : 1.0) // Subtle scale effect
-            .offset(y: isSearchExpanded ? -10 : 0) // Slide up when hiding
-            .animation(GentleLightning.Animation.silky, value: isSearchExpanded)
+        // My Notes header with search button aligned on same line
+        HStack {
+            Text("My Notes")
+                .font(GentleLightning.Typography.caption)
+                .foregroundColor(GentleLightning.Colors.textSecondary)
+                .padding(.leading, GentleLightning.Layout.Padding.xl + GentleLightning.Layout.Padding.lg)
             
-            // Overlay: Search bar
-            searchBarOverlay
+            Spacer()
+            
+            // Simple search magnifying glass button - only show when search is collapsed
+            if !isSearchExpanded {
+                Button(action: {
+                    print("🔍 ContentView: Search button tapped - expanding search")
+                    AnalyticsManager.shared.trackSearchInitiated()
+                    withAnimation(GentleLightning.Animation.delightful) {
+                        isSearchExpanded = true
+                    }
+                    // Show all notes when search is first opened
+                    showAllNotes()
+                    // Focus the search field after animation
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        isSearchFieldFocused = true
+                    }
+                }) {
+                    Image(systemName: GentleLightning.Icons.search)
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+                        .frame(width: 44, height: 44)
+                        .background(Color.clear)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(PlainButtonStyle())
+                .padding(.trailing, GentleLightning.Layout.Alignment.searchToMicrophoneTrailing) // Center-align with microphone icon - see design system for calculation
+                .onAppear {
+                    print("🔍 ContentView: Showing simple search button inline with 'My Notes' header")
+                }
+            }
         }
+        .opacity(isSearchExpanded ? 0 : 1) // Hide when search is expanded
+        .scaleEffect(isSearchExpanded ? 0.95 : 1.0) // Subtle scale effect
+        .offset(y: isSearchExpanded ? -10 : 0) // Slide up when hiding
+        .animation(GentleLightning.Animation.silky, value: isSearchExpanded)
         .padding(.top, 16)
         .padding(.bottom, 8)
-    }
-    
-    @ViewBuilder
-    private var searchBarOverlay: some View {
-        HStack {
-            if isSearchExpanded {
-                Spacer()
-                    .frame(width: 36) // Match the trailing padding when expanded
-            } else {
-                Spacer()
-            }
-            SearchBarView(
-                isExpanded: $isSearchExpanded,
-                searchText: $searchText,
-                searchResults: $searchResults,
-                isSearching: $isSearching,
-                searchTask: $searchTask,
-                hasSearched: $hasSearched,
-                isSearchFieldFocused: $isSearchFieldFocused,
-                onResultTap: handleSearchResultTap,
-                onSearch: performSearch,
-                onReindex: triggerReindexing,
-                categories: dataManager.categories,
-                selectedCategoryId: $dataManager.selectedCategoryFilter
-            )
-            .padding(.trailing, 36) // 20pt (outer) + 16pt (inner) to match microphone button center
-        }
     }
     
     @ViewBuilder 
@@ -2069,20 +2414,26 @@ struct ContentView: View {
             ScrollView {
                 itemsListContent
             }
+            #if os(iOS)
             .scrollDismissesKeyboard(.interactively)
+            #endif
             .simultaneousGesture(
                 DragGesture()
                     .onChanged { gesture in
-                        // Dismiss keyboard immediately when scrolling starts  
+                        // Dismiss keyboard immediately when scrolling starts (iOS only)
                         if abs(gesture.translation.height) > 10 && isInputFieldFocused {
+                            #if os(iOS)
                             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                            #endif
                         }
                     }
             )
             .onTapGesture {
-                // Also dismiss keyboard when tapping in scroll area
+                // Also dismiss keyboard when tapping in scroll area (iOS only)
                 if isInputFieldFocused {
+                    #if os(iOS)
                     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    #endif
                 }
             }
             .buttonStyle(PlainButtonStyle())
@@ -2180,7 +2531,9 @@ struct ContentView: View {
             .contentShape(Rectangle()) // Make the entire area tappable for keyboard dismissal
             .onTapGesture {
                 // Dismiss keyboard when tapping outside input area
+                #if os(iOS)
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                #endif
             }
             .onChange(of: isSearchExpanded) { newValue in
                 if newValue {
@@ -2245,6 +2598,29 @@ struct ContentView: View {
                 performSearch()
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .focusInputField)) { _ in
+            // Handle widget deep link - focus InputField and collapse search if expanded
+            print("📱 ContentView: Widget deep link detected - focusing InputField")
+            
+            // If search is expanded, collapse it first
+            if isSearchExpanded {
+                withAnimation(GentleLightning.Animation.delightful) {
+                    isSearchExpanded = false
+                }
+                // Focus InputField after search collapses
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                    isInputFieldFocused = true
+                }
+            } else {
+                // Focus InputField immediately if search is not expanded
+                isInputFieldFocused = true
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .categoriesUpdated)) { _ in
+            // Handle category updates - reload categories for search
+            print("📱 ContentView: Categories updated - reloading for search")
+            dataManager.loadCategories()
+        }
         } // NavigationStack
     
     private func loadMoreItems() {
@@ -2259,7 +2635,13 @@ struct ContentView: View {
     private func performSearch() {
         let trimmedSearchText = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         
-        // If no search text, show all notes (filtered by category if selected)
+        // If no search text AND no category filter, show all notes by default
+        if trimmedSearchText.isEmpty && dataManager.selectedCategoryFilter == nil {
+            showAllNotes()
+            return
+        }
+        
+        // If no search text but category filter is active, show filtered notes
         if trimmedSearchText.isEmpty {
             showAllNotes()
             return
@@ -2381,9 +2763,20 @@ struct ContentView: View {
         
         // Find the matching item in dataManager.items and navigate to it
         if let item = dataManager.items.first(where: { $0.firebaseId == result.firebaseId }) {
-            navigationPath.append(item)
-            // Keep search state preserved so user can return to search results
-            // Don't clear search state - user should return to their search results when navigating back
+            // Safely collapse search before navigation to prevent overlay conflicts
+            // This preserves all the beautiful animations while preventing crashes
+            if isSearchExpanded {
+                withAnimation(GentleLightning.Animation.swoosh) {
+                    isSearchExpanded = false
+                }
+                // Small delay to let the animation complete before navigation
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    navigationPath.append(item)
+                }
+            } else {
+                navigationPath.append(item)
+            }
+            // Keep search results and text preserved so user can return to their search
         }
     }
 }
@@ -2505,7 +2898,9 @@ struct FormattingToolbarView: View {
                 // Keyboard dismiss button
                 Button(action: { 
                     context.isEditingText = false
+                    #if os(iOS)
                     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    #endif
                 }) {
                     Image(systemName: "chevron.down")
                         .font(.system(size: 14, weight: .medium))
@@ -2711,6 +3106,11 @@ extension Color {
     }
 }
 
+extension ContentView {
+    // MARK: - Search View Management
+    // Note: Using direct SearchBarView instances with .id("main-search-bar") 
+    // to ensure SwiftUI treats them as the same view and prevents multiple instances
+}
 
 // MARK: - Search Bar View
 struct SearchBarView: View {
@@ -2731,14 +3131,48 @@ struct SearchBarView: View {
     
     @EnvironmentObject var themeManager: ThemeManager
     
+    // Debug identifier to track multiple instances
+    private let instanceId = UUID().uuidString.prefix(8)
+    
+    init(
+        isExpanded: Binding<Bool>,
+        searchText: Binding<String>,
+        searchResults: Binding<[SearchResult]>,
+        isSearching: Binding<Bool>,
+        searchTask: Binding<Task<Void, Never>?>,
+        hasSearched: Binding<Bool>,
+        isSearchFieldFocused: FocusState<Bool>.Binding,
+        onResultTap: @escaping (SearchResult) -> Void,
+        onSearch: @escaping () -> Void,
+        onReindex: @escaping () -> Void,
+        categories: [Category],
+        selectedCategoryId: Binding<String?>
+    ) {
+        self._isExpanded = isExpanded
+        self._searchText = searchText
+        self._searchResults = searchResults
+        self._isSearching = isSearching
+        self._searchTask = searchTask
+        self._hasSearched = hasSearched
+        self.isSearchFieldFocused = isSearchFieldFocused
+        self.onResultTap = onResultTap
+        self.onSearch = onSearch
+        self.onReindex = onReindex
+        self.categories = categories
+        self._selectedCategoryId = selectedCategoryId
+        
+        print("🔍 SearchBarView: CREATED new instance \(instanceId)")
+    }
+    
     var body: some View {
+        let _ = print("🔍 SearchBarView \(instanceId): Rendering body with isExpanded = \(isExpanded)")
         VStack(alignment: .trailing, spacing: 8) {
             // Horizontal search bar with magnifying glass
             HStack(alignment: .center) {
                 // Search input field - slides in from the right when expanded
                 if isExpanded {
                     HStack {
-                        Image(systemName: "magnifyingglass")
+                        Image(systemName: GentleLightning.Icons.search)
                             .font(.system(size: 16))
                             .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
                         
@@ -2748,7 +3182,14 @@ struct SearchBarView: View {
                             .accentColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
                             .focused(isSearchFieldFocused)
                             .onSubmit {
+                                print("🔍 SearchBarView \(instanceId): TextField onSubmit triggered")
                                 onSearch()
+                            }
+                            .onChange(of: isSearchFieldFocused.wrappedValue) { isFocused in
+                                print("🔍 SearchBarView \(instanceId): Focus changed to \(isFocused)")
+                                if !isFocused && isExpanded {
+                                    print("⚠️ SearchBarView \(instanceId): Field lost focus while expanded - this might indicate a focus conflict")
+                                }
                             }
                             .onLongPressGesture {
                                 // Debug feature: long press to trigger reindexing
@@ -2809,55 +3250,70 @@ struct SearchBarView: View {
                 Button(action: {
                     if isExpanded {
                         // Collapsing search
+                        print("🔍 SearchBarView: COLLAPSING search - setting isExpanded = false")
                         withAnimation(GentleLightning.Animation.swoosh) {
                             isExpanded = false
                         }
                         // Clear all search parameters when collapsing
+                        print("🔍 SearchBarView: Clearing search state and results")
                         searchText = ""
                         searchResults = []
                         hasSearched = false
                         searchTask?.cancel()
                         searchTask = nil
+                        print("🔍 SearchBarView \(instanceId): Setting isSearchFieldFocused = false")
                         isSearchFieldFocused.wrappedValue = false
                         // Clear category filter to return to showing all notes
                         selectedCategoryId = nil
                     } else {
                         // Expanding search
+                        print("🔍 SearchBarView \(instanceId): EXPANDING search - setting isExpanded = true")
                         withAnimation(GentleLightning.Animation.swoosh) {
                             isExpanded = true
                         }
                         // Focus immediately for better UX - user can start typing right away
+                        print("🔍 SearchBarView \(instanceId): Setting isSearchFieldFocused = true")
                         isSearchFieldFocused.wrappedValue = true
                         // Show all notes when search is first opened (default state)
+                        print("🔍 SearchBarView \(instanceId): Calling onSearch() to load initial results")
                         onSearch()
                     }
                 }) {
                     ZStack {
                         // Magnifying glass icon
-                        Image(systemName: "magnifyingglass")
+                        Image(systemName: GentleLightning.Icons.search)
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(GentleLightning.Colors.textSecondary)
+                            .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
                             .scaleEffect(isExpanded ? 0.0 : 1.0)
                             .opacity(isExpanded ? 0.0 : 1.0)
-                            .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                            .rotationEffect(.degrees(isExpanded ? -180 : 0)) // Opposite rotation to the X mark
                             .blur(radius: isExpanded ? 2 : 0)
-                            .animation(GentleLightning.Animation.delightful, value: isExpanded)
+                            .animation(GentleLightning.Animation.swoosh.delay(isExpanded ? 0 : 0.15), value: isExpanded)
                         
                         // X mark icon
                         Image(systemName: "xmark")
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(GentleLightning.Colors.textSecondary)
+                            .foregroundColor(themeManager.isDarkMode ? Color.black : Color.white)
                             .scaleEffect(isExpanded ? 1.0 : 0.0)
                             .opacity(isExpanded ? 1.0 : 0.0)
-                            .rotationEffect(.degrees(isExpanded ? 0 : -180))
+                            .rotationEffect(.degrees(isExpanded ? 0 : 180)) // Reverse rotation direction for smoother collapse
                             .blur(radius: isExpanded ? 0 : 2)
-                            .animation(GentleLightning.Animation.delightful.delay(isExpanded ? 0.15 : 0), value: isExpanded)
+                            .animation(GentleLightning.Animation.swoosh.delay(isExpanded ? 0.15 : 0), value: isExpanded)
                     }
                     .frame(width: 20, height: 20)
                 }
                 .buttonStyle(PlainButtonStyle())
                 .frame(width: 44, height: 44) // Increase tap target to Apple's recommended 44pt minimum
-                .contentShape(Rectangle()) // Make entire frame tappable
+                .background(
+                    Circle()
+                        .fill(themeManager.isDarkMode ? Color.white : Color.black)
+                        .overlay(
+                            Circle()
+                                .stroke(themeManager.isDarkMode ? Color.white.opacity(0.2) : Color.black.opacity(0.1), lineWidth: 1)
+                        )
+                )
+                .shadow(color: Color.black.opacity(0.15), radius: 4, x: 0, y: 2)
+                .contentShape(Circle()) // Make entire circle tappable
             }
             
             // Tag filter pills shown when search is expanded
@@ -2868,6 +3324,7 @@ struct SearchBarView: View {
             )
             
         }
+        .frame(maxWidth: .infinity, alignment: .trailing) // Ensure consistent positioning and prevent floating
     }
 }
 

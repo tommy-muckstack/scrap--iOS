@@ -567,9 +567,10 @@ struct FirebaseCategory: Codable {
 
 // MARK: - Keyboard Dismissal Extension
 extension View {
-    /// Adds a drag gesture to dismiss the keyboard when pulling down
+    /// Adds a drag gesture to dismiss the keyboard when pulling down (iOS only)
     func dismissKeyboardOnDrag() -> some View {
-        self.gesture(
+        #if os(iOS)
+        return self.gesture(
             DragGesture()
                 .onChanged { value in
                     // Only dismiss keyboard if dragging downward (positive height translation)
@@ -578,11 +579,16 @@ extension View {
                     }
                 }
         )
+        #else
+        return self
+        #endif
     }
     
-    /// Hides the keyboard by ending editing
+    /// Hides the keyboard by ending editing (iOS only)
     private func hideKeyboard() {
+        #if os(iOS)
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        #endif
     }
 }
 

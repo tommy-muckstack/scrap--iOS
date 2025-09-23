@@ -73,6 +73,18 @@ public class RichTextCoordinator: NSObject {
     
     /// Connect this coordinator to the actual textView (called from makeUIView)
     public func connectTextView(_ textView: UITextView) {
+        // Prevent duplicate connections to the same text view
+        if self.textView === textView {
+            print("⚠️ RichTextCoordinator: Already connected to this text view, skipping")
+            return
+        }
+        
+        // Clean up previous connection if exists
+        if self.textView != textView {
+            print("🧹 RichTextCoordinator: Disconnecting from previous text view \(self.textView)")
+            self.textView.delegate = nil
+        }
+        
         self.textView = textView
         setupTextView()
         syncInitialState()

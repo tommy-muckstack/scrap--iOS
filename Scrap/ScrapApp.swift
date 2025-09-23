@@ -4,6 +4,12 @@ import GoogleSignIn
 import UIKit
 import StoreKit
 
+// MARK: - Notification Names
+extension Notification.Name {
+    static let focusInputField = Notification.Name("focusInputField")
+    static let categoriesUpdated = Notification.Name("categoriesUpdated")
+}
+
 @MainActor
 class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
@@ -91,6 +97,16 @@ struct ScrapApp: App {
                 }
                 .onOpenURL { url in
                     print("SwiftUI: Handling URL: \(url)")
+                    
+                    // Handle widget deep links for note creation
+                    if url.scheme == "com.muckstack.scrap" && url.host == "create-note" {
+                        print("SwiftUI: Widget create-note URL detected")
+                        // Post notification to focus InputField
+                        NotificationCenter.default.post(name: .focusInputField, object: nil)
+                        return
+                    }
+                    
+                    // Handle Google Sign-In URLs
                     let handled = GIDSignIn.sharedInstance.handle(url)
                     print("SwiftUI: Google Sign-In handled URL: \(handled)")
                 }

@@ -288,7 +288,7 @@ struct AuthenticationView: View {
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                         
-                        Text("The world's simplest notepad")
+                        Text("The world's simplest notepad.")
                             .font(GentleLightning.Typography.title)
                             .foregroundColor(GentleLightning.Colors.textSecondary(isDark: false))
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -309,18 +309,10 @@ struct AuthenticationView: View {
                     }) {
                         HStack(spacing: 12) {
                             // Google G logo
-                            ZStack {
-                                Circle()
-                                    .fill(GentleLightning.Colors.background)
-                                    .frame(width: 24, height: 24)
-                                    .overlay(
-                                        Circle()
-                                            .stroke(GentleLightning.Colors.shadowLight, lineWidth: 1)
-                                    )
-                                Text("G")
-                                    .font(GentleLightning.Typography.caption)
-                                    .foregroundColor(Color(red: 0.26, green: 0.52, blue: 0.96))
-                            }
+                            Image("GoogleIconLight")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 20, height: 20)
                             
                             Text("Continue with Google")
                                 .font(GentleLightning.Typography.body)
@@ -721,7 +713,7 @@ struct EmailAuthView: View {
                         }
                 )
             }
-            .navigationTitle("Email Sign In")
+            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {

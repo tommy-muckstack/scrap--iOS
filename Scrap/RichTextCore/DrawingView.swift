@@ -61,16 +61,16 @@ struct DrawingEditorView: View {
             }
             .actionSheet(isPresented: $showingOptions) {
                 ActionSheet(
-                    title: Text("Drawing Options"),
+                    title: Text("Scribble Options"),
                     buttons: [
-                        .destructive(Text("Delete Drawing")) {
+                        .destructive(Text("Delete Scribble")) {
                             showingDeleteConfirmation = true
                         },
                         .cancel()
                     ]
                 )
             }
-            .alert("Delete Drawing", isPresented: $showingDeleteConfirmation) {
+            .alert("Delete Scribble", isPresented: $showingDeleteConfirmation) {
                 Button("Delete", role: .destructive) {
                     onDelete()
                     dismiss()
@@ -200,11 +200,11 @@ struct DrawingOptionsMenu: View {
     var body: some View {
         Menu {
             Button(action: { showingEditor = true }) {
-                Label("Edit Drawing", systemImage: "pencil")
+                Label("Edit Scribble", systemImage: "pencil")
             }
             
             Button(action: { showingDeleteConfirmation = true }) {
-                Label("Delete Drawing", systemImage: "trash")
+                Label("Delete Scribble", systemImage: "trash")
             }
         } label: {
             Image(systemName: "ellipsis.circle.fill")
@@ -227,7 +227,7 @@ struct DrawingOptionsMenu: View {
                 }
             )
         }
-        .alert("Delete Drawing", isPresented: $showingDeleteConfirmation) {
+        .alert("Delete Scribble", isPresented: $showingDeleteConfirmation) {
             Button("Delete", role: .destructive) {
                 onDelete(attachment)
             }

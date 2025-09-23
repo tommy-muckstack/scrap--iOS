@@ -7,16 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		ARCB5C085AB19FB847C75182ED /* AppStoreReviewManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AR6B54318B0DBBABADD413CA2A /* AppStoreReviewManager.swift */; };
-		FB278C4CB2A378355238193FA1 /* FixedBottomDrawingArea.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB5E37779F8FB657FA73F4A60C /* FixedBottomDrawingArea.swift */; };
-		DO22EF6301C71B2462B4C64710 /* DrawingOverlayManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DOD8C7102D79E20AB0D28D61AB /* DrawingOverlayManager.swift */; };
-		DV79E89AC389D89736E6DD85CB /* DrawingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DV1493A473BC9059A7BA221CB2 /* DrawingView.swift */; };
-		DT065B225F8776AB27F25855E4 /* DrawingTextAttachment.swift in Sources */ = {isa = PBXBuildFile; fileRef = DT7D6F3F7DC267AEB075D83B9C /* DrawingTextAttachment.swift */; };
 		1D1A2B2A2B1234567890ABCD /* ScrapApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1A2B292B1234567890ABCD /* ScrapApp.swift */; };
 		1D1A2B2C2B1234567890ABCE /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1A2B2B2B1234567890ABCE /* ContentView.swift */; };
 		1D1A2B2E2B1234567890ABCF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1D1A2B2D2B1234567890ABCF /* Assets.xcassets */; };
 		1D1A2B312B1234567890ABD0 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1D1A2B302B1234567890ABD0 /* Preview Assets.xcassets */; };
 		AA304E792F6F72980054DD41 /* AnalyticsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA304E7A2F6F72980054DD41 /* AnalyticsManager.swift */; };
+		ARCB5C085AB19FB847C75182ED /* Core/Services/AppStoreReviewManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AR6B54318B0DBBABADD413CA2A /* Core/Services/AppStoreReviewManager.swift */; };
 		BB304E782E6F72970054DD40 /* AmplitudeSwift in Frameworks */ = {isa = PBXBuildFile; productRef = BB304E772E6F72970054DD40 /* AmplitudeSwift */; };
 		BB304E782E6F72970054DD42 /* AmplitudeSwiftSessionReplayPlugin in Frameworks */ = {isa = PBXBuildFile; productRef = BB304E772E6F72970054DD42 /* AmplitudeSwiftSessionReplayPlugin */; };
 		BB304E7A2E6F9E750054DD40 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB304E792E6F9E750054DD40 /* GoogleService-Info.plist */; };
@@ -56,7 +52,11 @@
 		CC304E7B3F6F72990054DD42 /* TestContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC304E7C3F6F72990054DD42 /* TestContentView.swift */; };
 		DD304E862E6FA0000054DD42 /* FirebaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD304E872E6FA0000054DD42 /* FirebaseManager.swift */; };
 		DG37B0B88A72C027323CBED810 /* CoreGraphicsDebug.swift in Sources */ = {isa = PBXBuildFile; fileRef = DGBFEC794D87FF0597FBC1D270 /* CoreGraphicsDebug.swift */; };
+		DO22EF6301C71B2462B4C64710 /* RichTextCore/DrawingOverlayManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DOD8C7102D79E20AB0D28D61AB /* RichTextCore/DrawingOverlayManager.swift */; };
+		DT065B225F8776AB27F25855E4 /* RichTextCore/DrawingTextAttachment.swift in Sources */ = {isa = PBXBuildFile; fileRef = DT7D6F3F7DC267AEB075D83B9C /* RichTextCore/DrawingTextAttachment.swift */; };
+		DV79E89AC389D89736E6DD85CB /* RichTextCore/DrawingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DV1493A473BC9059A7BA221CB2 /* RichTextCore/DrawingView.swift */; };
 		EE304E882E6FA1000054DD43 /* AuthenticationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE304E892E6FA1000054DD43 /* AuthenticationView.swift */; };
+		FB278C4CB2A378355238193FA1 /* RichTextCore/FixedBottomDrawingArea.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB5E37779F8FB657FA73F4A60C /* RichTextCore/FixedBottomDrawingArea.swift */; };
 		FF304E8A2E6FA2000054DD44 /* ChromaService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF304E8B2E6FA2000054DD44 /* ChromaService.swift */; };
 		IA3B9BABEBD65C49F838AA4143 /* RichTextCore/RichTextInputAccessoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = IA0053424B563D671E01D14B43 /* RichTextCore/RichTextInputAccessoryView.swift */; };
 		NEC114F946C8D24C74D23822B8 /* NoteEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = NE5DDCCFCC62BAA7EE7261D21F /* NoteEditor.swift */; };
@@ -100,12 +100,10 @@
 		1D1A2B262B1234567890ABCC /* Scrap.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Scrap.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1D1A2B292B1234567890ABCD /* ScrapApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrapApp.swift; sourceTree = "<group>"; };
 		1D1A2B2B2B1234567890ABCE /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		AR6B54318B0DBBABADD413CA2A /* AppStoreReviewManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/Services/AppStoreReviewManager.swift; sourceTree = "<group>"; };
-		FB5E37779F8FB657FA73F4A60C /* FixedBottomDrawingArea.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/FixedBottomDrawingArea.swift; sourceTree = "<group>"; };
-		DOD8C7102D79E20AB0D28D61AB /* DrawingOverlayManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/DrawingOverlayManager.swift; sourceTree = "<group>"; };
 		1D1A2B2D2B1234567890ABCF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1D1A2B302B1234567890ABD0 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		AA304E7A2F6F72980054DD41 /* AnalyticsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsManager.swift; sourceTree = "<group>"; };
+		AR6B54318B0DBBABADD413CA2A /* Core/Services/AppStoreReviewManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/Services/AppStoreReviewManager.swift; sourceTree = "<group>"; };
 		BB304E792E6F9E750054DD40 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		BB304E862E6FA71E0054DD40 /* Scrap.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Scrap.entitlements; sourceTree = "<group>"; };
 		BB31A2AD2E79FD69001D7C46 /* SpaceMono-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceMono-Bold.ttf"; sourceTree = "<group>"; };
@@ -124,13 +122,15 @@
 		BBEF42692E76E0400079202D /* README.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = README.txt; sourceTree = "<group>"; };
 		BBEF426A2E76E0400079202D /* SpaceGrotesk-VariableFont_wght.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-VariableFont_wght.ttf"; sourceTree = "<group>"; };
 		CB9C978ACDF7B3C5EE3AA9E274 /* RichTextCore/CheckboxTextAttachment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/CheckboxTextAttachment.swift; sourceTree = "<group>"; };
-		DT7D6F3F7DC267AEB075D83B9C /* DrawingTextAttachment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/DrawingTextAttachment.swift; sourceTree = "<group>"; };
-		DV1493A473BC9059A7BA221CB2 /* DrawingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/DrawingView.swift; sourceTree = "<group>"; };
 		CC123456789012345678901A /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 		CC304E7C3F6F72990054DD42 /* TestContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestContentView.swift; sourceTree = "<group>"; };
 		DD304E872E6FA0000054DD42 /* FirebaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseManager.swift; sourceTree = "<group>"; };
 		DGBFEC794D87FF0597FBC1D270 /* CoreGraphicsDebug.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreGraphicsDebug.swift; sourceTree = "<group>"; };
+		DOD8C7102D79E20AB0D28D61AB /* RichTextCore/DrawingOverlayManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/DrawingOverlayManager.swift; sourceTree = "<group>"; };
+		DT7D6F3F7DC267AEB075D83B9C /* RichTextCore/DrawingTextAttachment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/DrawingTextAttachment.swift; sourceTree = "<group>"; };
+		DV1493A473BC9059A7BA221CB2 /* RichTextCore/DrawingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/DrawingView.swift; sourceTree = "<group>"; };
 		EE304E892E6FA1000054DD43 /* AuthenticationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationView.swift; sourceTree = "<group>"; };
+		FB5E37779F8FB657FA73F4A60C /* RichTextCore/FixedBottomDrawingArea.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/FixedBottomDrawingArea.swift; sourceTree = "<group>"; };
 		FF304E8B2E6FA2000054DD44 /* ChromaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChromaService.swift; sourceTree = "<group>"; };
 		IA0053424B563D671E01D14B43 /* RichTextCore/RichTextInputAccessoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/RichTextInputAccessoryView.swift; sourceTree = "<group>"; };
 		NE5DDCCFCC62BAA7EE7261D21F /* NoteEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteEditor.swift; sourceTree = "<group>"; };
@@ -218,13 +218,13 @@
 				BB304E792E6F9E750054DD40 /* GoogleService-Info.plist */,
 				1D1A2B292B1234567890ABCD /* ScrapApp.swift */,
 				1D1A2B2B2B1234567890ABCE /* ContentView.swift */,
-				AR6B54318B0DBBABADD413CA2A /* AppStoreReviewManager.swift */,
-				FB5E37779F8FB657FA73F4A60C /* FixedBottomDrawingArea.swift */,
-				DOD8C7102D79E20AB0D28D61AB /* DrawingOverlayManager.swift */,
+				AR6B54318B0DBBABADD413CA2A /* Core/Services/AppStoreReviewManager.swift */,
+				FB5E37779F8FB657FA73F4A60C /* RichTextCore/FixedBottomDrawingArea.swift */,
+				DOD8C7102D79E20AB0D28D61AB /* RichTextCore/DrawingOverlayManager.swift */,
 				WV4D495EF6CFBCA907B22BE841 /* RichTextCore/WaveformView.swift */,
 				CB9C978ACDF7B3C5EE3AA9E274 /* RichTextCore/CheckboxTextAttachment.swift */,
-				DT7D6F3F7DC267AEB075D83B9C /* DrawingTextAttachment.swift */,
-				DV1493A473BC9059A7BA221CB2 /* DrawingView.swift */,
+				DT7D6F3F7DC267AEB075D83B9C /* RichTextCore/DrawingTextAttachment.swift */,
+				DV1493A473BC9059A7BA221CB2 /* RichTextCore/DrawingView.swift */,
 				DGBFEC794D87FF0597FBC1D270 /* CoreGraphicsDebug.swift */,
 				NE5DDCCFCC62BAA7EE7261D21F /* NoteEditor.swift */,
 				VSBB8F96838EAF9CAB96FC412B /* VectorSearchService.swift */,
@@ -453,13 +453,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				1D1A2B2C2B1234567890ABCE /* ContentView.swift in Sources */,
-				ARCB5C085AB19FB847C75182ED /* AppStoreReviewManager.swift in Sources */,
-				FB278C4CB2A378355238193FA1 /* FixedBottomDrawingArea.swift in Sources */,
-				DO22EF6301C71B2462B4C64710 /* DrawingOverlayManager.swift in Sources */,
+				ARCB5C085AB19FB847C75182ED /* Core/Services/AppStoreReviewManager.swift in Sources */,
+				FB278C4CB2A378355238193FA1 /* RichTextCore/FixedBottomDrawingArea.swift in Sources */,
+				DO22EF6301C71B2462B4C64710 /* RichTextCore/DrawingOverlayManager.swift in Sources */,
 				WV324054AB161F2E7C28E40AB1 /* RichTextCore/WaveformView.swift in Sources */,
 				CB8B2374A7366A9664FA926D92 /* RichTextCore/CheckboxTextAttachment.swift in Sources */,
-				DT065B225F8776AB27F25855E4 /* DrawingTextAttachment.swift in Sources */,
-				DV79E89AC389D89736E6DD85CB /* DrawingView.swift in Sources */,
+				DT065B225F8776AB27F25855E4 /* RichTextCore/DrawingTextAttachment.swift in Sources */,
+				DV79E89AC389D89736E6DD85CB /* RichTextCore/DrawingView.swift in Sources */,
 				DG37B0B88A72C027323CBED810 /* CoreGraphicsDebug.swift in Sources */,
 				NEC114F946C8D24C74D23822B8 /* NoteEditor.swift in Sources */,
 				VSB265A2C19F0013D2789802D2 /* VectorSearchService.swift in Sources */,
@@ -619,7 +619,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Scrap/Scrap.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_ASSET_PATHS = "\"Scrap/Preview Content\"";
 				DEVELOPMENT_TEAM = K8NAZ76CBQ;
 				ENABLE_PREVIEWS = YES;
@@ -635,7 +635,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.5.0;
+				MARKETING_VERSION = 1.5.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.muckstack.scrap;
 				PRODUCT_NAME = Scrap;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -657,7 +657,7 @@
 				CODE_SIGN_ENTITLEMENTS = Scrap/Scrap.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_ASSET_PATHS = "\"Scrap/Preview Content\"";
 				DEVELOPMENT_TEAM = K8NAZ76CBQ;
 				ENABLE_PREVIEWS = YES;
@@ -673,7 +673,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.5.0;
+				MARKETING_VERSION = 1.5.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.muckstack.scrap;
 				PRODUCT_NAME = Scrap;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -695,7 +695,7 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CODE_SIGN_ENTITLEMENTS = ScrapWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = K8NAZ76CBQ;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -713,7 +713,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 1.5.0;
+				MARKETING_VERSION = 1.5.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.muckstack.scrap.ScrapWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -734,7 +734,7 @@
 				CODE_SIGN_ENTITLEMENTS = ScrapWidgetExtension.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = K8NAZ76CBQ;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -748,7 +748,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 1.5.0;
+				MARKETING_VERSION = 1.5.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.muckstack.scrap.ScrapWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;

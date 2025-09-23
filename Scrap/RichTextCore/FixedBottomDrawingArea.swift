@@ -10,12 +10,24 @@ struct FixedBottomDrawingArea: View {
     @Binding var drawingColor: DrawingColor
     @State private var showingDrawingEditor = false
     @State private var canvasView = PKCanvasView()
+    @State private var isKeyboardVisible = false
     
     let onDrawingChanged: (Data?) -> Void
     
     private let defaultHeight: CGFloat = 200
     private let minHeight: CGFloat = 150
     private let maxHeight: CGFloat = 400
+    
+    /// Compute the adaptive height based on keyboard visibility
+    private var adaptiveHeight: CGFloat {
+        if isKeyboardVisible {
+            // When keyboard is visible, reduce height to 1/3
+            return drawingHeight / 3
+        } else {
+            // When keyboard is hidden, use normal height
+            return drawingHeight
+        }
+    }
     
     init(
         drawingData: Binding<Data?>,
@@ -33,17 +45,35 @@ struct FixedBottomDrawingArea: View {
         VStack(spacing: 0) {
             // Drawing area
             drawingAreaView
-                .frame(height: drawingHeight)
+                .frame(height: adaptiveHeight)
                 .background(Color(.systemGray6))
                 .overlay(
                     RoundedRectangle(cornerRadius: 8)
                         .stroke(Color(.systemGray4), lineWidth: 1)
                 )
                 .clipped()
+                .animation(.smooth(duration: 0.4, extraBounce: 0.1), value: isKeyboardVisible)
         }
         .background(Color(.systemBackground))
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
+            // Extract keyboard animation duration from notification for perfect sync
+            let keyboardDuration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double ?? 0.25
+            let keyboardCurve = notification.userInfo?[UIResponder.keyboardAnimationCurveUserInfoKey] as? UInt ?? 7
+            
+            withAnimation(.timingCurve(0.25, 0.1, 0.25, 1.0, duration: keyboardDuration)) {
+                isKeyboardVisible = true
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { notification in
+            // Extract keyboard animation duration from notification for perfect sync
+            let keyboardDuration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double ?? 0.25
+            
+            withAnimation(.timingCurve(0.25, 0.1, 0.25, 1.0, duration: keyboardDuration)) {
+                isKeyboardVisible = false
+            }
+        }
         .sheet(isPresented: $showingDrawingEditor) {
             DrawingEditorView(
                 drawingData: $drawingData,
@@ -71,12 +101,13 @@ struct FixedBottomDrawingArea: View {
             // Show existing drawing with Open button overlay
             ZStack(alignment: .topTrailing) {
                 DrawingDisplayView(drawingData: data)
+                    .scaleEffect(isKeyboardVisible ? 0.95 : 1.0)
                     .onTapGesture {
                         showingDrawingEditor = true
                     }
                 
-                // "Open" button in top-right corner
-                Button("Open") {
+                // "Open Scribble" button in top-right corner
+                Button("Open Scribble") {
                     showingDrawingEditor = true
                 }
                 .font(.custom("SpaceGrotesk-Medium", size: 12))

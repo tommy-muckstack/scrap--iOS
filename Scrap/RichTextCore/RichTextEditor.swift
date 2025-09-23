@@ -79,13 +79,14 @@ public struct RichTextEditor: UIViewRepresentable {
         // Configure selection and editing behaviors
         textView.clearsOnInsertion = false
         
-        // Enable copy/paste menu
-        textView.canCancelContentTouches = true
-        textView.delaysContentTouches = true
-        
         // CRITICAL: Enable interactive keyboard dismissal
         // This allows the native iOS swipe-down-to-dismiss gesture
         textView.keyboardDismissMode = .interactive
+        
+        // CRITICAL: Configure touch handling for proper keyboard dismissal
+        // Don't cancel touches that could be drag gestures for keyboard dismissal
+        textView.canCancelContentTouches = false  // Allow drag gestures to pass through
+        textView.delaysContentTouches = false     // Don't delay touch delivery for responsiveness
         
         // Font and appearance
         textView.font = UIFont(name: self.context.fontName, size: self.context.fontSize) ?? 
@@ -113,6 +114,16 @@ public struct RichTextEditor: UIViewRepresentable {
             print("✅ RichTextEditor: Successfully connected DrawingOverlayManager to coordinator")
         } else {
             print("⚠️ RichTextEditor: No DrawingOverlayManager available, will use fallback NSTextAttachment method")
+        }
+        
+        // Clean up any existing custom gesture recognizers first
+        textView.gestureRecognizers?.forEach { recognizer in
+            if let tapGR = recognizer as? UITapGestureRecognizer,
+               tapGR.numberOfTapsRequired == 1,
+               tapGR.delegate is RichTextCoordinator {
+                print("🧹 RichTextEditor: Removing existing tap gesture recognizer")
+                textView.removeGestureRecognizer(recognizer)
+            }
         }
         
         // Add tap gesture for checkbox and drawing toggling
