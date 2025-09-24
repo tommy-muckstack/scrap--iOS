@@ -37,12 +37,16 @@ struct NoteEditor: View {
         self.item = item
         self.dataManager = dataManager
         
+        print("🔍 NoteEditor init - item.title: '\(item.title)', item.id: \(item.id)")
+        
         // Initialize with plain text first for fast display, load RTF asynchronously
         let initialText = Self.createFormattedText(from: item.content)
         
         self._editedText = State(initialValue: initialText)
         self._editedTitle = State(initialValue: item.title)
         self._selectedCategories = State(initialValue: item.categoryIds)
+        
+        print("🔍 NoteEditor init complete - editedTitle initialized to: '\(item.title)'")
     }
     
     var body: some View {
@@ -51,11 +55,16 @@ struct NoteEditor: View {
                 // Skeletal loading state
                 NoteEditorSkeleton()
                     .transition(.opacity)
+                    .onAppear {
+                        print("🔍 Showing skeleton loading for item: \(item.id)")
+                    }
             } else {
                 // Main content
                 VStack(spacing: 0) {
+                    let _ = print("🔍 Main content VStack rendered - editedTitle: '\(editedTitle)'")
                     // Title field
                     ZStack(alignment: .topLeading) {
+                        let _ = print("🔍 Rendering title ZStack - editedTitle: '\(editedTitle)', isEmpty: \(editedTitle.isEmpty)")
                         // Placeholder text
                         if editedTitle.isEmpty {
                             Text("Title (optional)")
@@ -79,6 +88,10 @@ struct NoteEditor: View {
                             .fixedSize(horizontal: false, vertical: true)
                             .frame(minHeight: 36, maxHeight: 110) // Expandable from 1 to 3 lines
                             .focused($isTitleFocused)
+                            .id("title-editor-\(item.id)")  // Force recreation when note changes
+                            .onAppear {
+                                print("🔍 TextEditor onAppear - editedTitle: '\(editedTitle)', isEmpty: \(editedTitle.isEmpty), isDarkMode: \(themeManager.isDarkMode)")
+                            }
                             .onChange(of: editedTitle) { newTitle in
                                 // Track title changes
                                 AnalyticsManager.shared.trackTitleChanged(noteId: item.firebaseId ?? item.id, titleLength: newTitle.count)
@@ -226,6 +239,7 @@ struct NoteEditor: View {
                 
                 // Provide immediate feedback and dismiss
                 withAnimation(.easeInOut(duration: 0.2)) {
+                    print("🔍 Setting showingSkeleton = false (back button)")
                     showingSkeleton = false
                 }
                 
@@ -408,6 +422,7 @@ struct NoteEditor: View {
                 
                 // Hide skeleton immediately
                 withAnimation(.easeOut(duration: 0.1)) {
+                    print("🔍 Setting showingSkeleton = false (onAppear)")
                     showingSkeleton = false
                 }
                 
