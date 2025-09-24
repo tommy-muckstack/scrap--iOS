@@ -59,9 +59,8 @@ struct NoteEditor: View {
                         print("🔍 Showing skeleton loading for item: \(item.id)")
                     }
             } else {
-                // Main content with keyboard avoidance
-                ScrollView {
-                    VStack(spacing: 0) {
+                // Main content
+                VStack(spacing: 0) {
                         let _ = print("🔍 Main content VStack rendered - editedTitle: '\(editedTitle)'")
                         // Title field - simple single line
                         TextField("Title (optional)", text: $editedTitle)
@@ -101,8 +100,8 @@ struct NoteEditor: View {
                         textView.tintColor = UIColor.label
                         
                         // Improve text alignment and padding to match placeholder
-                        // Reduced bottom padding since ScrollView handles keyboard avoidance
-                        textView.textContainerInset = UIEdgeInsets(top: 8, left: 0, bottom: 20, right: 0)
+                        // Increased bottom padding for keyboard accessibility
+                        textView.textContainerInset = UIEdgeInsets(top: 8, left: 0, bottom: 300, right: 0)
                         textView.textContainer.lineFragmentPadding = 4
                         
                         // Better line spacing for readability
@@ -175,9 +174,7 @@ struct NoteEditor: View {
                     
                     Divider()
                     
-                    }
                 }
-                .scrollDismissesKeyboard(.interactively)
                 .opacity(isContentVisible ? 1 : 0)
                 .scaleEffect(isContentVisible ? 1 : 0.95)
                 .transition(.opacity)
