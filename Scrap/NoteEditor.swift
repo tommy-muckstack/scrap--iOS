@@ -29,7 +29,6 @@ struct NoteEditor: View {
     
     // MARK: - Animation States
     @State private var isContentVisible = false
-    @State private var titleFieldScale: CGFloat = 0.95
     @State private var editorScale: CGFloat = 0.95
     @State private var navigationButtonScale: CGFloat = 1.0
     @State private var optionsButtonScale: CGFloat = 1.0
@@ -63,32 +62,23 @@ struct NoteEditor: View {
                                 .font(GentleLightning.Typography.title)
                                 .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode).opacity(0.6))
                                 .padding(.horizontal, 16)
-                                .padding(.top, 16 + 8) // Match TextEditor padding + text offset
+                                .padding(.top, 8 + 8) // Match TextEditor padding + text offset
                                 .allowsHitTesting(false)
                         }
                         
                         // Multiline text editor for title
                         TextEditor(text: $editedTitle)
                             .font(GentleLightning.Typography.title)
-                            .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+                            .foregroundColor(themeManager.isDarkMode ? .white : .black)
+                            .accentColor(themeManager.isDarkMode ? .white : .black)
                             .scrollContentBackground(.hidden)
-                            .background(Color.clear)
+                            .background(themeManager.isDarkMode ? Color.black : Color.white)
                             .padding(.horizontal, 16)
-                            .padding(.top, 16)
-                            .padding(.bottom, 16)
-                            .frame(minHeight: 60, maxHeight: 120) // Accommodate ~3 lines at 28pt font
-                            .scaleEffect(titleFieldScale)
+                            .padding(.top, 8)
+                            .padding(.bottom, 8)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(minHeight: 36, maxHeight: 110) // Expandable from 1 to 3 lines
                             .focused($isTitleFocused)
-                            .onTapGesture {
-                                withAnimation(GentleLightning.Animation.elastic) {
-                                    titleFieldScale = 1.0
-                                }
-                            }
-                            .onChange(of: isTitleFocused) { isFocused in
-                                withAnimation(GentleLightning.Animation.gentle) {
-                                    titleFieldScale = isFocused ? 1.0 : 0.95
-                                }
-                            }
                             .onChange(of: editedTitle) { newTitle in
                                 // Track title changes
                                 AnalyticsManager.shared.trackTitleChanged(noteId: item.firebaseId ?? item.id, titleLength: newTitle.count)
@@ -1264,6 +1254,7 @@ struct CreateTagInlineView: View {
 
 // MARK: - Note Editor Skeleton Loading View
 struct NoteEditorSkeleton: View {
+    @EnvironmentObject var themeManager: ThemeManager
     @State private var animateShimmer = false
     
     var body: some View {
@@ -1293,7 +1284,7 @@ struct NoteEditorSkeleton: View {
             
             Spacer()
         }
-        .background(Color(UIColor.systemBackground))
+        .background(GentleLightning.Colors.background(isDark: themeManager.isDarkMode))
     }
 }
 

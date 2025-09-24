@@ -2407,7 +2407,7 @@ struct ContentView: View {
         HStack {
             Text("My Notes")
                 .font(GentleLightning.Typography.caption)
-                .foregroundColor(GentleLightning.Colors.textBlack)
+                .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
                 .padding(.leading, GentleLightning.Layout.Padding.xl + GentleLightning.Layout.Padding.lg)
             
             Spacer()

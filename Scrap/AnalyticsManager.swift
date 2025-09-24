@@ -25,7 +25,7 @@ class AnalyticsManager: ObservableObject {
         
         // Session Replay sample rate
         let sampleRate: Float = 1.0 // 100% of sessions for comprehensive coverage
-        sessionReplayPlugin = AmplitudeSwiftSessionReplayPlugin(sampleRate: sampleRate)
+        sessionReplayPlugin = AmplitudeSwiftSessionReplayPlugin(sampleRate: sampleRate, maskLevel: .light)
         
         amplitude = Amplitude(configuration: configuration)
         
