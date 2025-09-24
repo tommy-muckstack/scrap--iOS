@@ -62,46 +62,25 @@ struct NoteEditor: View {
                 // Main content
                 VStack(spacing: 0) {
                     let _ = print("🔍 Main content VStack rendered - editedTitle: '\(editedTitle)'")
-                    // Title field
-                    ZStack(alignment: .topLeading) {
-                        let _ = print("🔍 Rendering title ZStack - editedTitle: '\(editedTitle)', isEmpty: \(editedTitle.isEmpty)")
-                        // Placeholder text
-                        if editedTitle.isEmpty {
-                            Text("Title (optional)")
-                                .font(GentleLightning.Typography.title)
-                                .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode).opacity(0.6))
-                                .padding(.horizontal, 16)
-                                .padding(.top, 8 + 8) // Match TextEditor padding + text offset
-                                .allowsHitTesting(false)
+                    // Title field - simple single line
+                    TextField("Title (optional)", text: $editedTitle)
+                        .font(GentleLightning.Typography.title)
+                        .foregroundColor(themeManager.isDarkMode ? .white : .black)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .focused($isTitleFocused)
+                        .onChange(of: editedTitle) { newTitle in
+                            // Track title changes
+                            AnalyticsManager.shared.trackTitleChanged(noteId: item.firebaseId ?? item.id, titleLength: newTitle.count)
+                            
+                            // Debounce title updates for better performance  
+                            autoSaveTimer?.invalidate()
+                            autoSaveTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { _ in
+                                updateTitle(newTitle)
+                            }
                         }
-                        
-                        // Multiline text editor for title
-                        TextEditor(text: $editedTitle)
-                            .font(GentleLightning.Typography.title)
-                            .foregroundColor(themeManager.isDarkMode ? .white : .black)
-                            .accentColor(themeManager.isDarkMode ? .white : .black)
-                            .colorScheme(themeManager.isDarkMode ? .dark : .light)
-                            .padding(.horizontal, 16)
-                            .padding(.top, 8)
-                            .padding(.bottom, 8)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .frame(minHeight: 36, maxHeight: 110) // Expandable from 1 to 3 lines
-                            .focused($isTitleFocused)
-                            .id("title-editor-\(item.id)")  // Force recreation when note changes
-                            .onAppear {
-                                print("🔍 TextEditor onAppear - editedTitle: '\(editedTitle)', isEmpty: \(editedTitle.isEmpty), isDarkMode: \(themeManager.isDarkMode)")
-                            }
-                            .onChange(of: editedTitle) { newTitle in
-                                // Track title changes
-                                AnalyticsManager.shared.trackTitleChanged(noteId: item.firebaseId ?? item.id, titleLength: newTitle.count)
-                                
-                                // Debounce title updates for better performance  
-                                autoSaveTimer?.invalidate()
-                                autoSaveTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { _ in
-                                    updateTitle(newTitle)
-                                }
-                            }
-                    }
                     
                     // Rich Text editor with drawing manager for inline drawing thumbnail tap detection
                     RichTextEditor(
