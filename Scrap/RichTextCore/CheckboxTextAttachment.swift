@@ -8,13 +8,15 @@ class CheckboxTextAttachment: NSTextAttachment {
     
     // MARK: - Properties
     
+    /// Static image cache for checkbox states - shared across all instances for better performance
+    private static var imageCache: [String: UIImage] = [:]
+    private static var cacheQueue = DispatchQueue(label: "checkbox.image.cache", qos: .userInteractive)
+    
     /// The checkbox state - this is the source of truth
     var isChecked: Bool = false {
         didSet {
             if isChecked != oldValue {
-                print("🔄 CheckboxTextAttachment: State changed to \(isChecked)")
-                
-                // Clear cached content to force redraw
+                // Clear cached content to force redraw (only instance-specific cache)
                 contents = nil
                 image = nil
                 
@@ -39,6 +41,13 @@ class CheckboxTextAttachment: NSTextAttachment {
     /// Size of the checkbox (optimized for easy touch targets)
     private let checkboxSize = CGSize(width: 28, height: 28)
     
+    /// Clear the image cache - useful for memory management
+    static func clearImageCache() {
+        cacheQueue.async {
+            imageCache.removeAll()
+        }
+    }
+    
     // MARK: - Text Storage Integration
     
     /// Update the text storage to reflect the current checkbox state
@@ -46,7 +55,6 @@ class CheckboxTextAttachment: NSTextAttachment {
     private func updateTextStorage() {
         guard let textView = textView,
               characterRange.location != NSNotFound else {
-            print("⚠️ CheckboxTextAttachment.updateTextStorage: Missing textView or invalid range")
             return
         }
         
@@ -60,11 +68,8 @@ class CheckboxTextAttachment: NSTextAttachment {
               characterRange.location < textStorage.length &&
               characterRange.length > 0 &&
               characterRange.location + characterRange.length <= textStorage.length else {
-            print("⚠️ CheckboxTextAttachment.updateTextStorage: Invalid range \(characterRange) for text length \(textStorage.length)")
             return
         }
-        
-        print("🔄 CheckboxTextAttachment.updateTextStorage: Updating character range \(characterRange) to state \(isChecked)")
         
         // Apply strikethrough formatting to the entire line containing this checkbox
         applyStrikethroughToLine()
@@ -171,12 +176,6 @@ class CheckboxTextAttachment: NSTextAttachment {
     override func image(forBounds imageBounds: CGRect, 
                        textContainer: NSTextContainer?, 
                        characterIndex charIndex: Int) -> UIImage? {
-        print("🖼️ CheckboxTextAttachment.image: Called for bounds \(imageBounds), checked: \(isChecked)")
-        
-        // Always generate fresh image - no caching for proper state updates
-        contents = nil
-        image = nil
-        
         // Store character index if not already set
         if characterRange.location == NSNotFound {
             characterRange = NSRange(location: charIndex, length: 1)
@@ -184,9 +183,31 @@ class CheckboxTextAttachment: NSTextAttachment {
         
         // Validate bounds to prevent CoreGraphics NaN errors
         let safeBounds = validateBounds(imageBounds)
+        
+        // Generate cache key based on state and bounds
+        let cacheKey = "\(isChecked)_\(Int(safeBounds.width))x\(Int(safeBounds.height))"
+        
+        // Try to get cached image first
+        if let cachedImage = Self.imageCache[cacheKey] {
+            return cachedImage
+        }
+        
+        // Generate new image and cache it
         let generatedImage = generateCheckboxImage(bounds: safeBounds)
         
-        print("✅ CheckboxTextAttachment.image: Generated fresh image with safe bounds \(safeBounds)")
+        // Cache the generated image for future use
+        Self.cacheQueue.async {
+            Self.imageCache[cacheKey] = generatedImage
+            
+            // Prevent cache from growing too large - keep only last 20 images
+            if Self.imageCache.count > 20 {
+                let oldestKeys = Array(Self.imageCache.keys.prefix(10))
+                for key in oldestKeys {
+                    Self.imageCache.removeValue(forKey: key)
+                }
+            }
+        }
+        
         return generatedImage
     }
     
