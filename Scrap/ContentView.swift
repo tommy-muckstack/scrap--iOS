@@ -726,18 +726,28 @@ class FirebaseDataManager: ObservableObject {
             
             self.items = allItems
             
-            // Index existing notes for vector search
-            Task {
-                do {
-                    // Test connection first
-                    let isConnected = try await VectorSearchService.shared.testConnection()
-                    if isConnected {
-                        await VectorSearchService.shared.reindexAllNotes(firebaseNotes)
-                    } else {
-                        print("⚠️ ChromaDB connection failed, vector search will not be available")
+            // Index existing notes for vector search only when truly needed (not during navigation)
+            // Only reindex if we haven't indexed recently or if items count changed significantly
+            let currentCount = firebaseNotes.count
+            let shouldIndex = self.lastVectorIndexCount != currentCount && 
+                              (self.lastVectorIndexCount == -1 || abs(currentCount - self.lastVectorIndexCount) > 0)
+            
+            if shouldIndex {
+                self.lastVectorIndexCount = currentCount
+                
+                if self.lastVectorIndexCount == currentCount && currentCount > 0 {
+                    // Delay indexing to not block navigation
+                    Task {
+                        try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second delay
+                        do {
+                            let isConnected = try await VectorSearchService.shared.testConnection()
+                            if isConnected {
+                                await VectorSearchService.shared.reindexAllNotes(firebaseNotes)
+                            }
+                        } catch {
+                            // Silently handle vector search errors to avoid performance impact
+                        }
                     }
-                } catch {
-                    print("⚠️ Failed to test ChromaDB connection or index notes: \(error)")
                 }
             }
         }
@@ -2119,6 +2129,9 @@ struct ContentView: View {
     @State private var hasSearched = false
     @State private var isSearching = false
     @FocusState private var isSearchFieldFocused: Bool
+    
+    // Vector indexing optimization
+    @State private var lastVectorIndexCount = -1
     
     // Pagination
     @State private var displayedItemsCount = 10

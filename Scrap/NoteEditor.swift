@@ -37,16 +37,12 @@ struct NoteEditor: View {
         self.item = item
         self.dataManager = dataManager
         
-        print("🔍 NoteEditor init - item.title: '\(item.title)', item.id: \(item.id)")
-        
         // Initialize with plain text first for fast display, load RTF asynchronously
         let initialText = Self.createFormattedText(from: item.content)
         
         self._editedText = State(initialValue: initialText)
         self._editedTitle = State(initialValue: item.title)
         self._selectedCategories = State(initialValue: item.categoryIds)
-        
-        print("🔍 NoteEditor init complete - editedTitle initialized to: '\(item.title)'")
     }
     
     var body: some View {
@@ -55,13 +51,9 @@ struct NoteEditor: View {
                 // Skeletal loading state
                 NoteEditorSkeleton()
                     .transition(.opacity)
-                    .onAppear {
-                        print("🔍 Showing skeleton loading for item: \(item.id)")
-                    }
             } else {
                 // Main content
                 VStack(spacing: 0) {
-                        let _ = print("🔍 Main content VStack rendered - editedTitle: '\(editedTitle)'")
                         // Title field - simple single line
                         TextField("Title (optional)", text: $editedTitle)
                         .font(GentleLightning.Typography.title)
@@ -72,13 +64,12 @@ struct NoteEditor: View {
                         .truncationMode(.tail)
                         .focused($isTitleFocused)
                         .onChange(of: editedTitle) { newTitle in
-                            // Track title changes
-                            AnalyticsManager.shared.trackTitleChanged(noteId: item.firebaseId ?? item.id, titleLength: newTitle.count)
-                            
                             // Debounce title updates for better performance  
                             autoSaveTimer?.invalidate()
                             autoSaveTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { _ in
                                 updateTitle(newTitle)
+                                // Track title changes only when actually saving
+                                AnalyticsManager.shared.trackTitleChanged(noteId: item.firebaseId ?? item.id, titleLength: newTitle.count)
                             }
                         }
                     
@@ -208,18 +199,10 @@ struct NoteEditor: View {
         .navigationBarBackButtonHidden(true)
         .navigationBarItems(
             leading: Button(action: { 
-                // Track back button
+                // Track back button and note closed time
                 AnalyticsManager.shared.trackBackButtonTapped(fromScreen: "note_editor")
-                
-                // Track note closed with time spent
                 let timeSpent = Date().timeIntervalSince(noteOpenTime)
                 AnalyticsManager.shared.trackNoteClosed(noteId: item.firebaseId ?? item.id, timeSpent: timeSpent)
-                
-                // Provide immediate feedback and dismiss
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    print("🔍 Setting showingSkeleton = false (back button)")
-                    showingSkeleton = false
-                }
                 
                 // Dismiss immediately for smooth animation, save content in background
                 dismiss()
@@ -366,11 +349,6 @@ struct NoteEditor: View {
                 isContentVisible = true
             }
             
-            // Load content immediately without delay for better performance
-            Task {
-                loadCategories()
-            }
-            
             // Load content immediately for snappy performance
             Task { @MainActor in
                 // Load RTF data immediately without delays
@@ -383,13 +361,10 @@ struct NoteEditor: View {
                             documentAttributes: nil
                         )
                         
-                        // CRITICAL: Convert ASCII markers back to interactive checkbox attachments
-                        print("🔧 NoteEditor: Converting loaded RTF checkboxes for display")
+                        // Convert ASCII markers back to interactive checkbox attachments
                         finalText = SparkItem.prepareForDisplay(loadedRTF)
-                        print("🔧 NoteEditor: Checkbox conversion complete")
                         
                     } catch {
-                        print("❌ NoteEditor: Failed to load RTF, using formatted text: \(error)")
                         finalText = Self.createFormattedText(from: item.content)
                     }
                 }
@@ -400,12 +375,13 @@ struct NoteEditor: View {
                 
                 // Hide skeleton immediately
                 withAnimation(.easeOut(duration: 0.1)) {
-                    print("🔍 Setting showingSkeleton = false (onAppear)")
                     showingSkeleton = false
                 }
-                
-                // Note: Removed automatic text focus to keep keyboard down when opening notes
-                // Users can tap anywhere to start typing or interact with checkboxes
+            }
+            
+            // Load categories in background to avoid blocking UI
+            Task {
+                loadCategories()
             }
         }
         .onDisappear {
@@ -717,26 +693,13 @@ struct RichFormattingToolbar: View {
     @ObservedObject var context: RichTextContext
     
     var body: some View {
-        GeometryReader { geometry in
-            let availableWidth = geometry.size.width
-            let safeWidth = availableWidth.isFinite && availableWidth > 0 ? availableWidth : 320
-            
-            // Calculate equal spacing for all buttons including dismiss
-            let totalPadding: CGFloat = 32 // 16pt on each side
-            let totalButtons: CGFloat = 8 // 7 formatting buttons + 1 dismiss button
-            let totalSpacing = totalButtons - 1 // spaces between buttons
-            let buttonSpacing: CGFloat = 6 // Consistent spacing between all buttons
-            let usedSpacing = totalSpacing * buttonSpacing
-            let availableForButtons = safeWidth - totalPadding - usedSpacing
-            let buttonWidth = max(32, availableForButtons / totalButtons)
-            
-            HStack(spacing: buttonSpacing) {
+        HStack(spacing: 8) {
                 // Bold button
                 Button(action: { context.toggleBold() }) {
                     Text("B")
                         .font(.system(size: 16, weight: .bold))
                         .foregroundColor(context.isBoldActive ? .white : .primary)
-                        .frame(width: buttonWidth, height: 32)
+                        .frame(width: 36, height: 32)
                         .background(context.isBoldActive ? Color.black : Color.clear)
                         .cornerRadius(8)
                 }
@@ -748,7 +711,7 @@ struct RichFormattingToolbar: View {
                         .font(.system(size: 16, weight: .medium))
                         .italic()
                         .foregroundColor(context.isItalicActive ? .white : .primary)
-                        .frame(width: buttonWidth, height: 32)
+                        .frame(width: 36, height: 32)
                         .background(context.isItalicActive ? Color.black : Color.clear)
                         .cornerRadius(8)
                 }
@@ -760,7 +723,7 @@ struct RichFormattingToolbar: View {
                         .font(.system(size: 16, weight: .medium))
                         .strikethrough()
                         .foregroundColor(context.isStrikethroughActive ? .white : .primary)
-                        .frame(width: buttonWidth, height: 32)
+                        .frame(width: 36, height: 32)
                         .background(context.isStrikethroughActive ? Color.black : Color.clear)
                         .cornerRadius(8)
                 }
@@ -771,7 +734,7 @@ struct RichFormattingToolbar: View {
                     Text("</>")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(context.isCodeBlockActive ? .white : .primary)
-                        .frame(width: buttonWidth, height: 32)
+                        .frame(width: 40, height: 32)
                         .background(context.isCodeBlockActive ? Color.black : Color.clear)
                         .cornerRadius(8)
                 }
@@ -782,7 +745,7 @@ struct RichFormattingToolbar: View {
                     Image(systemName: GentleLightning.Icons.formatList)
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(context.isBulletListActive ? .white : .primary)
-                        .frame(width: buttonWidth, height: 32)
+                        .frame(width: 36, height: 32)
                         .background(context.isBulletListActive ? Color.black : Color.clear)
                         .cornerRadius(8)
                 }
@@ -793,7 +756,7 @@ struct RichFormattingToolbar: View {
                     Image(systemName: "checklist")
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(context.isCheckboxActive ? .white : .primary)
-                        .frame(width: buttonWidth, height: 32)
+                        .frame(width: 36, height: 32)
                         .background(context.isCheckboxActive ? Color.black : Color.clear)
                         .cornerRadius(8)
                 }
@@ -805,7 +768,7 @@ struct RichFormattingToolbar: View {
                     Image(systemName: "increase.indent")
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.primary)
-                        .frame(width: buttonWidth, height: 32)
+                        .frame(width: 36, height: 32)
                         .background(Color.clear)
                         .cornerRadius(8)
                 }
@@ -817,19 +780,18 @@ struct RichFormattingToolbar: View {
                     Image(systemName: "chevron.down")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.primary)
-                        .frame(width: buttonWidth, height: 32)
+                        .frame(width: 36, height: 32)
                         .background(Color.clear)
                         .cornerRadius(8)
                 }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(
-                Rectangle()
-                    .fill(Color(UIColor.systemBackground))
-                    .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: -1)
-            )
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(
+            Rectangle()
+                .fill(Color(UIColor.systemBackground))
+                .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: -1)
+        )
     }
 }
 
