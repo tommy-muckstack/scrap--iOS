@@ -16,27 +16,29 @@ class PasteHandlingTextView: UITextView {
     var preventFirstResponder = false
     var lockCursorPosition = false
     private var lockedCursorRange: NSRange?
-    
+    /// Flag to suppress auto-scroll during typing to prevent jumpiness
+    var isTyping = false
+
     override func paste(_ sender: Any?) {
         // Get the pasteboard content
         if let pasteboardString = UIPasteboard.general.string {
             print("📋 Custom paste: Stripping formatting from pasted text")
-            
+
             // Create clean attributed string with default formatting
             let cleanString = NSMutableAttributedString(string: pasteboardString)
             let fullRange = NSRange(location: 0, length: cleanString.length)
-            
+
             // Apply default formatting
             cleanString.addAttribute(.font, value: defaultFont, range: fullRange)
             cleanString.addAttribute(.foregroundColor, value: UIColor.label, range: fullRange)
-            
+
             // Get current selection range
             let selectedRange = self.selectedRange
-            
+
             // Replace selected text with clean pasted text
             let textStorage = self.textStorage
             textStorage.replaceCharacters(in: selectedRange, with: cleanString)
-            
+
             // Update cursor position
             let newPosition = selectedRange.location + cleanString.length
             self.selectedRange = NSRange(location: newPosition, length: 0)
@@ -45,7 +47,7 @@ class PasteHandlingTextView: UITextView {
             super.paste(sender)
         }
     }
-    
+
     override func becomeFirstResponder() -> Bool {
         if preventFirstResponder {
             print("🚫 PasteHandlingTextView: Prevented becomeFirstResponder due to checkbox tap")
@@ -53,7 +55,7 @@ class PasteHandlingTextView: UITextView {
         }
         return super.becomeFirstResponder()
     }
-    
+
     override var selectedRange: NSRange {
         get {
             if lockCursorPosition && lockedCursorRange != nil {
@@ -69,48 +71,91 @@ class PasteHandlingTextView: UITextView {
             super.selectedRange = newValue
         }
     }
-    
+
     func lockCursor(at range: NSRange) {
         lockedCursorRange = range
         lockCursorPosition = true
         print("🔒 PasteHandlingTextView: Locked cursor at range \\(range)")
     }
-    
+
     func unlockCursor() {
         lockCursorPosition = false
         lockedCursorRange = nil
         print("🔓 PasteHandlingTextView: Unlocked cursor")
     }
+
+    override func scrollRangeToVisible(_ range: NSRange) {
+        if isTyping {
+            // Suppress auto-scroll during typing to prevent jumpiness
+            return
+        }
+        super.scrollRangeToVisible(range)
+    }
+}
+
+/// NoScrollTextView: Completely blocks contentOffset changes during typing
+/// This is the simplest approach to prevent first-character scroll jumps
+class NoScrollTextView: PasteHandlingTextView {
+    override var contentOffset: CGPoint {
+        get {
+            super.contentOffset
+        }
+        set {
+            // Block ALL offset changes during typing
+            if isTyping {
+                print("🔍 NoScrollTextView: Blocked contentOffset setter during typing")
+                return
+            }
+            super.contentOffset = newValue
+        }
+    }
+
+    override func setContentOffset(_ contentOffset: CGPoint, animated: Bool) {
+        // Block ALL offset changes during typing (including animated)
+        if isTyping {
+            print("🔍 NoScrollTextView: Blocked setContentOffset(animated:) during typing")
+            return
+        }
+        super.setContentOffset(contentOffset, animated: animated)
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        // Force valid bounds if we encounter NaN
+        if bounds.containsNaN {
+            bounds = CGRect(origin: .zero, size: frame.size)
+        }
+    }
 }
 
 /**
  A SwiftUI wrapper for UITextView with rich text editing capabilities.
- 
+
  This provides a clean interface between SwiftUI and UIKit, handling
  all the complex text synchronization through the RichTextCoordinator.
- 
+
  Usage:
  ```swift
  @State private var text = NSAttributedString()
  @StateObject private var context = RichTextContext()
- 
+
  var body: some View {
      RichTextEditor(text: $text, context: context)
  }
  ```
  */
 public struct RichTextEditor: UIViewRepresentable {
-    
+
     // MARK: - Properties
-    
+
     @Binding private var text: NSAttributedString
     @ObservedObject private var context: RichTextContext
     private let configuration: (UITextView) -> Void
     @Binding private var showingFormatting: Bool
     private var drawingManager: DrawingOverlayManager?
-    
+
     // MARK: - Initialization
-    
+
     public init(
         text: Binding<NSAttributedString>,
         context: RichTextContext,
@@ -124,12 +169,12 @@ public struct RichTextEditor: UIViewRepresentable {
         self.drawingManager = drawingManager
         self.configuration = configuration
     }
-    
+
     // MARK: - UIViewRepresentable
-    
+
     public func makeUIView(context: Context) -> UITextView {
-        let textView = PasteHandlingTextView()
-        
+        let textView = NoScrollTextView()
+
         // Basic configuration
         textView.isEditable = true
         textView.isSelectable = true
@@ -137,61 +182,64 @@ public struct RichTextEditor: UIViewRepresentable {
         textView.backgroundColor = .clear
         textView.textContainerInset = .zero
         textView.textContainer.lineFragmentPadding = 0
-        
+
         // Enable scrolling
         textView.isScrollEnabled = true
         textView.showsVerticalScrollIndicator = true
         textView.bounces = true
         textView.alwaysBounceVertical = true
-        
-        // Ensure proper scrolling behavior for keyboard
-        textView.contentInsetAdjustmentBehavior = .automatic
-        
+
+        // Let iOS handle keyboard avoidance automatically
+        textView.contentInsetAdjustmentBehavior = .never // Coordinator manages keyboard overlap manually for stable scrolling
+        if #available(iOS 13.0, *) {
+            textView.automaticallyAdjustsScrollIndicatorInsets = false
+        }
+
         // CRITICAL: Configure text container for proper attachment display
         textView.textContainer.widthTracksTextView = true
         textView.textContainer.heightTracksTextView = false
         textView.textContainer.maximumNumberOfLines = 0
         textView.textContainer.lineBreakMode = .byWordWrapping
-        
+
         // Enable standard iOS text interactions
         textView.isUserInteractionEnabled = true
         textView.isMultipleTouchEnabled = true
         textView.isExclusiveTouch = false
-        
+
         // Configure selection and editing behaviors
         textView.clearsOnInsertion = false
-        
+
         // CRITICAL: Enable interactive keyboard dismissal
         // This allows the native iOS swipe-down-to-dismiss gesture
         textView.keyboardDismissMode = .interactive
-        
+
         // CRITICAL: Configure touch handling for proper keyboard dismissal
         // Don't cancel touches that could be drag gestures for keyboard dismissal
         textView.canCancelContentTouches = false  // Allow drag gestures to pass through
         textView.delaysContentTouches = false     // Don't delay touch delivery for responsiveness
-        
+
         // Font and appearance
-        let defaultFont = UIFont(name: self.context.fontName, size: self.context.fontSize) ?? 
+        let defaultFont = UIFont(name: self.context.fontName, size: self.context.fontSize) ??
                          UIFont.systemFont(ofSize: self.context.fontSize)
         textView.font = defaultFont
         textView.defaultFont = defaultFont  // Set for paste handling
-        
+
         // Rich text attributes
         textView.typingAttributes = [
             .font: textView.font ?? UIFont.systemFont(ofSize: 17),
             .foregroundColor: UIColor.label
         ]
-        
+
         // Set initial content
         textView.attributedText = text
-        
+
         // Connect the coordinator to this textView
         let coordinator = context.coordinator
         coordinator.connectTextView(textView)
-        
+
         // Connect drawing manager to text view if available
         drawingManager?.connectTextView(textView)
-        
+
         // CRITICAL FIX: Connect drawing manager to coordinator for overlay system
         coordinator.drawingManager = drawingManager
         if drawingManager != nil {
@@ -199,7 +247,7 @@ public struct RichTextEditor: UIViewRepresentable {
         } else {
             print("⚠️ RichTextEditor: No DrawingOverlayManager available, will use fallback NSTextAttachment method")
         }
-        
+
         // Clean up any existing custom gesture recognizers first
         textView.gestureRecognizers?.forEach { recognizer in
             if let tapGR = recognizer as? UITapGestureRecognizer,
@@ -209,7 +257,7 @@ public struct RichTextEditor: UIViewRepresentable {
                 textView.removeGestureRecognizer(recognizer)
             }
         }
-        
+
         // Add tap gesture for checkbox and drawing toggling
         let tapGesture = UITapGestureRecognizer(target: coordinator, action: #selector(RichTextCoordinator.handleTap(_:)))
         tapGesture.numberOfTapsRequired = 1
@@ -219,52 +267,52 @@ public struct RichTextEditor: UIViewRepresentable {
         tapGesture.delaysTouchesEnded = false // Don't delay touch end
         textView.addGestureRecognizer(tapGesture)
         print("🎯 RichTextEditor: Added tap gesture recognizer to textView with enhanced attachment detection")
-        
+
         // REMOVED: Container gesture recognizer to prevent conflicts with keyboard dismiss gesture
         // The textView gesture should be sufficient for checkbox detection
-        
+
         // Use native UITextView behavior for text selection and editing
         // Double-tap, long-press, copy/paste all work natively
-        
+
         // Apply custom configuration
         configuration(textView)
-        
+
         // Set up input accessory view for formatting toolbar
         textView.setupRichTextInputAccessory(
             context: self.context,
             showingFormatting: $showingFormatting
         )
-        
+
         return textView
     }
-    
+
     public func updateUIView(_ uiView: UITextView, context: Context) {
         // Get the coordinator to check if it's currently updating from the text view
         let coordinator = context.coordinator
-        
+
         // Enhanced checking to prevent race conditions
         let isCoordinatorUpdating = coordinator.isUpdatingFromTextView
         let textsAreEqual = uiView.attributedText.isEqual(to: text)
-        
-        
+
+
         // Only update text if it's actually different AND we're not in the middle of a text view update
         // This prevents overwriting formatting that was just applied by the coordinator
         if !isCoordinatorUpdating && !textsAreEqual {
-            
+
             let selectedRange = uiView.selectedRange
             uiView.attributedText = text
-            
+
             // Restore cursor position safely with comprehensive validation
             let textLength = text.length
             let safeLocation = max(0, min(selectedRange.location, textLength))
             let remainingLength = textLength - safeLocation
             let safeLength = max(0, min(selectedRange.length, remainingLength))
-            
+
             let safeRange = NSRange(location: safeLocation, length: safeLength)
-            
+
             // Additional validation to prevent CoreGraphics issues
-            if safeRange.location >= 0 && 
-               safeRange.length >= 0 && 
+            if safeRange.location >= 0 &&
+               safeRange.length >= 0 &&
                safeRange.location + safeRange.length <= textLength {
                 uiView.selectedRange = safeRange
             } else {
@@ -273,12 +321,12 @@ public struct RichTextEditor: UIViewRepresentable {
             }
         } else {
         }
-        
+
         // Update editable state only if needed
         if uiView.isEditable != self.context.isEditable {
             uiView.isEditable = self.context.isEditable
         }
-        
+
         // Handle focus state carefully
         if self.context.isEditingText && !uiView.isFirstResponder {
             DispatchQueue.main.async {
@@ -286,21 +334,21 @@ public struct RichTextEditor: UIViewRepresentable {
             }
         }
     }
-    
+
     public func makeCoordinator() -> RichTextCoordinator {
         let coordinator = RichTextCoordinator(
             text: $text,
             textView: UITextView(), // Will be replaced in makeUIView
             context: context
         )
-        
+
         // DrawingManager will be set in makeUIView after proper initialization
-        
+
         return coordinator
     }
-    
+
     // MARK: - Static Factory Methods
-    
+
     /// Create a basic rich text editor
     public static func basic(
         text: Binding<NSAttributedString>,
@@ -308,7 +356,7 @@ public struct RichTextEditor: UIViewRepresentable {
     ) -> Self {
         RichTextEditor(text: text, context: context)
     }
-    
+
     /// Create a rich text editor optimized for notes
     public static func forNotes(
         text: Binding<NSAttributedString>,
@@ -322,22 +370,22 @@ public struct RichTextEditor: UIViewRepresentable {
             textView.smartQuotesType = .yes
             textView.smartDashesType = .yes
             textView.spellCheckingType = .yes
-            
+
             // Set cursor color to black (matching design system)
             textView.tintColor = UIColor.label
-            
+
             // Improve text alignment and padding to match placeholder
             textView.textContainerInset = UIEdgeInsets(top: 8, left: 0, bottom: 8, right: 0)
             textView.textContainer.lineFragmentPadding = 4
-            
+
             // Better line spacing for readability
             let paragraphStyle = NSMutableParagraphStyle()
             paragraphStyle.lineSpacing = 4
             paragraphStyle.paragraphSpacing = 8
-            
+
             // Set default Space Grotesk font for all notes
             let defaultFont = UIFont(name: "SpaceGrotesk-Regular", size: 16) ?? UIFont.systemFont(ofSize: 16)
-            
+
             textView.typingAttributes = [
                 .paragraphStyle: paragraphStyle,
                 .font: defaultFont,
@@ -354,9 +402,9 @@ public struct RichTextEditorWithDrawings: View {
     @Binding private var showingFormatting: Bool
     private let configuration: (UITextView) -> Void
     private let onDrawingManagerReady: ((DrawingOverlayManager) -> Void)?
-    
+
     @StateObject public var drawingManager = DrawingOverlayManager()
-    
+
     public init(
         text: Binding<NSAttributedString>,
         context: RichTextContext,
@@ -370,7 +418,7 @@ public struct RichTextEditorWithDrawings: View {
         self.configuration = configuration
         self.onDrawingManagerReady = onDrawingManagerReady
     }
-    
+
     public var body: some View {
         ZStack {
             // Base text editor with shared drawing manager
@@ -381,7 +429,7 @@ public struct RichTextEditorWithDrawings: View {
                 drawingManager: drawingManager,
                 configuration: configuration
             )
-            
+
             // Drawing overlays
             ForEach(Array(drawingManager.drawingMarkers.keys), id: \.self) { drawingId in
                 if let marker = drawingManager.drawingMarkers[drawingId] {
@@ -432,7 +480,7 @@ public struct RichTextEditorWithDrawings: View {
 // MARK: - View Extensions
 
 public extension RichTextEditor {
-    
+
     /// Apply a custom theme to the editor
     func theme(_ theme: RichTextTheme) -> some View {
         self.overlay(
@@ -442,14 +490,14 @@ public extension RichTextEditor {
                 }
         )
     }
-    
+
     /// Enable or disable the editor
     func disabled(_ isDisabled: Bool) -> some View {
         self.onAppear {
             context.isEditable = !isDisabled
         }
     }
-    
+
     /// Configure keyboard settings
     func keyboard(_ settings: RichTextKeyboardSettings) -> some View {
         RichTextEditor(text: $text, context: context) { textView in
@@ -460,7 +508,7 @@ public extension RichTextEditor {
             configuration(textView)
         }
     }
-    
+
 }
 
 // MARK: - Supporting Types
@@ -470,7 +518,7 @@ public struct RichTextTheme {
     public let textColor: Color
     public let font: UIFont
     public let selectionColor: Color
-    
+
     public init(
         backgroundColor: Color = .clear,
         textColor: Color = .primary,
@@ -482,14 +530,14 @@ public struct RichTextTheme {
         self.font = font
         self.selectionColor = selectionColor
     }
-    
+
     public static let `default` = RichTextTheme()
-    
+
     public static let dark = RichTextTheme(
         backgroundColor: .black,
         textColor: .white
     )
-    
+
     public static let light = RichTextTheme(
         backgroundColor: .white,
         textColor: .black
@@ -501,7 +549,7 @@ public struct RichTextKeyboardSettings {
     public let returnKeyType: UIReturnKeyType
     public let autocorrectionType: UITextAutocorrectionType
     public let autocapitalizationType: UITextAutocapitalizationType
-    
+
     public init(
         keyboardType: UIKeyboardType = .default,
         returnKeyType: UIReturnKeyType = .default,
@@ -513,9 +561,9 @@ public struct RichTextKeyboardSettings {
         self.autocorrectionType = autocorrectionType
         self.autocapitalizationType = autocapitalizationType
     }
-    
+
     public static let `default` = RichTextKeyboardSettings()
-    
+
     public static let notes = RichTextKeyboardSettings(
         autocorrectionType: .yes,
         autocapitalizationType: .sentences

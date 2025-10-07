@@ -17,7 +17,7 @@ import Combine
  
  Key improvements:
  - Prevents race conditions in text synchronization
- - Proper cursor positioning for list items  
+ - Proper cursor positioning for list items
  - Robust undo/redo handling
  - Clean separation of concerns
  */
@@ -48,7 +48,34 @@ public class RichTextCoordinator: NSObject {
     
     /// Drawing overlay manager for handling drawings as overlays instead of attachments
     weak var drawingManager: DrawingOverlayManager?
-    
+
+    /// Tracks the current keyboard height for content inset adjustments
+    private var currentKeyboardHeight: CGFloat = 0
+    /// Provides a little breathing room between caret and keyboard
+    private let keyboardPadding: CGFloat = 12
+    /// Keeps at least this much editor height visible above the keyboard
+    private let minimumVisibleEditorHeight: CGFloat = 96
+    /// Enables verbose logging when diagnosing scroll / keyboard behavior
+    private let isScrollDebugLoggingEnabled = true
+    /// Stores keyboard adjustments while the text view is still attaching to the window
+    private var pendingKeyboardAdjustment: (frame: CGRect?, duration: Double?, curve: UInt?)?
+    /// Prevents scheduling multiple deferred keyboard retries simultaneously
+    private var isKeyboardRetryScheduled = false
+    /// Prevents recursive offset adjustments when we manually scroll to keep the caret visible
+    private var isAdjustingContentOffset = false
+    /// Debounce timestamp to prevent rapid repeated caret adjustments
+    private var lastCaretAdjustmentTime: Date = .distantPast
+    private let caretAdjustmentDebounce: TimeInterval = 0.3  // 300ms to reduce jumpiness during typing
+    /// Flag to limit auto-scroll to only initial keyboard appearance
+    private var isInitialAdjustmentDone = false
+    /// Track content changes to prevent auto-scroll jumps
+    private var lastContentOffset: CGPoint = .zero
+    private var lastContentSize: CGSize = .zero
+    /// Save offset before typing to restore after content size changes
+    private var preTypeOffset: CGPoint = .zero
+    /// Timer to delay formatting application until typing stops
+    private var formattingTimer: Timer?
+
     // MARK: - Initialization
     
     public init(
@@ -88,6 +115,10 @@ public class RichTextCoordinator: NSObject {
         self.textView = textView
         setupTextView()
         syncInitialState()
+
+        DispatchQueue.main.async { [weak self] in
+            self?.applyPendingKeyboardAdjustmentIfNeeded()
+        }
     }
     
     // MARK: - Setup
@@ -97,20 +128,41 @@ public class RichTextCoordinator: NSObject {
         textView.allowsEditingTextAttributes = true
         textView.isEditable = true
         textView.isSelectable = true
-        
+
+        // Disable system auto-inset adjustments to prevent scroll jumps on content size changes
+        textView.contentInsetAdjustmentBehavior = .never
+
+        // Keep scrolling enabled always to prevent internal UITextView offset adjustments
+        textView.isScrollEnabled = true
+
         // CRITICAL: Ensure keyboard dismissal mode is always set
         // This can be reset by resignFirstResponder calls
         textView.keyboardDismissMode = .interactive
         
-        // Configure for rich text editing
+        // Configure for rich text editing with fixed line height for stability
+        let defaultParagraph = NSMutableParagraphStyle()
+        defaultParagraph.minimumLineHeight = 24  // Fixed height to prevent jumps
+        defaultParagraph.maximumLineHeight = 24
+        defaultParagraph.lineHeightMultiple = 1.0  // Lock line height multiplier
+
         textView.typingAttributes = [
             .font: UIFont(name: context.fontName, size: safeFontSize(context.fontSize)) ?? UIFont.systemFont(ofSize: safeFontSize(context.fontSize)),
-            .foregroundColor: UIColor.label
+            .foregroundColor: UIColor.label,
+            .paragraphStyle: defaultParagraph
         ]
-        
+
+        // Apply fixed line height to existing text for consistency
+        if let mutableText = textView.attributedText.mutableCopy() as? NSMutableAttributedString {
+            let fullRange = NSRange(location: 0, length: mutableText.length)
+            if fullRange.length > 0 {
+                mutableText.addAttribute(.paragraphStyle, value: defaultParagraph, range: fullRange)
+                textView.attributedText = mutableText
+            }
+        }
+
         // Update typing attributes based on context state
         updateTypingAttributes()
-        
+
         // Tap gesture for checkbox interaction is added by RichTextEditor
         // to avoid duplicate gesture recognizers that could conflict
     }
@@ -141,27 +193,344 @@ public class RichTextCoordinator: NSObject {
             name: UIResponder.keyboardDidShowNotification,
             object: nil
         )
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(keyboardWillChangeFrame(_:)),
+            name: UIResponder.keyboardWillChangeFrameNotification,
+            object: nil
+        )
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(keyboardWillHide(_:)),
+            name: UIResponder.keyboardWillHideNotification,
+            object: nil
+        )
     }
     
     @objc private func keyboardWillShow(_ notification: Notification) {
-        // Ensure keyboard dismissal mode is restored
-        // This can be reset by manual resignFirstResponder calls
-        DispatchQueue.main.async { [weak self] in
-            self?.textView.keyboardDismissMode = .interactive
-        }
+        handleKeyboardNotification(notification)
     }
-    
+
     @objc private func keyboardDidShow(_ notification: Notification) {
         // Double-check that interactive dismissal is still enabled
-        // Some input accessory view operations can reset this
         DispatchQueue.main.async { [weak self] in
             if self?.textView.keyboardDismissMode != .interactive {
                 self?.textView.keyboardDismissMode = .interactive
-                print("🔧 RichTextCoordinator: Restored keyboard dismissal mode after keyboard appeared")
+            }
+            // Ensure caret is visible after keyboard animation completes
+            self?.ensureCaretVisibleIfNeeded(reason: "keyboard_did_show")
+        }
+    }
+
+    @objc private func keyboardWillChangeFrame(_ notification: Notification) {
+        handleKeyboardNotification(notification)
+    }
+
+    @objc private func keyboardWillHide(_ notification: Notification) {
+        handleKeyboardNotification(notification, isHiding: true)
+        // Force reset inset and offset
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            let currentInset = textView.contentInset
+            textView.contentInset = UIEdgeInsets(top: currentInset.top, left: currentInset.left, bottom: 0, right: currentInset.right)
+            // Reset offset to top on keyboard hide
+            textView.contentOffset = .zero
+            if isScrollDebugLoggingEnabled {
+                print("🧭 Keyboard hidden: Reset inset.bottom=0, offset to zero")
+            }
+            // Reset flag for next keyboard show
+            self.isInitialAdjustmentDone = false
+        }
+    }
+
+    private func handleKeyboardNotification(_ notification: Notification, isHiding: Bool = false) {
+        let userInfo = notification.userInfo ?? [:]
+
+        let keyboardFrame: CGRect?
+        if isHiding {
+            keyboardFrame = nil
+        } else {
+            keyboardFrame = userInfo[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect
+        }
+
+        let duration = userInfo[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double
+        let curveRaw = userInfo[UIResponder.keyboardAnimationCurveUserInfoKey] as? UInt
+
+        adjustForKeyboard(frame: keyboardFrame, duration: duration, curveRaw: curveRaw)
+    }
+
+    private func adjustForKeyboard(frame: CGRect?, duration: Double?, curveRaw: UInt?, allowDefer: Bool = true) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+
+            guard self.isTextViewReadyForKeyboardAdjustment else {
+                if allowDefer {
+                    if self.isScrollDebugLoggingEnabled {
+                        let rawFrameDescription = frame.map { "\($0)" } ?? "nil"
+                        print("🧭 KeyboardAdjust: deferring (textView not ready) frame=\(rawFrameDescription) window=\(self.textView.window != nil) bounds=\(self.textView.bounds)")
+                    }
+                    self.pendingKeyboardAdjustment = (frame, duration, curveRaw ?? 0)
+                    self.scheduleKeyboardAdjustmentRetry()
+                }
+                return
+            }
+
+            self.pendingKeyboardAdjustment = nil
+            self.performKeyboardAdjustment(frame: frame, duration: duration, curveRaw: curveRaw)
+        }
+    }
+
+    private func performKeyboardAdjustment(frame: CGRect?, duration: Double?, curveRaw: UInt?) {
+        textView.keyboardDismissMode = .interactive
+
+        let overlapHeight = keyboardOverlapHeight(for: frame)
+        let safeOverlap = overlapHeight.isFinite ? overlapHeight : 0
+        let isKeyboardNowVisible = safeOverlap > 0
+        currentKeyboardHeight = safeOverlap
+
+        if isScrollDebugLoggingEnabled {
+            let rawFrameDescription = frame.map { "\($0)" } ?? "nil"
+            print("🧭 KeyboardAdjust: frame=\(rawFrameDescription) overlap=\(String(format: "%.2f", safeOverlap)) isVisible=\(isKeyboardNowVisible) duration=\(duration ?? -1) curve=\(curveRaw ?? 0)")
+        }
+
+        let animations = { [weak self] in
+            guard let self else { return }
+
+            // Always set bottom inset when keyboard is visible to push content up
+            let bottomInset = isKeyboardNowVisible ? safeOverlap + self.keyboardPadding : 0
+            self.textView.contentInset.bottom = bottomInset
+
+            if self.isScrollDebugLoggingEnabled {
+                print("🧭 KeyboardAdjust: Set contentInset.bottom=\(bottomInset)")
+                self.logEditorMetrics(reason: "keyboard_adjust")
+            }
+
+            // Only initial scroll to bottom or caret on keyboard appearance
+            if isKeyboardNowVisible && !self.isInitialAdjustmentDone {
+                let maxOffset = max(0, self.textView.contentSize.height - self.textView.bounds.height + bottomInset)
+                self.textView.contentOffset = CGPoint(x: 0, y: maxOffset)
+                self.isInitialAdjustmentDone = true
+                if self.isScrollDebugLoggingEnabled {
+                    print("🧭 KeyboardAdjust: Initial scroll to maxOffset=\(String(format: "%.2f", maxOffset))")
+                }
+            }
+        }
+
+        guard let duration = duration, duration > 0 else {
+            animations()
+            return
+        }
+
+        var options: UIView.AnimationOptions = [.beginFromCurrentState]
+        if let curveRaw = curveRaw {
+            options.insert(UIView.AnimationOptions(rawValue: curveRaw << 16))
+        }
+
+        UIView.animate(withDuration: duration, delay: 0, options: options, animations: animations)
+    }
+
+    private func keyboardOverlapHeight(for keyboardFrame: CGRect?) -> CGFloat {
+        guard let keyboardFrame = keyboardFrame else {
+            return 0
+        }
+
+        guard let window = textView.window else {
+            if isScrollDebugLoggingEnabled {
+                print("🧭 KeyboardOverlap(window=nil): deferring overlap computation")
+            }
+            return currentKeyboardHeight
+        }
+
+        let keyboardFrameInWindow = window.convert(keyboardFrame, from: nil)
+
+        // When keyboard is fully hidden the frame is off-screen; treat as zero overlap
+        if keyboardFrameInWindow.origin.y >= window.bounds.height {
+            return 0
+        }
+
+        let textViewFrameInWindow = textView.convert(textView.bounds, to: window)
+        let intersection = textViewFrameInWindow.intersection(keyboardFrameInWindow)
+
+        // Guard against NaN in intersection rect
+        if intersection.containsNaN {
+            if isScrollDebugLoggingEnabled {
+                print("🧭 KeyboardOverlap SKIP: NaN in intersection rect")
+            }
+            return 0
+        }
+
+        let overlap = max(0, intersection.height)
+
+        guard overlap > 0 else {
+            if isScrollDebugLoggingEnabled {
+                print("🧭 KeyboardOverlap(window): intersection=0 (tvFrame=\(textViewFrameInWindow) kbFrame=\(keyboardFrameInWindow))")
+            }
+            return 0
+        }
+
+        if isScrollDebugLoggingEnabled {
+            print("🧭 KeyboardOverlap(window): tvFrame=\(textViewFrameInWindow) kbFrame=\(keyboardFrameInWindow) intersectionHeight=\(String(format: "%.2f", overlap)) padding=\(keyboardPadding)")
+        }
+
+        return overlap + keyboardPadding
+    }
+
+    private func clampedBottomInset(for overlapHeight: CGFloat) -> CGFloat {
+        guard overlapHeight > 0 else { return 0 }
+
+        let boundsHeight = textView.bounds.height
+        guard boundsHeight > 0 else { return 0 }
+
+        let contentHeight = textView.contentSize.height
+        guard !contentHeight.isNaN, !contentHeight.isInfinite else { return 0 }
+
+        // Available space for scrolling once the keyboard is visible
+        let visibleHeight = boundsHeight - textView.contentInset.top - textView.contentInset.bottom
+        let scrollableHeight = max(0, contentHeight - visibleHeight)
+
+        if scrollableHeight <= 0 {
+            if isScrollDebugLoggingEnabled {
+                print("🧭 KeyboardInset: content too short (contentHeight=\(String(format: "%.2f", contentHeight)) visibleHeight=\(String(format: "%.2f", visibleHeight))) -> inset=0")
+            }
+            return 0
+        }
+
+        let naturalInset = overlapHeight
+        let maxAllowedInset = max(0, min(boundsHeight - minimumVisibleEditorHeight, scrollableHeight))
+        let clamped = max(0, min(naturalInset, maxAllowedInset))
+
+        if isScrollDebugLoggingEnabled {
+            print("🧭 KeyboardInset: requested=\(String(format: "%.2f", overlapHeight)) scrollable=\(String(format: "%.2f", scrollableHeight)) bounds=\(String(format: "%.2f", boundsHeight)) maxAllowed=\(String(format: "%.2f", maxAllowedInset)) clamped=\(String(format: "%.2f", clamped))")
+        }
+
+        return clamped
+    }
+
+    private func clampContentOffset() {
+        var offset = textView.contentOffset
+        let maxY = max(0, textView.contentSize.height - textView.bounds.height + textView.contentInset.bottom)
+        offset.y = min(max(offset.y, 0), maxY)
+        if offset != textView.contentOffset {
+            textView.contentOffset = offset
+            if isScrollDebugLoggingEnabled {
+                print("🧭 ClampOffset: Clamped to y=\(String(format: "%.2f", offset.y)), maxY=\(String(format: "%.2f", maxY))")
             }
         }
     }
-    
+
+    private func logEditorMetrics(reason: String) {
+        let offset = textView.contentOffset
+        let size = textView.contentSize
+        let inset = textView.contentInset
+        let bounds = textView.bounds
+        let adjusted = textView.adjustedContentInset
+
+        var caretDescription = "none"
+        var caretVisibility = "caretUnavailable"
+
+        if let selectedRange = textView.selectedTextRange {
+            let caretRect = textView.caretRect(for: selectedRange.end)
+            if caretRect.containsNaN {
+                caretDescription = "invalid (NaN)"
+                caretVisibility = "invalid (NaN)"
+            } else {
+                let caretBottom = caretRect.maxY
+                let visibleTop = offset.y + inset.top
+                let visibleBottom = offset.y + bounds.height - inset.bottom
+                caretDescription = "rect=\(caretRect)"
+                caretVisibility = "visibleTop=\(String(format: "%.2f", visibleTop)) visibleBottom=\(String(format: "%.2f", visibleBottom)) caretMinY=\(String(format: "%.2f", caretRect.minY)) caretMaxY=\(String(format: "%.2f", caretBottom))"
+            }
+        }
+
+        print("🧭 EditorState[\(reason)]: offset=\(offset) size=\(size) inset=\(inset) adjustedInset=\(adjusted) bounds=\(bounds) keyboardHeight=\(String(format: "%.2f", currentKeyboardHeight))")
+        print("🧭 EditorState[\(reason)] caret=\(caretDescription) metrics=\(caretVisibility)")
+    }
+
+    private var isTextViewReadyForKeyboardAdjustment: Bool {
+        guard textView.bounds.height > 0, textView.bounds.width > 0 else { return false }
+        return textView.window != nil
+    }
+
+    private func scheduleKeyboardAdjustmentRetry() {
+        guard !isKeyboardRetryScheduled else { return }
+        isKeyboardRetryScheduled = true
+        // Only retry once after a delay - don't create retry loop
+        // The pending adjustment will be applied when view becomes ready
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            guard let self = self else { return }
+            self.isKeyboardRetryScheduled = false
+            guard let pending = self.pendingKeyboardAdjustment else { return }
+            // Try once more, but don't allow further deferrals to prevent infinite loop
+            self.adjustForKeyboard(frame: pending.frame, duration: pending.duration, curveRaw: pending.curve, allowDefer: false)
+        }
+    }
+
+    private func applyPendingKeyboardAdjustmentIfNeeded() {
+        guard let pending = pendingKeyboardAdjustment else { return }
+        adjustForKeyboard(frame: pending.frame, duration: pending.duration, curveRaw: pending.curve, allowDefer: true)
+    }
+
+    @discardableResult
+    private func ensureCaretVisibleIfNeeded(reason: String) -> Bool {
+        // Debounce: Skip if called too soon after last adjustment
+        let timeSinceLast = Date().timeIntervalSince(lastCaretAdjustmentTime)
+        if timeSinceLast < caretAdjustmentDebounce {
+            if isScrollDebugLoggingEnabled {
+                print("🧭 CaretAdjust[\(reason)]: SKIP - debounced (time: \(timeSinceLast)s)")
+            }
+            return false
+        }
+        lastCaretAdjustmentTime = Date()
+
+        guard !isAdjustingContentOffset, textView.bounds.height > 0, let window = textView.window, currentKeyboardHeight > 0 else {
+            return false
+        }
+
+        let caretPosition = textView.selectedTextRange?.end ?? textView.endOfDocument
+        var caretRect = textView.caretRect(for: caretPosition)
+
+        // Fallback for NaN caretRect (known iOS bug on first character insertion)
+        if caretRect.containsNaN {
+            caretRect = CGRect(x: 0, y: textView.contentSize.height - 22, width: 2, height: 22)
+            if isScrollDebugLoggingEnabled {
+                print("🧭 CaretAdjust[\(reason)]: Using fallback rect for NaN caretRect: \(caretRect)")
+            }
+        }
+        if !caretRect.height.isFinite || caretRect.height.isNaN || caretRect.isInfinite || caretRect.isNull {
+            caretRect = CGRect.zero
+            return false
+        }
+
+        let caretInWindow = textView.convert(caretRect, to: window)
+        let keyboardTop = window.bounds.height - currentKeyboardHeight
+        let padding: CGFloat = 24
+
+        let delta = max(0, (caretInWindow.maxY + padding - keyboardTop).isFinite ? caretInWindow.maxY + padding - keyboardTop : 0)
+
+        // Threshold to skip small adjustments, reducing jumpiness
+        guard delta > 5 else {
+            return false
+        }
+
+        var scrollRect = caretRect
+        let totalPadding = padding + 50 + 8  // formattingBarHeight + extras
+        scrollRect = scrollRect.insetBy(dx: 0, dy: -totalPadding).integral  // Integral to avoid subpixel NaN
+
+        isAdjustingContentOffset = true
+        textView.scrollRectToVisible(scrollRect, animated: true)  // Animated for smoother feel
+        isAdjustingContentOffset = false
+
+        if isScrollDebugLoggingEnabled {
+            let newOffsetY = textView.contentOffset.y
+            print("🧭 CaretAdjust[\(reason)]: Scrolled to newOffset=\(newOffsetY), inset.bottom=\(textView.contentInset.bottom), delta=\(delta)")
+            logEditorMetrics(reason: "caret_adjust_\(reason)")
+        }
+
+        return true
+    }
+
     private func syncInitialState() {
         // Set initial content safely
         let initialText = textBinding.wrappedValue
@@ -172,8 +541,14 @@ public class RichTextCoordinator: NSObject {
         if textView.attributedText != safeInitialText {
             textView.attributedText = safeInitialText
             context.setAttributedString(safeInitialText)
+
+            // Adjust frame height based on initial content size
+            let contentSize = textView.sizeThatFits(CGSize(width: textView.bounds.width, height: .greatestFiniteMagnitude))
+            if contentSize.height > 0 && contentSize.height.isFinite {
+                textView.frame.size.height = contentSize.height
+            }
         }
-        
+
         // Clean up any existing duplicate formatting
         cleanupDuplicateFormatting()
         
@@ -249,8 +624,8 @@ public class RichTextCoordinator: NSObject {
         let safeRange = NSRange(location: safeLocation, length: safeLength)
         
         // Additional validation to prevent CoreGraphics errors
-        if safeRange.location >= 0 && 
-           safeRange.length >= 0 && 
+        if safeRange.location >= 0 &&
+           safeRange.length >= 0 &&
            safeRange.location + safeRange.length <= textLength {
             textView.selectedRange = safeRange
         } else {
@@ -264,9 +639,12 @@ public class RichTextCoordinator: NSObject {
     private func applyStyleToggle(_ style: RichTextStyle) {
         let selectedRange = textView.selectedRange
         let mutableText = NSMutableAttributedString(attributedString: textView.attributedText)
-        
+
         guard selectedRange.location + selectedRange.length <= mutableText.length else { return }
-        
+
+        // Save offset before applying formatting (prevents scroll jump from size changes)
+        let preOffset = textView.contentOffset
+
         // Apply or remove the style
         switch style {
         case .bold:
@@ -278,10 +656,13 @@ public class RichTextCoordinator: NSObject {
         case .strikethrough:
             toggleStrikethroughInRange(mutableText, selectedRange)
         }
-        
+
         // Update text view and maintain selection
         textView.attributedText = mutableText
         textView.selectedRange = selectedRange
+
+        // Restore offset immediately after formatting (prevents scroll jump)
+        textView.contentOffset = preOffset
         
         // Update context state to reflect the new formatting state
         updateContextFromTextView()
@@ -309,9 +690,8 @@ public class RichTextCoordinator: NSObject {
             // For selections, check if ANY text in selection is bold
             mutableText.enumerateAttribute(.font, in: range) { value, _, _ in
                 if let font = value as? UIFont {
-                    // Check for SpaceGrotesk-Bold font or symbolic traits
-                    if font.fontName == "SpaceGrotesk-Bold" || 
-                       font.fontDescriptor.symbolicTraits.contains(.traitBold) {
+                    // Check for bold weight or symbolic trait
+                    if font.fontDescriptor.symbolicTraits.contains(.traitBold) {
                         hasBoldText = true
                     }
                 }
@@ -320,27 +700,12 @@ public class RichTextCoordinator: NSObject {
             shouldAddBold = !hasBoldText
         } else {
             // For cursor position (no selection), check the current typing attributes
-            // to determine if bold should be added or removed
             let currentFont = textView.typingAttributes[.font] as? UIFont ?? UIFont.systemFont(ofSize: 16)
-            // Use exact font name matching to prevent false positives
-            let isBoldInTypingAttributes = currentFont.fontDescriptor.symbolicTraits.contains(.traitBold) || 
-                                         currentFont.fontName == "SpaceGrotesk-Bold"
+            let isBoldInTypingAttributes = currentFont.fontDescriptor.symbolicTraits.contains(.traitBold)
             shouldAddBold = !isBoldInTypingAttributes
         }
-        
+
         print("🎯 RichTextCoordinator: Bold toggle - shouldAddBold: \(shouldAddBold), range: \(range)")
-        
-        // Debug available Space Grotesk fonts
-        let availableFonts = UIFont.familyNames.filter { $0.contains("SpaceGrotesk") }
-        print("📝 Available Space Grotesk fonts: \(availableFonts)")
-        let spaceGroteskFonts = UIFont.fontNames(forFamilyName: "Space Grotesk")
-        print("📝 Space Grotesk font names: \(spaceGroteskFonts)")
-        // Test if bold font is actually available
-        if let boldFont = UIFont(name: "SpaceGrotesk-Bold", size: 17) {
-            print("✅ SpaceGrotesk-Bold is available: \(boldFont.fontName)")
-        } else {
-            print("❌ SpaceGrotesk-Bold is NOT available")
-        }
         
         // Apply formatting consistently across the range
         if range.length > 0 {
@@ -350,28 +715,13 @@ public class RichTextCoordinator: NSObject {
                     let newFont: UIFont
                     let safeSize = safeFontSize(font.pointSize)
                     if shouldAddBold {
-                        // Add bold - use specific SpaceGrotesk-Bold font
-                        if let boldFont = UIFont(name: "SpaceGrotesk-Bold", size: safeSize) {
-                            newFont = boldFont
-                            print("✅ Applied SpaceGrotesk-Bold font at size \(safeSize)")
-                        } else {
-                            // Fallback to system bold font if custom font not available
-                            newFont = UIFont.boldSystemFont(ofSize: safeSize)
-                            print("⚠️ SpaceGrotesk-Bold not available, using system bold font")
-                        }
+                        // Use system font with bold weight for identical line heights
+                        newFont = UIFont.systemFont(ofSize: safeSize, weight: .bold)
                     } else {
-                        // Remove bold - revert to regular SpaceGrotesk font
-                        if let regularFont = UIFont(name: "SpaceGrotesk-Regular", size: safeSize) {
-                            newFont = regularFont
-                            print("✅ Applied SpaceGrotesk-Regular font at size \(safeSize)")
-                        } else {
-                            // Fallback to system regular font
-                            newFont = UIFont.systemFont(ofSize: safeSize)
-                            print("⚠️ SpaceGrotesk-Regular not available, using system regular font")
-                        }
+                        // Use system font with regular weight
+                        newFont = UIFont.systemFont(ofSize: safeSize, weight: .regular)
                     }
                     mutableText.addAttribute(.font, value: newFont, range: subRange)
-                    print("🎯 Applied font '\(newFont.fontName)' to range \(subRange)")
                 }
             }
         } else {
@@ -665,7 +1015,7 @@ public class RichTextCoordinator: NSObject {
             
             // Count bullets and checkboxes
             let bulletCount = trimmedLine.components(separatedBy: "• ").count - 1
-            let checkboxCount = (trimmedLine.components(separatedBy: "☐ ").count - 1) + 
+            let checkboxCount = (trimmedLine.components(separatedBy: "☐ ").count - 1) +
                                (trimmedLine.components(separatedBy: "☑ ").count - 1)
             
             if bulletCount > 1 {
@@ -1087,7 +1437,7 @@ public class RichTextCoordinator: NSObject {
                 // Preserve formatting attributes from the original text
                 if let originalFont = attributes[.font] as? UIFont {
                     let hasTraitBold = originalFont.fontDescriptor.symbolicTraits.contains(.traitBold)
-                    let isExplicitlyBold = originalFont.fontName == "SpaceGrotesk-Bold" || 
+                    let isExplicitlyBold = originalFont.fontName == "SpaceGrotesk-Bold" ||
                                          originalFont.fontName == "SpaceGrotesk-SemiBold" ||
                                          originalFont.fontName == "SpaceGrotesk-Heavy"
                     let hasTraitItalic = originalFont.fontDescriptor.symbolicTraits.contains(.traitItalic)
@@ -1162,7 +1512,7 @@ public class RichTextCoordinator: NSObject {
                 // Preserve bold/italic from normalized text
                 if let font = attributes[.font] as? UIFont {
                     let hasTraitBold = font.fontDescriptor.symbolicTraits.contains(.traitBold)
-                    let isExplicitlyBold = font.fontName == "SpaceGrotesk-Bold" || 
+                    let isExplicitlyBold = font.fontName == "SpaceGrotesk-Bold" ||
                                          font.fontName == "SpaceGrotesk-SemiBold" ||
                                          font.fontName == "SpaceGrotesk-Heavy"
                     let hasTraitItalic = font.fontDescriptor.symbolicTraits.contains(.traitItalic)
@@ -1239,7 +1589,7 @@ public class RichTextCoordinator: NSObject {
                 // Preserve bold formatting
                 if let font = prevAttributes[.font] as? UIFont {
                     let hasTraitBold = font.fontDescriptor.symbolicTraits.contains(.traitBold)
-                    let isExplicitlyBold = font.fontName == "SpaceGrotesk-Bold" || 
+                    let isExplicitlyBold = font.fontName == "SpaceGrotesk-Bold" ||
                                          font.fontName == "SpaceGrotesk-SemiBold" ||
                                          font.fontName == "SpaceGrotesk-Heavy"
                     let hasTraitItalic = font.fontDescriptor.symbolicTraits.contains(.traitItalic)
@@ -1568,8 +1918,8 @@ public class RichTextCoordinator: NSObject {
             if let font = attributes[.font] as? UIFont {
                 let hasTraitBold = font.fontDescriptor.symbolicTraits.contains(.traitBold)
                 // Use exact font name matching to prevent false positives
-                let hasBoldName = font.fontName == "SpaceGrotesk-Bold" || 
-                                font.fontName == "SpaceGrotesk-SemiBold" || 
+                let hasBoldName = font.fontName == "SpaceGrotesk-Bold" ||
+                                font.fontName == "SpaceGrotesk-SemiBold" ||
                                 font.fontName == "SpaceGrotesk-Heavy"
                 self.context.isBoldActive = hasTraitBold || hasBoldName
                 
@@ -1637,6 +1987,9 @@ public class RichTextCoordinator: NSObject {
             
             // Apply paragraph style for full-width background with padding
             let paragraphStyle = NSMutableParagraphStyle()
+            paragraphStyle.minimumLineHeight = 24  // Fixed height for stability
+            paragraphStyle.maximumLineHeight = 24
+            paragraphStyle.lineHeightMultiple = 1.0  // Lock line height multiplier
             paragraphStyle.lineSpacing = 2
             paragraphStyle.paragraphSpacing = 4
             paragraphStyle.firstLineHeadIndent = 16  // Left padding
@@ -1664,9 +2017,15 @@ public class RichTextCoordinator: NSObject {
                 font = applyItalicToFont(font)
             }
             
-            // Remove background color and paragraph style for normal text
+            // Remove background color for normal text
             typingAttributes.removeValue(forKey: .backgroundColor)
-            typingAttributes.removeValue(forKey: .paragraphStyle)
+
+            // Set fixed line height for stability
+            let paragraphStyle = NSMutableParagraphStyle()
+            paragraphStyle.minimumLineHeight = 24
+            paragraphStyle.maximumLineHeight = 24
+            paragraphStyle.lineHeightMultiple = 1.0  // Lock line height multiplier
+            typingAttributes[.paragraphStyle] = paragraphStyle
             
             // Set normal text color (only for non-code-block text)
             typingAttributes[.foregroundColor] = UIColor.label
@@ -1722,16 +2081,8 @@ public class RichTextCoordinator: NSObject {
     
     private func applyBoldToFont(_ font: UIFont) -> UIFont {
         let safeSize = safeFontSize(font.pointSize)
-        // Use specific SpaceGrotesk-Bold font for bold formatting
-        if let boldFont = UIFont(name: "SpaceGrotesk-Bold", size: safeSize) {
-            print("✅ applyBoldToFont: Using SpaceGrotesk-Bold at size \(safeSize)")
-            return boldFont
-        } else {
-            // Fallback to system bold font
-            let boldSystemFont = UIFont.boldSystemFont(ofSize: safeSize)
-            print("⚠️ applyBoldToFont: SpaceGrotesk-Bold not available, using system bold font: \(boldSystemFont.fontName)")
-            return boldSystemFont
-        }
+        // Use system font with bold weight for identical line heights (prevents size jumps)
+        return UIFont.systemFont(ofSize: safeSize, weight: .bold)
     }
     
     private func applyItalicToFont(_ font: UIFont) -> UIFont {
@@ -1753,21 +2104,62 @@ public class RichTextCoordinator: NSObject {
 extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
     
     public func textViewDidChange(_ textView: UITextView) {
+        let previousSize = textView.contentSize
+
         // Skip updates if we're currently handling newline insertion to avoid race conditions
         guard !isHandlingNewlineInsertion else { return }
         updateBindingFromTextView()
         updateContextFromTextView()
+
+        if isScrollDebugLoggingEnabled {
+            print("🔍 textViewDidChange: Offset before=\(preTypeOffset), after=\(textView.contentOffset); Size before=\(previousSize), after=\(textView.contentSize)")
+            logEditorMetrics(reason: "text_did_change")
+        }
+
+        // Immediately restore offset to prevent jump from auto-scroll
+        // NoScrollTextView also blocks contentOffset setter during typing for extra protection
+        textView.contentOffset = preTypeOffset
+
+        // Delay resetting typing flag until 0.5s after last keystroke
+        // This keeps contentOffset blocked during continuous typing
+        formattingTimer?.invalidate()
+        formattingTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self] _ in
+            guard let self = self else { return }
+            if let noScrollView = self.textView as? NoScrollTextView {
+                noScrollView.isTyping = false
+                if self.isScrollDebugLoggingEnabled {
+                    print("🔍 Formatting timer: Reset isTyping = false after 0.5s delay")
+                }
+            }
+        }
+
+        // Force offset to zero for short content (keep scrollEnabled = true)
+        if textView.contentSize.height <= textView.bounds.height - currentKeyboardHeight {
+            textView.contentOffset = .zero
+        }
+
+        lastContentSize = textView.contentSize
+
+        // Reset inset if no keyboard and content fits
+        if currentKeyboardHeight <= 0 && textView.contentSize.height <= textView.bounds.height {
+            textView.contentInset.bottom = 0
+            textView.contentOffset.y = 0
+        }
+
+        if isScrollDebugLoggingEnabled {
+            print("🔍 textViewDidChange complete: Offset pre=\(preTypeOffset) post=\(textView.contentOffset); Size change=\(previousSize.height) to \(textView.contentSize.height)")
+        }
     }
-    
+
     public func textViewDidChangeSelection(_ textView: UITextView) {
         // Skip updates if we're currently handling newline insertion to avoid race conditions
         guard !isHandlingNewlineInsertion else { return }
-        
+
         // Selection changed
-        
+
         // Prevent cursor from being placed to the left of checkboxes or bullets
         preventCursorLeftOfListMarkers(textView)
-        
+
         // If user taps to a position that's NOT in a code block, reset the explicit exit flag
         // This allows normal code block detection to work again
         let cursorPosition = textView.selectedRange.location
@@ -1775,15 +2167,19 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         if !isInCodeBlock {
             hasExplicitlyExitedCodeBlock = false
         }
-        
+
         // Disabled cursor-based checkbox detection due to over-triggering
         // Rely on tap gesture recognition instead
         // if !isTogglingSelf {
         //     checkForCheckboxAtCursorPosition()
         // }
-        
+
         updateContextFromTextView()
         updateTypingAttributes()
+
+        if isScrollDebugLoggingEnabled {
+            logEditorMetrics(reason: "selection_did_change")
+        }
     }
     
     public func textViewDidBeginEditing(_ textView: UITextView) {
@@ -1805,6 +2201,14 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
     }
     
     public func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
+        // Save offset before change to restore after content size updates
+        preTypeOffset = textView.contentOffset
+
+        // Set typing flag to suppress auto-scroll and block contentOffset changes
+        if let noScrollView = textView as? NoScrollTextView {
+            noScrollView.isTyping = true
+        }
+
         // Handle special cases like enter key for list continuation
         if text == "\n" {
             return handleNewlineInsertion(textView, range)
@@ -2237,7 +2641,7 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         
         // Check if we're backspacing right after a bullet/checkbox marker
         // The marker is 2 characters (e.g. "• " or "○ "), so check if cursor is anywhere after that
-        let isAfterMarker = range.location > markerPosition + 1 && 
+        let isAfterMarker = range.location > markerPosition + 1 &&
                            (trimmedLine.hasPrefix("• ") || trimmedLine.hasPrefix("☐ ") || trimmedLine.hasPrefix("☑ "))
         
         // Also check for Unicode checkbox
@@ -2264,7 +2668,7 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
                     let removeRange = NSRange(location: markerPosition, length: lengthToRemove)
                     mutableText.replaceCharacters(in: removeRange, with: "")
                 } else {
-                    let lengthToRemove = min(3, mutableText.length - markerPosition) // marker + space + character  
+                    let lengthToRemove = min(3, mutableText.length - markerPosition) // marker + space + character
                     let removeRange = NSRange(location: markerPosition, length: lengthToRemove)
                     mutableText.replaceCharacters(in: removeRange, with: "")
                 }
@@ -2290,7 +2694,7 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         guard let attributedText = textView.attributedText else { return }
         guard position < attributedText.length else { return }
         
-        // Check for Unicode checkbox characters  
+        // Check for Unicode checkbox characters
         let character = (attributedText.string as NSString).character(at: position)
         
         if character == 0x2610 { // ☐ unchecked
@@ -2468,9 +2872,9 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         lastUserTapTime = Date()
         
         // Check if we're at the end state
-        guard gesture.state == .ended else { 
+        guard gesture.state == .ended else {
             print("⚠️ handleTap: Gesture state is not .ended, it's \(gesture.state)")
-            return 
+            return
         }
         
         // Debug: Log all attachments in the text
@@ -2481,8 +2885,10 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
                 if let attachment = value as? NSTextAttachment {
                     let attachmentType = type(of: attachment)
                     print("🔍 handleTap: Found attachment type \(attachmentType) at range \(range)")
-                    
+
                     // Calculate attachment bounds
+                    // NOTE: Accessing layoutManager triggers TextKit 1 compatibility mode
+                    // This is necessary for precise glyph-level layout calculations
                     let layoutManager = textView.layoutManager
                     let textContainer = textView.textContainer
                     let glyphRange = layoutManager.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
@@ -2575,9 +2981,9 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
     /// Toggle a Unicode checkbox between checked and unchecked state
     private func toggleUnicodeCheckboxAtPosition(_ position: Int, isCurrentlyChecked: Bool) {
         // Prevent recursive checkbox detection during toggle
-        guard !isTogglingSelf else { 
+        guard !isTogglingSelf else {
             print("⚠️ toggleUnicodeCheckboxAtPosition: Already toggling, skipping")
-            return 
+            return
         }
         
         print("🔄 toggleUnicodeCheckboxAtPosition: Starting toggle at position \(position), currently checked: \(isCurrentlyChecked)")
@@ -2592,7 +2998,7 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         
         // Set flag to prevent cursor-based detection during toggle
         isTogglingSelf = true
-        defer { 
+        defer {
             // Reset flag after a brief delay to ensure all selection changes are processed
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 self.isTogglingSelf = false
@@ -2842,7 +3248,7 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         }
         
         // Enhanced cursor restriction with tap-to-left checkbox behavior
-        if let checkboxPos = foundCheckboxPosition, 
+        if let checkboxPos = foundCheckboxPosition,
            let checkboxAttachment = foundCheckboxAttachment,
            currentPosition <= checkboxPos {
             
@@ -2892,16 +3298,16 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
     /// This is more reliable than relying on context state during typing
     private func checkIfPositionIsInCodeBlock(_ position: Int) -> Bool {
         guard let attributedText = textView.attributedText,
-              position >= 0 && position <= attributedText.length else { 
-            return false 
+              position >= 0 && position <= attributedText.length else {
+            return false
         }
         
         // If position is at the end of text, check the previous character
         let checkPosition = position == attributedText.length ? max(0, position - 1) : position
         
         // If we have no text or are at position 0 of empty text, not in code block
-        guard checkPosition < attributedText.length && attributedText.length > 0 else { 
-            return false 
+        guard checkPosition < attributedText.length && attributedText.length > 0 else {
+            return false
         }
         
         // Check a small range around the position (similar to RichTextContext but more focused)
@@ -2945,15 +3351,15 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
     private func findDrawingAttachmentAtLocation(_ location: CGPoint, in textView: UITextView) -> (DrawingTextAttachment, NSRange)? {
         print("🔍 findDrawingAttachmentAtLocation: Searching for drawing button at location \(location)")
         
-        guard let textPosition = textView.closestPosition(to: location) else { 
+        guard let textPosition = textView.closestPosition(to: location) else {
             print("❌ findDrawingAttachmentAtLocation: Could not get text position")
-            return nil 
+            return nil
         }
         
         let tapIndex = textView.offset(from: textView.beginningOfDocument, to: textPosition)
-        guard let attributedText = textView.attributedText else { 
+        guard let attributedText = textView.attributedText else {
             print("❌ findDrawingAttachmentAtLocation: No attributed text")
-            return nil 
+            return nil
         }
         
         print("🔍 findDrawingAttachmentAtLocation: Tap index \(tapIndex), text length \(attributedText.length)")
@@ -2961,6 +3367,8 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         // Function to check if tap is in the "Open" button area of a drawing attachment
         func isInOpenButtonArea(drawingAttachment: DrawingTextAttachment, characterIndex: Int) -> Bool {
             // Get the attachment bounds from the layout manager
+            // NOTE: Accessing layoutManager triggers TextKit 1 compatibility mode
+            // This is necessary for precise glyph-level hit testing
             let layoutManager = textView.layoutManager
             let textContainer = textView.textContainer
             let glyphIndex = layoutManager.glyphIndexForCharacter(at: characterIndex)
@@ -3038,6 +3446,8 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         }
         
         // Try a broader search around the tap position using layout manager
+        // NOTE: Accessing layoutManager triggers TextKit 1 compatibility mode
+        // This is necessary for coordinate-to-glyph conversion
         let layoutManager = textView.layoutManager
         let textContainer = textView.textContainer
         print("🔍 findDrawingAttachmentAtLocation: Trying layout manager approach")
@@ -3121,3 +3531,12 @@ extension String {
         return String(self[index...])
     }
 }
+
+// MARK: - CGRect Extensions
+
+extension CGRect {
+    var containsNaN: Bool {
+        [origin.x, origin.y, size.width, size.height].contains { $0.isNaN || $0.isInfinite }
+    }
+}
+

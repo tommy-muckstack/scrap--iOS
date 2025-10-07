@@ -363,35 +363,65 @@ class EmbeddingService {
     }
     
     func generateEmbedding(for text: String) async throws -> [Double] {
-        let url = URL(string: "https://api.openai.com/v1/embeddings")!
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         guard !apiKey.isEmpty else {
             throw EmbeddingError.missingAPIKey
         }
-        
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        
-        let requestBody: [String: Any] = [
-            "model": "text-embedding-3-small",
-            "input": text
-        ]
-        
-        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
-        
-        let (data, response) = try await session.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
-            throw EmbeddingError.apiError("Failed to generate embedding")
+
+        let maxAttempts = 3
+        var lastError: Error?
+
+        for attempt in 1...maxAttempts {
+            do {
+                let url = URL(string: "https://api.openai.com/v1/embeddings")!
+                var request = URLRequest(url: url)
+                request.httpMethod = "POST"
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+
+                let requestBody: [String: Any] = [
+                    "model": "text-embedding-3-small",
+                    "input": text
+                ]
+
+                request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+
+                let (data, response) = try await session.data(for: request)
+
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    throw EmbeddingError.apiError("Invalid response")
+                }
+
+                guard httpResponse.statusCode == 200 else {
+                    let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
+                    print("❌ EmbeddingService: API error (attempt \(attempt)/\(maxAttempts)): \(errorMessage)")
+                    throw EmbeddingError.apiError("Failed to generate embedding: \(errorMessage)")
+                }
+
+                let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+                let dataArray = json["data"] as! [[String: Any]]
+                let embedding = dataArray[0]["embedding"] as! [Double]
+
+                if attempt > 1 {
+                    print("✅ EmbeddingService: Successfully generated embedding on attempt \(attempt)")
+                }
+
+                return embedding
+
+            } catch {
+                lastError = error
+                print("❌ EmbeddingService: Attempt \(attempt)/\(maxAttempts) failed: \(error.localizedDescription)")
+
+                if attempt < maxAttempts {
+                    // Exponential backoff: 1s, 2s, 4s
+                    let delaySeconds = Double(1 << (attempt - 1))
+                    print("⏳ EmbeddingService: Retrying in \(delaySeconds)s...")
+                    try await Task.sleep(nanoseconds: UInt64(delaySeconds * 1_000_000_000))
+                }
+            }
         }
-        
-        let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
-        let dataArray = json["data"] as! [[String: Any]]
-        let embedding = dataArray[0]["embedding"] as! [Double]
-        
-        return embedding
+
+        // All attempts failed
+        throw lastError ?? EmbeddingError.apiError("Failed after \(maxAttempts) attempts")
     }
 }
 

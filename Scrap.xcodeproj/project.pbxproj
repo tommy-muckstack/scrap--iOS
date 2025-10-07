@@ -60,6 +60,7 @@
 		FF304E8A2E6FA2000054DD44 /* ChromaService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF304E8B2E6FA2000054DD44 /* ChromaService.swift */; };
 		IA3B9BABEBD65C49F838AA4143 /* RichTextCore/RichTextInputAccessoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = IA0053424B563D671E01D14B43 /* RichTextCore/RichTextInputAccessoryView.swift */; };
 		NEC114F946C8D24C74D23822B8 /* NoteEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = NE5DDCCFCC62BAA7EE7261D21F /* NoteEditor.swift */; };
+		RC4452DD7654FF4B6D8FBDF0 /* RichTextCore/KeyboardResponsiveModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = RC2921613BBBA2485E8BA743 /* RichTextCore/KeyboardResponsiveModifier.swift */; };
 		RC7762BA2291946641555033DE /* RichTextCore/RichTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = RC6691F824B3D8177B68116C03 /* RichTextCore/RichTextEditor.swift */; };
 		RC7A674C6B95C322B02410EC74 /* RichTextCore/RichTextCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = RCE4FD307E47D569B669CE633A /* RichTextCore/RichTextCoordinator.swift */; };
 		RCB7600E0A0B026201786F2131 /* RichTextCore/RichTextContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = RCCABB85C9FF0BBEE223B3A7B5 /* RichTextCore/RichTextContext.swift */; };
@@ -134,6 +135,7 @@
 		FF304E8B2E6FA2000054DD44 /* ChromaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChromaService.swift; sourceTree = "<group>"; };
 		IA0053424B563D671E01D14B43 /* RichTextCore/RichTextInputAccessoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/RichTextInputAccessoryView.swift; sourceTree = "<group>"; };
 		NE5DDCCFCC62BAA7EE7261D21F /* NoteEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteEditor.swift; sourceTree = "<group>"; };
+		RC2921613BBBA2485E8BA743 /* RichTextCore/KeyboardResponsiveModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/KeyboardResponsiveModifier.swift; sourceTree = "<group>"; };
 		RC6691F824B3D8177B68116C03 /* RichTextCore/RichTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/RichTextEditor.swift; sourceTree = "<group>"; };
 		RCCABB85C9FF0BBEE223B3A7B5 /* RichTextCore/RichTextContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/RichTextContext.swift; sourceTree = "<group>"; };
 		RCE4FD307E47D569B669CE633A /* RichTextCore/RichTextCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextCore/RichTextCoordinator.swift; sourceTree = "<group>"; };
@@ -232,6 +234,7 @@
 				IA0053424B563D671E01D14B43 /* RichTextCore/RichTextInputAccessoryView.swift */,
 				RCE4FD307E47D569B669CE633A /* RichTextCore/RichTextCoordinator.swift */,
 				RC6691F824B3D8177B68116C03 /* RichTextCore/RichTextEditor.swift */,
+				RC2921613BBBA2485E8BA743 /* RichTextCore/KeyboardResponsiveModifier.swift */,
 				TMC622226271474267E1D8B017 /* ThemeManager.swift */,
 				SVB8AD07F579355BFEA517EECE /* SettingsView.swift */,
 				AA304E7A2F6F72980054DD41 /* AnalyticsManager.swift */,
@@ -467,6 +470,7 @@
 				IA3B9BABEBD65C49F838AA4143 /* RichTextCore/RichTextInputAccessoryView.swift in Sources */,
 				RC7A674C6B95C322B02410EC74 /* RichTextCore/RichTextCoordinator.swift in Sources */,
 				RC7762BA2291946641555033DE /* RichTextCore/RichTextEditor.swift in Sources */,
+				RC4452DD7654FF4B6D8FBDF0 /* RichTextCore/KeyboardResponsiveModifier.swift in Sources */,
 				TMF4A47D87D17E986129EC9426 /* ThemeManager.swift in Sources */,
 				SVF04E28F0BE8081BFE5CDA262 /* SettingsView.swift in Sources */,
 				AA304E792F6F72980054DD41 /* AnalyticsManager.swift in Sources */,
@@ -619,7 +623,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Scrap/Scrap.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_ASSET_PATHS = "\"Scrap/Preview Content\"";
 				DEVELOPMENT_TEAM = K8NAZ76CBQ;
 				ENABLE_PREVIEWS = YES;
@@ -635,7 +639,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.5.2;
+				MARKETING_VERSION = 1.5.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.muckstack.scrap;
 				PRODUCT_NAME = Scrap;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -657,7 +661,7 @@
 				CODE_SIGN_ENTITLEMENTS = Scrap/Scrap.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_ASSET_PATHS = "\"Scrap/Preview Content\"";
 				DEVELOPMENT_TEAM = K8NAZ76CBQ;
 				ENABLE_PREVIEWS = YES;
@@ -673,7 +677,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.5.2;
+				MARKETING_VERSION = 1.5.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.muckstack.scrap;
 				PRODUCT_NAME = Scrap;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -695,7 +699,7 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CODE_SIGN_ENTITLEMENTS = ScrapWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = K8NAZ76CBQ;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -713,7 +717,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 1.5.2;
+				MARKETING_VERSION = 1.5.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.muckstack.scrap.ScrapWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -734,7 +738,7 @@
 				CODE_SIGN_ENTITLEMENTS = ScrapWidgetExtension.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = K8NAZ76CBQ;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -748,7 +752,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 1.5.2;
+				MARKETING_VERSION = 1.5.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.muckstack.scrap.ScrapWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;

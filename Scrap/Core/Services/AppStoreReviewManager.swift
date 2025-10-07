@@ -16,7 +16,10 @@ import AppStore
 @MainActor
 class AppStoreReviewManager {
     static let shared = AppStoreReviewManager()
-    
+
+    // Use app group for shared data storage
+    private let userDefaults = UserDefaults(suiteName: "group.scrap.app") ?? UserDefaults.standard
+
     // UserDefaults keys
     nonisolated private let launchCountKey = "app_launch_count"
     nonisolated private let hasRequestedReviewKey = "has_requested_review"
@@ -63,12 +66,12 @@ class AppStoreReviewManager {
     /// Check if we can show review prompt right now (for testing)
     func canShowReviewPrompt() -> (canShow: Bool, reason: String) {
         let launchCount = getCurrentLaunchCount()
-        let hasRequestedReview = UserDefaults.standard.bool(forKey: hasRequestedReviewKey)
+        let hasRequestedReview = userDefaults.bool(forKey: hasRequestedReviewKey)
         let currentVersion = getCurrentAppVersion()
-        let lastRequestVersion = UserDefaults.standard.string(forKey: lastReviewRequestVersionKey)
-        let lastPromptDate = UserDefaults.standard.object(forKey: lastReviewPromptDateKey) as? Date
-        _ = UserDefaults.standard.integer(forKey: reviewPromptCountKey)
-        let userDismissed = UserDefaults.standard.bool(forKey: userDismissedReviewKey)
+        let lastRequestVersion = userDefaults.string(forKey: lastReviewRequestVersionKey)
+        let lastPromptDate = userDefaults.object(forKey: lastReviewPromptDateKey) as? Date
+        _ = userDefaults.integer(forKey: reviewPromptCountKey)
+        let userDismissed = userDefaults.bool(forKey: userDismissedReviewKey)
         
         // Check launch count
         if launchCount < minimumLaunchCount {
@@ -112,13 +115,13 @@ class AppStoreReviewManager {
     
     /// Simulate user dismissing the prompt (for testing - iOS doesn't provide this callback)
     func simulateUserDismissed() {
-        UserDefaults.standard.set(true, forKey: userDismissedReviewKey)
+        userDefaults.set(true, forKey: userDismissedReviewKey)
         print("🚫 Simulated user dismissing review prompt - 6 month cooldown activated")
     }
-    
+
     /// Reset dismissal status (user can be asked again)
     func resetDismissalStatus() {
-        UserDefaults.standard.removeObject(forKey: userDismissedReviewKey)
+        userDefaults.removeObject(forKey: userDismissedReviewKey)
         print("🔄 Reset dismissal status")
     }
     
@@ -149,15 +152,15 @@ class AppStoreReviewManager {
     // MARK: - Private Methods
     
     private func incrementLaunchCount() {
-        let currentCount = UserDefaults.standard.integer(forKey: launchCountKey)
+        let currentCount = userDefaults.integer(forKey: launchCountKey)
         let newCount = currentCount + 1
-        UserDefaults.standard.set(newCount, forKey: launchCountKey)
-        
+        userDefaults.set(newCount, forKey: launchCountKey)
+
         print("📱 Scrap app launch count: \(newCount)")
     }
-    
+
     private func getCurrentLaunchCount() -> Int {
-        return UserDefaults.standard.integer(forKey: launchCountKey)
+        return userDefaults.integer(forKey: launchCountKey)
     }
     
     private func requestReviewIfAppropriate(force: Bool = false, bypassCooldown: Bool = false) {
@@ -225,16 +228,16 @@ class AppStoreReviewManager {
         }
         
         // Update tracking data
-        UserDefaults.standard.set(true, forKey: hasRequestedReviewKey)
-        UserDefaults.standard.set(currentVersion, forKey: lastReviewRequestVersionKey)
-        UserDefaults.standard.set(Date(), forKey: lastReviewPromptDateKey)
-        
+        userDefaults.set(true, forKey: hasRequestedReviewKey)
+        userDefaults.set(currentVersion, forKey: lastReviewRequestVersionKey)
+        userDefaults.set(Date(), forKey: lastReviewPromptDateKey)
+
         // Increment prompt count
-        let currentPromptCount = UserDefaults.standard.integer(forKey: reviewPromptCountKey)
-        UserDefaults.standard.set(currentPromptCount + 1, forKey: reviewPromptCountKey)
-        
+        let currentPromptCount = userDefaults.integer(forKey: reviewPromptCountKey)
+        userDefaults.set(currentPromptCount + 1, forKey: reviewPromptCountKey)
+
         // Reset dismissal status (fresh start for this prompt)
-        UserDefaults.standard.removeObject(forKey: userDismissedReviewKey)
+        userDefaults.removeObject(forKey: userDismissedReviewKey)
     }
     
     private func getCurrentAppVersion() -> String {
@@ -242,40 +245,40 @@ class AppStoreReviewManager {
     }
     
     private func getDaysSinceLastPrompt() -> Int? {
-        guard let lastDate = UserDefaults.standard.object(forKey: lastReviewPromptDateKey) as? Date else {
+        guard let lastDate = userDefaults.object(forKey: lastReviewPromptDateKey) as? Date else {
             return nil
         }
         return Calendar.current.dateComponents([.day], from: lastDate, to: Date()).day
     }
-    
+
     private func getYearlyPromptCount() -> Int {
         // For simplicity, using total prompt count
         // In a real implementation, you'd filter by date
-        return UserDefaults.standard.integer(forKey: reviewPromptCountKey)
+        return userDefaults.integer(forKey: reviewPromptCountKey)
     }
     
     // MARK: - Debug Methods
     
     /// Reset all review tracking (useful for testing)
     func resetReviewTracking() {
-        UserDefaults.standard.removeObject(forKey: launchCountKey)
-        UserDefaults.standard.removeObject(forKey: hasRequestedReviewKey)
-        UserDefaults.standard.removeObject(forKey: lastReviewRequestVersionKey)
-        UserDefaults.standard.removeObject(forKey: lastReviewPromptDateKey)
-        UserDefaults.standard.removeObject(forKey: reviewPromptCountKey)
-        UserDefaults.standard.removeObject(forKey: userDismissedReviewKey)
+        userDefaults.removeObject(forKey: launchCountKey)
+        userDefaults.removeObject(forKey: hasRequestedReviewKey)
+        userDefaults.removeObject(forKey: lastReviewRequestVersionKey)
+        userDefaults.removeObject(forKey: lastReviewPromptDateKey)
+        userDefaults.removeObject(forKey: reviewPromptCountKey)
+        userDefaults.removeObject(forKey: userDismissedReviewKey)
         print("🔄 Reset all conservative review tracking data for Scrap")
     }
-    
+
     /// Get current tracking status for debugging
     func getTrackingStatus() -> String {
         let launchCount = getCurrentLaunchCount()
-        let hasRequestedReview = UserDefaults.standard.bool(forKey: hasRequestedReviewKey)
-        let lastRequestVersion = UserDefaults.standard.string(forKey: lastReviewRequestVersionKey) ?? "none"
+        let hasRequestedReview = userDefaults.bool(forKey: hasRequestedReviewKey)
+        let lastRequestVersion = userDefaults.string(forKey: lastReviewRequestVersionKey) ?? "none"
         let currentVersion = getCurrentAppVersion()
-        let lastPromptDate = UserDefaults.standard.object(forKey: lastReviewPromptDateKey) as? Date
-        let promptCount = UserDefaults.standard.integer(forKey: reviewPromptCountKey)
-        let userDismissed = UserDefaults.standard.bool(forKey: userDismissedReviewKey)
+        let lastPromptDate = userDefaults.object(forKey: lastReviewPromptDateKey) as? Date
+        let promptCount = userDefaults.integer(forKey: reviewPromptCountKey)
+        let userDismissed = userDefaults.bool(forKey: userDismissedReviewKey)
         let daysSinceLastPrompt = getDaysSinceLastPrompt()
         let canShow = canShowReviewPrompt()
         

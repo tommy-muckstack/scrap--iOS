@@ -91,8 +91,8 @@ struct NoteEditor: View {
                         textView.tintColor = UIColor.label
                         
                         // Improve text alignment and padding to match placeholder
-                        // Increased bottom padding for keyboard accessibility
-                        textView.textContainerInset = UIEdgeInsets(top: 8, left: 0, bottom: 300, right: 0)
+                        // Minimal bottom padding - coordinator handles keyboard avoidance
+                        textView.textContainerInset = UIEdgeInsets(top: 8, left: 0, bottom: 40, right: 0)
                         textView.textContainer.lineFragmentPadding = 4
                         
                         // Better line spacing for readability
@@ -786,12 +786,12 @@ struct RichFormattingToolbar: View {
                 }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 8)
         .background(
             Rectangle()
                 .fill(Color(UIColor.systemBackground))
                 .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: -1)
         )
+        .frame(height: 44)  // Match system inputAccessoryView height - set last to prevent conflicts
     }
 }
 
