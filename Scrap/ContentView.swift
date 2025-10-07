@@ -501,8 +501,9 @@ class FirebaseDataManager: ObservableObject {
     @Published var isLoading = false
     @Published var categories: [Category] = []
     @Published var selectedCategoryFilter: String? = nil
-    
+
     let firebaseManager = FirebaseManager.shared
+    private var lastVectorIndexCount = -1
     
     init() {
         startListening()
@@ -2129,10 +2130,7 @@ struct ContentView: View {
     @State private var hasSearched = false
     @State private var isSearching = false
     @FocusState private var isSearchFieldFocused: Bool
-    
-    // Vector indexing optimization
-    @State private var lastVectorIndexCount = -1
-    
+
     // Pagination
     @State private var displayedItemsCount = 10
     private let itemsPerPage = 10
