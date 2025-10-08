@@ -110,6 +110,8 @@ class NoScrollTextView: PasteHandlingTextView {
             super.contentOffset
         }
         set {
+            let oldValue = super.contentOffset
+
             // Block ALL offset changes during typing
             if isTyping {
                 print("🔍 NoScrollTextView: Blocked contentOffset setter during typing")
@@ -123,6 +125,7 @@ class NoScrollTextView: PasteHandlingTextView {
                 return
             }
 
+            print("🔍 NoScrollTextView: ALLOWING contentOffset change from \(oldValue) to \(newValue), contentSize: \(contentSize), bounds: \(bounds), inset: \(adjustedContentInset)")
             super.contentOffset = newValue
         }
     }
@@ -137,11 +140,58 @@ class NoScrollTextView: PasteHandlingTextView {
         // Also block vertical scrolling if content fits on screen (accounting for keyboard)
         let availableHeight = bounds.height - adjustedContentInset.top - adjustedContentInset.bottom
         if contentSize.height <= availableHeight && contentOffset.y > 0 {
-            print("🔍 NoScrollTextView: Blocked setContentOffset(animated:) - content fits on screen (contentSize: \(contentSize.height), available: \(availableHeight), attempted offset: \(contentOffset.y))")
+            print("🔍 NoScrollTextView: Blocked setContentOffset(animated:\(animated)) - content fits on screen (contentSize: \(contentSize.height), available: \(availableHeight), attempted offset: \(contentOffset.y))")
             return
         }
 
+        print("🔍 NoScrollTextView: ALLOWING setContentOffset(animated:\(animated)) to \(contentOffset), contentSize: \(contentSize), bounds: \(bounds)")
         super.setContentOffset(contentOffset, animated: animated)
+    }
+
+    override func scrollRectToVisible(_ rect: CGRect, animated: Bool) {
+        // Calculate the visible content area accounting for insets
+        let availableHeight = bounds.height - adjustedContentInset.top - adjustedContentInset.bottom
+
+        // Block scrolling if content fits on screen
+        if contentSize.height <= availableHeight {
+            print("🔍 NoScrollTextView: Blocked scrollRectToVisible - content fits in available area (contentSize: \(contentSize.height), available: \(availableHeight), rect: \(rect))")
+            return
+        }
+
+        // If available height is invalid (can happen during keyboard animation), skip
+        if availableHeight <= 0 {
+            print("🔍 NoScrollTextView: Blocked scrollRectToVisible - invalid available height (\(availableHeight))")
+            return
+        }
+
+        // Calculate the currently visible rect in content coordinates
+        let visibleMinY = contentOffset.y
+        let visibleMaxY = contentOffset.y + availableHeight
+
+        // Check if rect is already fully visible
+        if rect.minY >= visibleMinY && rect.maxY <= visibleMaxY {
+            print("🔍 NoScrollTextView: Blocked scrollRectToVisible - rect already visible (rect: \(rect.minY)...\(rect.maxY), visible: \(visibleMinY)...\(visibleMaxY))")
+            return
+        }
+
+        // Calculate the correct scroll position to make rect visible
+        var targetOffset = contentOffset
+
+        if rect.minY < visibleMinY {
+            // Rect is above visible area, scroll up to show top of rect
+            targetOffset.y = rect.minY
+        } else if rect.maxY > visibleMaxY {
+            // Rect is below visible area, scroll down to show bottom of rect
+            targetOffset.y = rect.maxY - availableHeight
+        }
+
+        // Clamp to valid range
+        let minOffset: CGFloat = 0
+        let maxOffset = max(0, contentSize.height - availableHeight)
+        targetOffset.y = max(minOffset, min(maxOffset, targetOffset.y))
+
+        print("🔍 NoScrollTextView: Scrolling to make rect visible - from offset \(contentOffset.y) to \(targetOffset.y), rect: \(rect.minY)...\(rect.maxY), visible: \(visibleMinY)...\(visibleMaxY)")
+        setContentOffset(targetOffset, animated: animated)
     }
 
     override func layoutSubviews() {

@@ -309,12 +309,20 @@ public class RichTextCoordinator: NSObject {
 
             // Only initial scroll to bottom or caret on keyboard appearance
             if isKeyboardNowVisible && !self.isInitialAdjustmentDone {
-                let maxOffset = max(0, self.textView.contentSize.height - self.textView.bounds.height + bottomInset)
-                self.textView.contentOffset = CGPoint(x: 0, y: maxOffset)
-                self.isInitialAdjustmentDone = true
-                if self.isScrollDebugLoggingEnabled {
-                    print("🧭 KeyboardAdjust: Initial scroll to maxOffset=\(String(format: "%.2f", maxOffset))")
+                let availableHeight = self.textView.bounds.height - self.textView.adjustedContentInset.top - self.textView.adjustedContentInset.bottom
+                let contentFitsOnScreen = self.textView.contentSize.height <= availableHeight
+
+                // Skip initial scroll if content already fits on screen
+                if !contentFitsOnScreen {
+                    let maxOffset = max(0, self.textView.contentSize.height - self.textView.bounds.height + bottomInset)
+                    self.textView.contentOffset = CGPoint(x: 0, y: maxOffset)
+                    if self.isScrollDebugLoggingEnabled {
+                        print("🧭 KeyboardAdjust: Initial scroll to maxOffset=\(String(format: "%.2f", maxOffset))")
+                    }
+                } else if self.isScrollDebugLoggingEnabled {
+                    print("🧭 KeyboardAdjust: Skipping initial scroll - content fits on screen (contentSize: \(self.textView.contentSize.height), available: \(availableHeight))")
                 }
+                self.isInitialAdjustmentDone = true
             }
         }
 
