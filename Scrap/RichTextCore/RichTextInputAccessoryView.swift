@@ -31,35 +31,29 @@ class RichTextInputAccessoryView: UIView {
     
     private func setupView() {
         backgroundColor = UIColor.systemBackground
-        
-        // Add shadow
-        layer.shadowColor = UIColor.black.cgColor
-        layer.shadowOffset = CGSize(width: 0, height: -1)
-        layer.shadowOpacity = 0.1
-        layer.shadowRadius = 1
-        
+
         // Create SwiftUI toolbar and embed it
         let toolbar = RichFormattingToolbar(
             context: context
         )
-        
+
         let hostingController = UIHostingController(rootView: toolbar)
         hostingController.view.backgroundColor = UIColor.clear
         hostingController.view.translatesAutoresizingMaskIntoConstraints = false
-        
+
         addSubview(hostingController.view)
-        
+
         NSLayoutConstraint.activate([
             hostingController.view.leadingAnchor.constraint(equalTo: leadingAnchor),
             hostingController.view.trailingAnchor.constraint(equalTo: trailingAnchor),
             hostingController.view.topAnchor.constraint(equalTo: topAnchor),
             hostingController.view.bottomAnchor.constraint(equalTo: bottomAnchor),
-            hostingController.view.heightAnchor.constraint(equalToConstant: 52) // Fixed height to prevent growth
+            hostingController.view.heightAnchor.constraint(equalToConstant: 44)
         ])
     }
-    
+
     override var intrinsicContentSize: CGSize {
-        return CGSize(width: UIView.noIntrinsicMetric, height: 52)
+        return CGSize(width: UIView.noIntrinsicMetric, height: 44)
     }
 }
 

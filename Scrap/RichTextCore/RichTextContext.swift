@@ -96,7 +96,10 @@ public class RichTextContext: ObservableObject {
     
     /// Whether drawing mode is active
     @Published public internal(set) var isDrawingActive = false
-    
+
+    /// Whether to block manual newline insertion (for single/multi-line input fields)
+    @Published public var blockNewlines = false
+
     // MARK: - Editor Capabilities
     
     /// Whether content can be copied

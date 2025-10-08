@@ -493,6 +493,18 @@ struct GentleLightning {
 class ContentViewModel: ObservableObject {
     @Published var inputText = ""
     @Published var placeholderText = "Just type or speak..."
+
+    private var themeManager = ThemeManager.shared
+    private var cancellables = Set<AnyCancellable>()
+
+    init() {
+        // Update placeholder text when useVoiceInput changes
+        themeManager.$useVoiceInput
+            .sink { [weak self] useVoiceInput in
+                self?.placeholderText = useVoiceInput ? "Just type or speak..." : "Just type or hit '+' button..."
+            }
+            .store(in: &cancellables)
+    }
 }
 
 // MARK: - Firebase Data Manager
@@ -654,10 +666,55 @@ class FirebaseDataManager: ObservableObject {
         DispatchQueue.main.async {
             item.content = newContent
         }
-        
+
         if let firebaseId = item.firebaseId {
+            // Update existing item
             Task {
                 try? await firebaseManager.updateNote(noteId: firebaseId, newContent: newContent)
+            }
+        } else {
+            // Create new item in Firebase if it doesn't exist yet
+            Task {
+                // Generate title from content
+                let title: String? = await {
+                    do {
+                        let generatedTitle = try await OpenAIService.shared.generateTitle(for: newContent)
+                        print("📝 Generated title for new note: '\(generatedTitle)'")
+                        return generatedTitle
+                    } catch {
+                        print("Title generation failed: \(error)")
+                        return nil
+                    }
+                }()
+
+                do {
+                    // Create note in Firebase
+                    let firebaseId = try await firebaseManager.createNote(
+                        content: newContent,
+                        title: title,
+                        categoryIds: item.categoryIds,
+                        isTask: item.isTask,
+                        categories: [],
+                        creationType: "plus_button",
+                        rtfData: nil
+                    )
+
+                    await MainActor.run {
+                        item.firebaseId = firebaseId
+                        item.title = title ?? ""
+
+                        // Add to items array if not already there
+                        if !items.contains(where: { $0.id == item.id }) {
+                            withAnimation(GentleLightning.Animation.elastic) {
+                                items.insert(item, at: 0)
+                            }
+                        }
+                    }
+
+                    print("✅ Successfully created new note in Firebase")
+                } catch {
+                    print("⚠️ DataManager: Firebase creation failed but note preserved locally: \(error)")
+                }
             }
         }
     }
@@ -665,16 +722,17 @@ class FirebaseDataManager: ObservableObject {
     func updateItemWithRTF(_ item: SparkItem, rtfData: Data) {
         // Store RTF data in the item for persistence
         item.rtfData = rtfData
-        
+
         // Always extract plain text from RTF for local display/search to prevent showing raw RTF
+        var plainText = ""
         do {
             let attributedString = try NSAttributedString(
                 data: rtfData,
                 options: [.documentType: NSAttributedString.DocumentType.rtf],
                 documentAttributes: nil
             )
-            let plainText = attributedString.string
-            
+            plainText = attributedString.string
+
             // Ensure UI updates happen on main thread
             DispatchQueue.main.async {
                 item.content = plainText
@@ -683,10 +741,55 @@ class FirebaseDataManager: ObservableObject {
             print("❌ Failed to extract plain text from RTF: \(error)")
             // Don't update content if RTF extraction fails to preserve existing content
         }
-        
+
         if let firebaseId = item.firebaseId {
+            // Update existing item
             Task {
                 try? await firebaseManager.updateNoteWithRTF(noteId: firebaseId, rtfData: rtfData)
+            }
+        } else {
+            // Create new item in Firebase if it doesn't exist yet
+            Task {
+                // Generate title from content
+                let title: String? = await {
+                    do {
+                        let generatedTitle = try await OpenAIService.shared.generateTitle(for: plainText)
+                        print("📝 Generated title for new note: '\(generatedTitle)'")
+                        return generatedTitle
+                    } catch {
+                        print("Title generation failed: \(error)")
+                        return nil
+                    }
+                }()
+
+                do {
+                    // Create note in Firebase with RTF content
+                    let firebaseId = try await firebaseManager.createNote(
+                        content: plainText,
+                        title: title,
+                        categoryIds: item.categoryIds,
+                        isTask: item.isTask,
+                        categories: [],
+                        creationType: "plus_button",
+                        rtfData: rtfData
+                    )
+
+                    await MainActor.run {
+                        item.firebaseId = firebaseId
+                        item.title = title ?? ""
+
+                        // Add to items array if not already there
+                        if !items.contains(where: { $0.id == item.id }) {
+                            withAnimation(GentleLightning.Animation.elastic) {
+                                items.insert(item, at: 0)
+                            }
+                        }
+                    }
+
+                    print("✅ Successfully created new note in Firebase with RTF data")
+                } catch {
+                    print("⚠️ DataManager: Firebase creation failed but note preserved locally: \(error)")
+                }
             }
         }
     }
@@ -883,6 +986,7 @@ struct InputField: View {
     var isFieldFocused: FocusState<Bool>.Binding
     var hideMicrophone: Bool = false
     var isSearchExpanded: Bool = false
+    var onCreateNewNote: (() -> Void)? = nil
     
     // Theme management
     @ObservedObject private var themeManager = ThemeManager.shared
@@ -912,24 +1016,45 @@ struct InputField: View {
     // Extract complex button to resolve compiler timeout
     private var actionButton: some View {
         Button(action: {
-            if isRecording {
-                // Stop recording
-                handleVoiceRecording()
-            } else if hasText {
-                // Save the note (only when not recording)
-                if !attributedText.string.isEmpty {
-                    AnalyticsManager.shared.trackNoteSaved(method: "button", contentLength: attributedText.string.count)
-                    
-                    // Create new item with rich text formatting
-                    dataManager.createItemFromAttributedText(attributedText, creationType: "rich_text")
-                    
-                    // Clear both text fields
-                    text = ""
-                    attributedText = NSAttributedString()
+            if themeManager.useVoiceInput {
+                // Voice input mode
+                if isRecording {
+                    // Stop recording
+                    handleVoiceRecording()
+                } else if hasText {
+                    // Save the note (only when not recording)
+                    if !attributedText.string.isEmpty {
+                        AnalyticsManager.shared.trackNoteSaved(method: "button", contentLength: attributedText.string.count)
+
+                        // Create new item with rich text formatting
+                        dataManager.createItemFromAttributedText(attributedText, creationType: "rich_text")
+
+                        // Clear both text fields
+                        text = ""
+                        attributedText = NSAttributedString()
+                    }
+                } else {
+                    // Start voice recording
+                    handleVoiceRecording()
                 }
             } else {
-                // Start voice recording
-                handleVoiceRecording()
+                // Plus button mode
+                if hasText {
+                    // Save the note
+                    if !attributedText.string.isEmpty {
+                        AnalyticsManager.shared.trackNoteSaved(method: "button", contentLength: attributedText.string.count)
+
+                        // Create new item with rich text formatting
+                        dataManager.createItemFromAttributedText(attributedText, creationType: "rich_text")
+
+                        // Clear both text fields
+                        text = ""
+                        attributedText = NSAttributedString()
+                    }
+                } else {
+                    // Create new note
+                    onCreateNewNote?()
+                }
             }
         }) {
             ZStack {
@@ -984,9 +1109,9 @@ struct InputField: View {
                             )
                     }
                     
-                    // Microphone icon - default state (when no text and not recording)
+                    // Microphone or Plus icon - default state (when no text and not recording)
                     if !hasText && !isRecording {
-                        Image(systemName: "mic.fill")
+                        Image(systemName: themeManager.useVoiceInput ? "mic.fill" : "plus")
                             .font(GentleLightning.Typography.title)
                             .foregroundColor(themeManager.isDarkMode ? Color.black : .white)
                             .scaleEffect(
@@ -1033,22 +1158,22 @@ struct InputField: View {
                             textView.smartQuotesType = .yes
                             textView.smartDashesType = .yes
                             textView.spellCheckingType = .yes
-                            
+
                             // Set cursor color to black (matching design system)
                             textView.tintColor = UIColor.label
-                            
+
                             // Improve text alignment and padding to match placeholder
                             textView.textContainerInset = UIEdgeInsets(top: 8, left: 0, bottom: 8, right: 0)
                             textView.textContainer.lineFragmentPadding = 4
-                            
+
                             // Better line spacing for readability
                             let paragraphStyle = NSMutableParagraphStyle()
                             paragraphStyle.lineSpacing = 4
                             paragraphStyle.paragraphSpacing = 8
-                            
+
                             // Set default Space Grotesk font for all notes
                             let defaultFont = UIFont(name: "SpaceGrotesk-Regular", size: 16) ?? UIFont.systemFont(ofSize: 16)
-                            
+
                             textView.typingAttributes = [
                                 .paragraphStyle: paragraphStyle,
                                 .font: defaultFont,
@@ -1056,6 +1181,10 @@ struct InputField: View {
                             ]
                         }
                         )
+                        .onAppear {
+                            // Block manual newlines in the input field
+                            richTextContext.blockNewlines = true
+                        }
                         .disabled(isRecording)
                         .frame(minHeight: 40, maxHeight: max(40, min(textHeight, 120)), alignment: .topLeading)
                         .focused(isFieldFocused)
@@ -1866,12 +1995,11 @@ struct AccountDrawerView: View {
                 .fill(GentleLightning.Colors.drawerHandle(isDark: themeManager.isDarkMode))
                 .frame(width: 40, height: 4)
                 .padding(.top, 12)
-                .padding(.bottom, 24)
-            
-            ScrollView {
-                VStack(spacing: 12) {
-                    // Settings Section (from SettingsView)
-                    VStack(alignment: .leading, spacing: 16) {
+                .padding(.bottom, 16)
+
+            VStack(spacing: 10) {
+                // Settings Section (from SettingsView)
+                VStack(alignment: .leading, spacing: 12) {
                         HStack {
                             Text("My Account")
                                 .font(GentleLightning.Typography.heading)
@@ -1881,59 +2009,95 @@ struct AccountDrawerView: View {
                         
                         // Dark Mode Toggle
                         HStack {
-                            VStack(alignment: .leading, spacing: 4) {
+                            VStack(alignment: .leading, spacing: 2) {
                                 Text("Dark Mode")
                                     .font(GentleLightning.Typography.body)
                                     .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+                                Text("Change app appearance")
+                                    .font(GentleLightning.Typography.caption)
+                                    .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
                             }
-                            
+
                             Spacer()
-                            
+
                             Toggle("", isOn: Binding(
                                 get: { themeManager.isDarkMode },
                                 set: { _ in themeManager.toggleDarkMode() }
                             ))
                             .tint(GentleLightning.Colors.accentNeutral)
                         }
-                        .padding(16)
+                        .padding(12)
                         .background(
                             RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.medium)
                                 .fill(GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
                         )
-                        
+
+                        // Voice Create Toggle
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Voice Create")
+                                    .font(GentleLightning.Typography.body)
+                                    .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+                                Text("Record new note by voice")
+                                    .font(GentleLightning.Typography.caption)
+                                    .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
+                            }
+
+                            Spacer()
+
+                            Toggle("", isOn: Binding(
+                                get: { themeManager.useVoiceInput },
+                                set: { _ in themeManager.toggleVoiceInput() }
+                            ))
+                            .tint(GentleLightning.Colors.accentNeutral)
+                        }
+                        .padding(12)
+                        .background(
+                            RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.medium)
+                                .fill(GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
+                        )
+
                         // Group Notes by Tag Toggle
                         HStack {
-                            Text("Group Notes by Tag")
-                                .font(GentleLightning.Typography.body)
-                                .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
-                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Group Notes by Tag")
+                                    .font(GentleLightning.Typography.body)
+                                    .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+                                Text("Sort notes by tag")
+                                    .font(GentleLightning.Typography.caption)
+                                    .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
+                            }
+
                             Spacer()
-                            
+
                             Toggle("", isOn: Binding(
                                 get: { themeManager.groupNotesByTag },
                                 set: { _ in themeManager.toggleGroupNotesByTag() }
                             ))
                             .tint(GentleLightning.Colors.accentNeutral)
                         }
-                        .padding(16)
+                        .padding(12)
                         .background(
                             RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.medium)
                                 .fill(GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
                         )
-                        
+
                         // Manage Tags option
                         Button(action: {
                             showManageTags = true
                         }) {
                             HStack {
-                                VStack(alignment: .leading, spacing: 4) {
+                                VStack(alignment: .leading, spacing: 2) {
                                     Text("Manage Tags")
                                         .font(GentleLightning.Typography.body)
                                         .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+                                    Text("Edit or remove tags")
+                                        .font(GentleLightning.Typography.caption)
+                                        .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
                                 }
-                                
+
                                 Spacer()
-                                
+
                                 Text("OPEN")
                                     .font(GentleLightning.Typography.caption)
                                     .foregroundColor(themeManager.isDarkMode ? GentleLightning.Colors.textBlack : Color.white)
@@ -1946,58 +2110,57 @@ struct AccountDrawerView: View {
                             }
                         }
                         .buttonStyle(PlainButtonStyle())
-                        .padding(16)
+                        .padding(12)
                         .background(
                             RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.medium)
                                 .fill(GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
                         )
                     }
-                    
-                    // Account actions
-                    VStack(spacing: 16) {
+
                     // More Actions button
                     Button(action: {
                         showMoreActions = true
                     }) {
                         HStack {
-                            VStack(alignment: .leading, spacing: 4) {
+                            VStack(alignment: .leading, spacing: 2) {
                                 Text("More Actions")
                                     .font(GentleLightning.Typography.body)
                                     .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+                                Text("Additional app options")
+                                    .font(GentleLightning.Typography.caption)
+                                    .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
                             }
-                            
+
                             Spacer()
-                            
+
                             Image(systemName: "chevron.right")
                                 .font(GentleLightning.Typography.caption)
                                 .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 16)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
                         .background(
                             RoundedRectangle(cornerRadius: 12)
                                 .fill(themeManager.isDarkMode ? Color.black : GentleLightning.Colors.surface)
                         )
                     }
                     .buttonStyle(PlainButtonStyle())
-                }
-                
+
                     Spacer()
-                    
+
                     // App info
-                    VStack(spacing: 8) {
+                    VStack(spacing: 6) {
                         Text("Scrap")
-                            .font(.custom("SpaceGrotesk-Bold", size: 24))
+                            .font(.custom("SpaceGrotesk-Bold", size: 20))
                             .foregroundColor(GentleLightning.Colors.textGreyStatic)
-                        
+
                         Text("Version \(appVersion) (\(buildNumber))")
                             .font(GentleLightning.Typography.small)
                             .foregroundColor(GentleLightning.Colors.textGreyStatic)
                     }
-                    .padding(.bottom, 60)
-                }
-                .padding(.horizontal, 20)
+                    .padding(.bottom, 20)
             }
+            .padding(.horizontal, 20)
         }
         .background(
             GentleLightning.Colors.background(isDark: themeManager.isDarkMode)
@@ -2372,7 +2535,7 @@ struct ContentView: View {
                     showingAccountDrawer = true
                 }) {
                     Text("...")
-                        .font(.system(size: 28, weight: .medium))
+                        .font(.system(size: 40, weight: .semibold))
                         .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
                         .frame(width: 120, height: 100) // Increased from 100x80 to 120x100
                         .multilineTextAlignment(.center)
@@ -2396,7 +2559,7 @@ struct ContentView: View {
     @ViewBuilder
     private var inputFieldSection: some View {
         // Input Field - positioned lower on screen
-        InputField(text: $viewModel.inputText, 
+        InputField(text: $viewModel.inputText,
                   placeholder: isSearchExpanded ? "" : viewModel.placeholderText, // Hide placeholder when search is expanded
                   dataManager: dataManager,
                   onCommit: {
@@ -2408,7 +2571,23 @@ struct ContentView: View {
         },
                   isFieldFocused: $isInputFieldFocused,
                   hideMicrophone: isSearchExpanded, // Hide microphone when search is expanded
-                  isSearchExpanded: isSearchExpanded) // Pass search state to InputField
+                  isSearchExpanded: isSearchExpanded, // Pass search state to InputField
+                  onCreateNewNote: {
+            // Create a temporary empty item for editing
+            let newItem = SparkItem(
+                content: "",
+                title: "",
+                categoryIds: [],
+                isTask: false,
+                id: UUID().uuidString
+            )
+
+            // Track the event
+            AnalyticsManager.shared.trackNewNoteStarted(method: "plus_button")
+
+            // Navigate to the editor
+            navigationPath.append(newItem)
+        })
         .padding(.horizontal, GentleLightning.Layout.Padding.xl)
     }
     
@@ -2635,7 +2814,7 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showingAccountDrawer) {
             AccountDrawerView(isPresented: $showingAccountDrawer)
-                .presentationDetents([.fraction(0.6), .large])
+                .presentationDetents([.height(520)])
                 .presentationDragIndicator(.hidden)
                 .onDisappear {
                     AnalyticsManager.shared.trackAccountDrawerClosed()

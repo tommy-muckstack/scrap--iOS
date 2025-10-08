@@ -2209,6 +2209,11 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
             noScrollView.isTyping = true
         }
 
+        // Block newlines if context has blockNewlines enabled (for single/multi-line input fields)
+        if text == "\n" && context.blockNewlines {
+            return false
+        }
+
         // Handle special cases like enter key for list continuation
         if text == "\n" {
             return handleNewlineInsertion(textView, range)

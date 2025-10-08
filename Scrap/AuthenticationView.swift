@@ -258,49 +258,61 @@ struct AuthenticationView: View {
     @State private var errorMessage: String?
     
     var body: some View {
-        ZStack {
-            // Background - always light mode for login
-            GentleLightning.Colors.background(isDark: false)
-                .ignoresSafeArea()
-            
-            VStack(spacing: 0) {
-                // Top section with logo and welcome text
-                VStack(alignment: .leading, spacing: 0) {
-                    HStack {
-                        // App logo
-                        Image("AppLogo")
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: 80, height: 80)
-                            .environment(\.colorScheme, .light) // Force light mode logo
-                        
+        GeometryReader { geometry in
+            let isCompact = geometry.size.height < 700 // iPhone SE and similar
+            let logoSize: CGFloat = isCompact ? 56 : 80
+            let titleSize: CGFloat = isCompact ? 36 : 48
+            let topPadding: CGFloat = isCompact ? 20 : 40
+            let titleTopPadding: CGFloat = isCompact ? 12 : 20
+            let horizontalPadding: CGFloat = 24
+            let bottomPadding: CGFloat = isCompact ? 16 : 24
+
+            ZStack {
+                // Background - always light mode for login
+                GentleLightning.Colors.background(isDark: false)
+                    .ignoresSafeArea()
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 0) {
+                        // Top section with logo and welcome text
+                        VStack(alignment: .leading, spacing: 0) {
+                            HStack {
+                                // App logo
+                                Image("AppLogo")
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(width: logoSize, height: logoSize)
+                                    .environment(\.colorScheme, .light) // Force light mode logo
+
+                                Spacer()
+                            }
+                            .padding(.horizontal, horizontalPadding)
+                            .padding(.top, topPadding)
+
+                            // Welcome text below logo (left aligned)
+                            VStack(alignment: .leading, spacing: isCompact ? 4 : 8) {
+                                Text("Scrap")
+                                    .font(.custom("SpaceGrotesk-Bold", size: titleSize))
+                                    .foregroundColor(GentleLightning.Colors.textPrimary(isDark: false))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.8)
+
+                                Text("The world's simplest notepad.")
+                                    .font(GentleLightning.Typography.title)
+                                    .foregroundColor(GentleLightning.Colors.textSecondary(isDark: false))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .padding(.horizontal, horizontalPadding)
+                            .padding(.top, titleTopPadding)
+                        }
+
+                        // Spacer for flexible spacing
                         Spacer()
-                    }
-                    .padding(.horizontal, 24)
-                    .padding(.top, 40)
-                    
-                    // Welcome text below logo (left aligned)
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Scrap")
-                            .font(.custom("SpaceGrotesk-Bold", size: 48))
-                            .foregroundColor(GentleLightning.Colors.textPrimary(isDark: false))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                        
-                        Text("The world's simplest notepad.")
-                            .font(GentleLightning.Typography.title)
-                            .foregroundColor(GentleLightning.Colors.textSecondary(isDark: false))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .padding(.horizontal, 24)
-                    .padding(.top, 20)
-                    
-                    Spacer()
-                }
-                
-                // Bottom section with authentication buttons
-                VStack(spacing: 12) {
+                            .frame(minHeight: isCompact ? 20 : 40)
+
+                        // Bottom section with authentication buttons
+                        VStack(spacing: 12) {
                     // Continue with Google
                     Button(action: {
                         Task {
@@ -388,21 +400,29 @@ struct AuthenticationView: View {
                     }
                     .buttonStyle(PlainButtonStyle())
                     .disabled(firebaseManager.isLoading)
-                    
-                    
-                    // Loading indicator
-                    if firebaseManager.isLoading {
-                        HStack {
-                            ProgressView()
-                                .scaleEffect(0.8)
-                                .tint(GentleLightning.Colors.accentNeutral)
-                            Text("Signing in...")
-                                .font(GentleLightning.Typography.caption)
-                                .foregroundColor(GentleLightning.Colors.textSecondary)
+                    .overlay(
+                        // Loading indicator as overlay to prevent layout shift
+                        Group {
+                            if firebaseManager.isLoading {
+                                HStack {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                        .tint(GentleLightning.Colors.accentNeutral)
+                                    Text("Signing in...")
+                                        .font(GentleLightning.Typography.caption)
+                                        .foregroundColor(GentleLightning.Colors.textSecondary)
+                                }
+                                .padding(8)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(GentleLightning.Colors.background(isDark: false))
+                                        .shadow(color: GentleLightning.Colors.shadowLight, radius: 4, x: 0, y: 2)
+                                )
+                                .offset(y: 70) // Position below the button
+                            }
                         }
-                        .padding(.top, 8)
-                    }
-                    
+                    )
+
                     // Error message
                     if let errorMessage = errorMessage {
                         Text(errorMessage)
@@ -429,8 +449,11 @@ struct AuthenticationView: View {
                     }
                     .padding(.top, 16)
                 }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 24)
+                .padding(.horizontal, horizontalPadding)
+                .padding(.bottom, bottomPadding)
+                    }
+                    .frame(minHeight: geometry.size.height)
+                }
             }
         }
         .gesture(

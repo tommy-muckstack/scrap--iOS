@@ -18,33 +18,63 @@ struct SettingsView: View {
                                     .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
                                 Spacer()
                             }
-                            
-                            // Dark Mode Toggle
-                            HStack {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("Dark Mode")
-                                        .font(GentleLightning.Typography.body)
-                                        .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+
+                            VStack(spacing: 1) {
+                                // Dark Mode Toggle
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Dark Mode")
+                                            .font(GentleLightning.Typography.body)
+                                            .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+                                        Text("Change app appearance")
+                                            .font(GentleLightning.Typography.caption)
+                                            .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
+                                    }
+
+                                    Spacer()
+
+                                    Toggle("", isOn: Binding(
+                                        get: { themeManager.isDarkMode },
+                                        set: { _ in themeManager.toggleDarkMode() }
+                                    ))
+                                    .tint(GentleLightning.Colors.accentNeutral)
                                 }
-                                
-                                Spacer()
-                                
-                                Toggle("", isOn: Binding(
-                                    get: { themeManager.isDarkMode },
-                                    set: { _ in themeManager.toggleDarkMode() }
-                                ))
-                                .tint(GentleLightning.Colors.accentNeutral)
+                                .padding(16)
+                                .background(GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
+
+                                // Divider
+                                Rectangle()
+                                    .fill(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode).opacity(0.1))
+                                    .frame(height: 1)
+
+                                // Voice Create Toggle
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Voice Create")
+                                            .font(GentleLightning.Typography.body)
+                                            .foregroundColor(GentleLightning.Colors.textPrimary(isDark: themeManager.isDarkMode))
+                                        Text("Record new note by voice")
+                                            .font(GentleLightning.Typography.caption)
+                                            .foregroundColor(GentleLightning.Colors.textSecondary(isDark: themeManager.isDarkMode))
+                                    }
+
+                                    Spacer()
+
+                                    Toggle("", isOn: Binding(
+                                        get: { themeManager.useVoiceInput },
+                                        set: { _ in themeManager.toggleVoiceInput() }
+                                    ))
+                                    .tint(GentleLightning.Colors.accentNeutral)
+                                }
+                                .padding(16)
+                                .background(GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
                             }
-                            .padding(16)
-                            .background(
-                                RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.medium)
-                                    .fill(GentleLightning.Colors.surface(isDark: themeManager.isDarkMode))
-                                    .shadow(
-                                        color: GentleLightning.Colors.shadow(isDark: themeManager.isDarkMode),
-                                        radius: 8,
-                                        x: 0,
-                                        y: 2
-                                    )
+                            .clipShape(RoundedRectangle(cornerRadius: GentleLightning.Layout.Radius.medium))
+                            .shadow(
+                                color: GentleLightning.Colors.shadow(isDark: themeManager.isDarkMode),
+                                radius: 8,
+                                x: 0,
+                                y: 2
                             )
                         }
                         

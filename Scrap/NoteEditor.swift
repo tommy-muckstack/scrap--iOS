@@ -32,17 +32,23 @@ struct NoteEditor: View {
     @State private var editorScale: CGFloat = 0.95
     @State private var navigationButtonScale: CGFloat = 1.0
     @State private var optionsButtonScale: CGFloat = 1.0
-    
+
     init(item: SparkItem, dataManager: FirebaseDataManager) {
         self.item = item
         self.dataManager = dataManager
-        
+
         // Initialize with plain text first for fast display, load RTF asynchronously
         let initialText = Self.createFormattedText(from: item.content)
-        
+
         self._editedText = State(initialValue: initialText)
         self._editedTitle = State(initialValue: item.title)
         self._selectedCategories = State(initialValue: item.categoryIds)
+
+        // Skip skeleton and animations for new notes (empty title and content)
+        let isNewNote = item.title.isEmpty && item.content.isEmpty
+        self._showingSkeleton = State(initialValue: !isNewNote)
+        self._isContentVisible = State(initialValue: isNewNote)
+        self._editorScale = State(initialValue: isNewNote ? 1.0 : 0.95)
     }
     
     var body: some View {
@@ -55,7 +61,7 @@ struct NoteEditor: View {
                 // Main content
                 VStack(spacing: 0) {
                         // Title field - simple single line
-                        TextField("Title (optional)", text: $editedTitle)
+                        TextField("Call me Ishmael…", text: $editedTitle)
                         .font(GentleLightning.Typography.title)
                         .foregroundColor(themeManager.isDarkMode ? .white : .black)
                         .padding(.horizontal, 16)
@@ -343,12 +349,18 @@ struct NoteEditor: View {
                 hasTrackedOpen = true
                 noteOpenTime = Date()
             }
-            
-            // Trigger entrance animation
-            withAnimation(GentleLightning.Animation.gentle) {
-                isContentVisible = true
+
+            // Check if this is a new note
+            let isNewNote = editedTitle.isEmpty && item.content.isEmpty
+
+            // For existing notes, trigger entrance animation
+            // (new notes already have isContentVisible=true from init)
+            if !isNewNote {
+                withAnimation(GentleLightning.Animation.gentle) {
+                    isContentVisible = true
+                }
             }
-            
+
             // Load content immediately for snappy performance
             Task { @MainActor in
                 // Load RTF data immediately without delays
@@ -360,25 +372,32 @@ struct NoteEditor: View {
                             options: [.documentType: NSAttributedString.DocumentType.rtf],
                             documentAttributes: nil
                         )
-                        
+
                         // Convert ASCII markers back to interactive checkbox attachments
                         finalText = SparkItem.prepareForDisplay(loadedRTF)
-                        
+
                     } catch {
                         finalText = Self.createFormattedText(from: item.content)
                     }
                 }
-                
+
                 // Update text and context immediately
                 editedText = finalText
                 richTextContext.setAttributedString(finalText)
-                
-                // Hide skeleton immediately
-                withAnimation(.easeOut(duration: 0.1)) {
-                    showingSkeleton = false
+
+                // Hide skeleton immediately for existing notes
+                if showingSkeleton {
+                    withAnimation(.easeOut(duration: 0.1)) {
+                        showingSkeleton = false
+                    }
+                }
+
+                // Focus title field immediately for new notes (no delay)
+                if isNewNote {
+                    isTitleFocused = true
                 }
             }
-            
+
             // Load categories in background to avoid blocking UI
             Task {
                 loadCategories()
@@ -786,12 +805,13 @@ struct RichFormattingToolbar: View {
                 }
         }
         .padding(.horizontal, 16)
+        .frame(height: 44)
         .background(
-            Rectangle()
-                .fill(Color(UIColor.systemBackground))
-                .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: -1)
+            VStack(spacing: 0) {
+                Divider()
+                Color(UIColor.systemBackground)
+            }
         )
-        .frame(height: 44)  // Match system inputAccessoryView height - set last to prevent conflicts
     }
 }
 

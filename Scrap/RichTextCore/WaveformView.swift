@@ -42,6 +42,11 @@ struct WaveformView: View {
             }
         }
         .frame(height: maxHeight)
+        .onAppear {
+            if isRecording {
+                startAnimation()
+            }
+        }
         .onChange(of: isRecording) { newValue in
             if newValue {
                 startAnimation()
@@ -55,6 +60,9 @@ struct WaveformView: View {
     }
     
     private func startAnimation() {
+        // Invalidate any existing timer first to prevent multiple timers
+        animationTimer?.invalidate()
+
         animationTimer = Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { _ in
             withAnimation(.easeInOut(duration: 0.3)) {
                 for i in 0..<amplitudes.count {

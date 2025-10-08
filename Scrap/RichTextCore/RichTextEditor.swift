@@ -89,6 +89,15 @@ class PasteHandlingTextView: UITextView {
             // Suppress auto-scroll during typing to prevent jumpiness
             return
         }
+
+        // Also suppress scroll if content fits on screen without scrolling (accounting for keyboard)
+        let availableHeight = bounds.height - adjustedContentInset.top - adjustedContentInset.bottom
+        if contentSize.height <= availableHeight {
+            // Content fits on screen - no need to scroll
+            print("🔍 PasteHandlingTextView: Blocked scrollRangeToVisible - content fits on screen (contentSize: \(contentSize.height), available: \(availableHeight))")
+            return
+        }
+
         super.scrollRangeToVisible(range)
     }
 }
@@ -106,6 +115,14 @@ class NoScrollTextView: PasteHandlingTextView {
                 print("🔍 NoScrollTextView: Blocked contentOffset setter during typing")
                 return
             }
+
+            // Also block vertical scrolling if content fits on screen (accounting for keyboard)
+            let availableHeight = bounds.height - adjustedContentInset.top - adjustedContentInset.bottom
+            if contentSize.height <= availableHeight && newValue.y > 0 {
+                print("🔍 NoScrollTextView: Blocked contentOffset setter - content fits on screen (contentSize: \(contentSize.height), available: \(availableHeight), attempted offset: \(newValue.y))")
+                return
+            }
+
             super.contentOffset = newValue
         }
     }
@@ -116,6 +133,14 @@ class NoScrollTextView: PasteHandlingTextView {
             print("🔍 NoScrollTextView: Blocked setContentOffset(animated:) during typing")
             return
         }
+
+        // Also block vertical scrolling if content fits on screen (accounting for keyboard)
+        let availableHeight = bounds.height - adjustedContentInset.top - adjustedContentInset.bottom
+        if contentSize.height <= availableHeight && contentOffset.y > 0 {
+            print("🔍 NoScrollTextView: Blocked setContentOffset(animated:) - content fits on screen (contentSize: \(contentSize.height), available: \(availableHeight), attempted offset: \(contentOffset.y))")
+            return
+        }
+
         super.setContentOffset(contentOffset, animated: animated)
     }
 
