@@ -11,62 +11,143 @@ class AnalyticsManager: ObservableObject {
     private init() {}
     
     func initialize() {
+        // Fetch API key from environment or build settings
+        // SECURITY: Never hardcode API keys - use environment variables or build settings
+        let amplitudeAPIKey = ProcessInfo.processInfo.environment["AMPLITUDE_API_KEY"] ??
+                             Bundle.main.object(forInfoDictionaryKey: "AMPLITUDE_API_KEY") as? String ??
+                             "693800f793945567021a62721d3713c9" // Fallback for development only
+
         let configuration = Configuration(
-            apiKey: "693800f793945567021a62721d3713c9"
+            apiKey: amplitudeAPIKey
         )
-        
-        // Optimize storage to reduce I/O operations
-        configuration.flushQueueSize = 30           // Batch more events before flushing
-        configuration.flushIntervalMillis = 30000   // Flush less frequently (30 seconds)
+
+        // Optimize storage to reduce I/O operations and disk health warnings
+        configuration.flushQueueSize = 50           // Batch more events before flushing (increased from 30)
+        configuration.flushIntervalMillis = 60000   // Flush less frequently - 60 seconds (increased from 30)
         configuration.minIdLength = 5               // Reduce minimum ID length validation
         configuration.partnerId = nil               // Disable partner tracking
         configuration.plan = nil                    // Disable plan tracking
         configuration.ingestionMetadata = nil       // Disable ingestion metadata
-        
-        // Session Replay sample rate
-        let sampleRate: Float = 1.0 // 100% of sessions for comprehensive coverage
+
+        // Session Replay with reduced sample rate to minimize I/O
+        // This is the PRIMARY optimization to reduce disk writes
+        let sampleRate: Float = 0.1 // 10% of sessions (reduced from 100% to minimize disk I/O)
         sessionReplayPlugin = AmplitudeSwiftSessionReplayPlugin(sampleRate: sampleRate, maskLevel: .light)
-        
+
         amplitude = Amplitude(configuration: configuration)
-        
+
         // Add Session Replay plugin to Amplitude
         if let plugin = sessionReplayPlugin {
             amplitude?.add(plugin: plugin)
         }
-        
-        // Set initial user ID to device ID
-        setUserIdToDeviceId()
-        
+
+        // Set initial user ID to device ID and capture device properties
+        setInitialDeviceProperties()
+
         // Track app launch
         trackEvent("app_launched")
     }
-    
-    // MARK: - User Identification
-    func setUserIdToDeviceId() {
+
+    // MARK: - User Identification (Best Practices)
+
+    /// Set user ID using Firebase UID (or device ID as fallback)
+    /// BEST PRACTICE: Use a stable, consistent user ID (not email) for tracking across sessions
+    func setUserId(firebaseUid: String?) {
+        if let uid = firebaseUid {
+            // Use Firebase UID as the primary user identifier
+            amplitude?.setUserId(userId: uid)
+            print("📊 Amplitude: Set user ID to Firebase UID")
+        } else {
+            // Fallback to device ID for anonymous users
+            let deviceId = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
+            amplitude?.setUserId(userId: deviceId)
+            print("📊 Amplitude: Set user ID to device ID (anonymous)")
+        }
+    }
+
+    /// Set user properties using Amplitude's Identify API
+    /// BEST PRACTICE: Store email, device info, etc. as user properties (not the main user ID)
+    func setUserProperties(email: String? = nil, authMethod: String? = nil, phoneNumber: String? = nil) {
+        let identify = Identify()
+
+        // Set email as a user property (not the user ID)
+        if let email = email {
+            identify.set(property: "email", value: email)
+            print("📊 Amplitude: Set user property - email")
+        }
+
+        // Set authentication method
+        if let authMethod = authMethod {
+            identify.set(property: "auth_method", value: authMethod)
+            identify.set(property: "last_auth_method", value: authMethod)
+        }
+
+        // Set phone number (if available)
+        if let phoneNumber = phoneNumber {
+            // SECURITY: Only store masked phone number
+            let maskedPhone = String(phoneNumber.prefix(2)) + "****" + String(phoneNumber.suffix(2))
+            identify.set(property: "phone_masked", value: maskedPhone)
+        }
+
+        // Device properties
+        identify.set(property: "device_model", value: UIDevice.current.model)
+        identify.set(property: "device_name", value: UIDevice.current.name)
+        identify.set(property: "os_version", value: UIDevice.current.systemVersion)
+        identify.set(property: "app_version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown")
+        identify.set(property: "app_build", value: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "unknown")
+
+        // Screen size
+        let screenSize = UIScreen.main.bounds.size
+        identify.set(property: "screen_width", value: Int(screenSize.width))
+        identify.set(property: "screen_height", value: Int(screenSize.height))
+
+        amplitude?.identify(identify: identify)
+        print("📊 Amplitude: Updated user properties")
+    }
+
+    /// Set initial device properties for anonymous users
+    private func setInitialDeviceProperties() {
         let deviceId = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
         amplitude?.setUserId(userId: deviceId)
+
+        // Set device properties even for anonymous users
+        setUserProperties()
     }
-    
-    func setUserIdToEmail(_ email: String) {
-        amplitude?.setUserId(userId: email)
-    }
-    
-    func trackUserSignedIn(method: String, email: String?) {
-        // Update user ID to email if available
-        if let email = email {
-            setUserIdToEmail(email)
-        }
-        
+
+    /// Track user sign-in event with proper user identification
+    /// BEST PRACTICE: Use Firebase UID as user ID, store email as a property
+    func trackUserSignedIn(firebaseUid: String, method: String, email: String?) {
+        // Set Firebase UID as the primary user identifier
+        setUserId(firebaseUid: firebaseUid)
+
+        // Set email and other properties using Identify API
+        setUserProperties(email: email, authMethod: method)
+
+        // Track the sign-in event
         trackEvent("user_signed_in", properties: [
-            "sign_in_method": method
+            "sign_in_method": method,
+            "has_email": email != nil
         ])
+
+        print("📊 Amplitude: User signed in - UID: \(firebaseUid.prefix(8))..., Method: \(method)")
     }
-    
+
+    /// Track user sign-out and reset to device ID
     func trackUserSignedOut() {
-        // Reset user ID back to device ID
-        setUserIdToDeviceId()
-        
+        // Track sign-out event first
         trackEvent("user_signed_out")
+
+        // Reset to device ID (anonymous user)
+        setUserId(firebaseUid: nil)
+
+        // Clear user properties
+        let identify = Identify()
+        identify.unset(property: "email")
+        identify.unset(property: "auth_method")
+        identify.unset(property: "phone_masked")
+        amplitude?.identify(identify: identify)
+
+        print("📊 Amplitude: User signed out - reset to device ID")
     }
     
     // MARK: - Event Tracking
@@ -433,7 +514,7 @@ class AnalyticsManager: ObservableObject {
     }
     
     func setSessionReplaySampleRate(_ rate: Double) {
-        // Sample rate is set during initialization (currently 10% to reduce I/O)
+        // Sample rate is set during initialization (currently 10% to minimize disk I/O)
         print("Session Replay sample rate change requested: \(rate) - requires reinitialization")
     }
     

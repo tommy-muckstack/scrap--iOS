@@ -1,5 +1,6 @@
 import SwiftUI
 import Firebase
+import FirebaseAuth
 import GoogleSignIn
 import UIKit
 import StoreKit
@@ -10,22 +11,21 @@ extension Notification.Name {
     static let categoriesUpdated = Notification.Name("categoriesUpdated")
 }
 
-@MainActor
-class AppDelegate: NSObject, UIApplicationDelegate {
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        print("AppDelegate: didFinishLaunchingWithOptions called")
+@objc class AppDelegate: NSObject, UIApplicationDelegate {
+    @objc func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        print("🚀 AppDelegate: didFinishLaunchingWithOptions called")
         return true
     }
-    
-    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
-        print("AppDelegate: Handling URL: \(url)")
+
+    @objc func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
+        print("🔗 AppDelegate: Handling URL: \(url)")
         let handled = GIDSignIn.sharedInstance.handle(url)
-        print("AppDelegate: Google Sign-In handled URL: \(handled)")
+        print("🔗 AppDelegate: Google Sign-In handled URL: \(handled)")
         return handled
     }
-    
-    func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
-        print("AppDelegate: continue userActivity called")
+
+    @objc func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
+        print("🔗 AppDelegate: continue userActivity called")
         return true
     }
 }
@@ -37,15 +37,19 @@ struct ScrapApp: App {
     
     init() {
         print("ScrapApp: Initializing app...")
-        
+
         // Enable CoreGraphics debugging for NaN error tracking
         #if DEBUG
         CoreGraphicsDebugger.enableDebugMode()
         #endif
-        
+
         // Initialize Firebase
         FirebaseApp.configure()
         print("ScrapApp: Firebase configured")
+
+        // Let Firebase Auth auto-detect capabilities and use appropriate method
+        // With aps-environment entitlement + delegate methods, Firebase will use APNs or fall back to reCAPTCHA
+        print("✅ ScrapApp: Firebase Auth will auto-detect phone verification method")
         
         // Reduce Firebase logging verbosity in debug builds
         #if DEBUG
@@ -65,7 +69,7 @@ struct ScrapApp: App {
         
         // Initialize analytics when app launches
         AnalyticsManager.shared.initialize()
-        print("SparkApp: Analytics initialized")
+        print("ScrapApp: Analytics initialized")
         
         // Configure navigation bar appearance for smaller buttons and no separator
         let appearance = UINavigationBarAppearance()

@@ -17,7 +17,7 @@
 	<key>CFBundlePackageType</key>
 	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.5.4</string>
+	<string>1.5.5</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -36,9 +36,17 @@
 				<string>com.muckstack.scrap</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>FirebaseAuth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>app-1-520567341698-ios-6da1cb491eef2c8bfe2a9b</string>
+			</array>
+		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>10</string>
+	<string>11</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSRequiresIPhoneOS</key>

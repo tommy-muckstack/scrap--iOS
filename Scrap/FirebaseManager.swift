@@ -38,8 +38,8 @@ class FirebaseManager: ObservableObject {
             print("🎬 FirebaseManager: Screenshot mode enabled - bypassing authentication")
             Task { @MainActor in
                 self.isAuthenticated = true
-                // Set a mock user for screenshot mode
-                AnalyticsManager.shared.setUserIdToDeviceId()
+                // Set a mock user for screenshot mode (use device ID)
+                AnalyticsManager.shared.setUserId(firebaseUid: nil)
             }
             return
         }
@@ -50,12 +50,16 @@ class FirebaseManager: ObservableObject {
                 guard let self = self else { return }
                 self.user = user
                 self.isAuthenticated = user != nil
-                
+
                 // Update analytics user ID when auth state changes
-                if let user = user, let email = user.email {
-                    AnalyticsManager.shared.setUserIdToEmail(email)
+                // BEST PRACTICE: Use Firebase UID (not email) as primary identifier
+                if let user = user {
+                    AnalyticsManager.shared.setUserId(firebaseUid: user.uid)
+                    // Update user properties with email
+                    AnalyticsManager.shared.setUserProperties(email: user.email)
                 } else {
-                    AnalyticsManager.shared.setUserIdToDeviceId()
+                    // User signed out - reset to device ID
+                    AnalyticsManager.shared.setUserId(firebaseUid: nil)
                 }
             }
         }
@@ -84,7 +88,9 @@ class FirebaseManager: ObservableObject {
                 throw FirebaseError.invalidData
             }
             
-            print("FirebaseManager: Using client ID: \(clientID)")
+            // SECURITY: Don't log full client IDs
+            let maskedClientID = String(clientID.prefix(10)) + "..." + String(clientID.suffix(4))
+            print("FirebaseManager: Using client ID: \(maskedClientID)")
             
             // Configure Google Sign In
             let config = GIDConfiguration(clientID: clientID)
@@ -110,9 +116,13 @@ class FirebaseManager: ObservableObject {
             self.user = authResult.user
             self.isAuthenticated = true
             self.isLoading = false
-            
-            // Track successful Google sign in with analytics user ID update
-            AnalyticsManager.shared.trackUserSignedIn(method: "google", email: authResult.user.email)
+
+            // Track successful Google sign in with Firebase UID as user ID
+            AnalyticsManager.shared.trackUserSignedIn(
+                firebaseUid: authResult.user.uid,
+                method: "google",
+                email: authResult.user.email
+            )
             
         } catch {
             self.isLoading = false
@@ -174,9 +184,13 @@ class FirebaseManager: ObservableObject {
             self.user = authResult.user
             self.isAuthenticated = true
             self.isLoading = false
-            
-            // Track successful Apple sign in with analytics user ID update
-            AnalyticsManager.shared.trackUserSignedIn(method: "apple", email: authResult.user.email)
+
+            // Track successful Apple sign in with Firebase UID as user ID
+            AnalyticsManager.shared.trackUserSignedIn(
+                firebaseUid: authResult.user.uid,
+                method: "apple",
+                email: authResult.user.email
+            )
             
         } catch {
             self.isLoading = false
@@ -189,7 +203,7 @@ class FirebaseManager: ObservableObject {
             throw error
         }
     }
-    
+
     func generateNonce() -> String {
         let nonce = randomNonceString()
         currentNonce = nonce
@@ -370,7 +384,9 @@ class FirebaseManager: ObservableObject {
             throw FirebaseError.notAuthenticated
         }
         
-        print("✅ FirebaseManager: User authenticated with ID: \(userId)")
+        // SECURITY: Mask user ID in logs
+        let maskedUserId = String(userId.prefix(4)) + "****" + String(userId.suffix(4))
+        print("✅ FirebaseManager: User authenticated with ID: \(maskedUserId)")
         
         // Convert RTF data to base64 string for Firebase storage
         let rtfContentString = rtfData?.base64EncodedString()
@@ -643,7 +659,9 @@ class FirebaseManager: ObservableObject {
         
         // Get userId for archival authorization
         let userId = noteData["userId"] as? String ?? ""
-        print("🔍 FirebaseManager: Extracted userId from noteData: '\(userId)' (empty: \(userId.isEmpty))")
+        // SECURITY: Mask user ID in logs
+        let maskedUserId = userId.isEmpty ? "empty" : String(userId.prefix(4)) + "****" + String(userId.suffix(4))
+        print("🔍 FirebaseManager: Extracted userId from noteData: '\(maskedUserId)' (empty: \(userId.isEmpty))")
         
         // LEGACY: Check for old inline drawings in RTF content (for backward compatibility)
         if let rtfContentBase64 = noteData["rtfContent"] as? String,
@@ -728,8 +746,11 @@ class FirebaseManager: ObservableObject {
                 "userId": userId
             ] as [String: Any]
             
-            print("🔍 FirebaseManager: Attempting to archive drawing with userId: '\(userId)' (length: \(userId.count))")
-            print("🔍 FirebaseManager: Current user ID: '\(user?.uid ?? "nil")'")
+            // SECURITY: Mask user IDs in logs
+            let maskedUserId = userId.isEmpty ? "empty" : String(userId.prefix(4)) + "****" + String(userId.suffix(4))
+            let maskedCurrentUserId = user?.uid != nil ? String((user?.uid ?? "").prefix(4)) + "****" + String((user?.uid ?? "").suffix(4)) : "nil"
+            print("🔍 FirebaseManager: Attempting to archive drawing with userId: '\(maskedUserId)' (length: \(userId.count))")
+            print("🔍 FirebaseManager: Current user ID: '\(maskedCurrentUserId)'")
             
             try await db.collection("drawings_archived").document(drawingId).setData(drawingArchive)
             print("✅ FirebaseManager: Archived drawing \(drawingId) from note \(noteId)")
@@ -948,7 +969,7 @@ enum FirebaseError: Error, LocalizedError {
     case notAuthenticated
     case documentNotFound
     case invalidData
-    
+
     var errorDescription: String? {
         switch self {
         case .notAuthenticated:
