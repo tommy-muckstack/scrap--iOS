@@ -211,15 +211,24 @@ class AppStoreReviewManager {
         
         // CRITICAL: Dismiss keyboard before showing rating modal to ensure user can interact with stars
         Task { @MainActor in
-            // Find any active text view and resign first responder
-            if let keyWindow = windowScene.windows.first(where: { $0.isKeyWindow }) {
-                keyWindow.endEditing(true)
-                print("⌨️ AppStoreReviewManager: Dismissed keyboard before showing rating modal")
+            // Find any active text view and resign first responder - try multiple approaches
+            for window in windowScene.windows {
+                window.endEditing(true)
             }
-            
-            // Small delay to ensure keyboard dismissal animation completes
-            try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
-            
+
+            // Also send resignFirstResponder to the entire responder chain
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+
+            print("⌨️ AppStoreReviewManager: Dismissed keyboard and resigned all first responders")
+
+            // Longer delay to ensure keyboard dismissal animation completes AND all text views release focus
+            try? await Task.sleep(nanoseconds: 800_000_000) // 0.8 seconds
+
+            // One more forced dismissal right before showing review
+            for window in windowScene.windows {
+                window.endEditing(true)
+            }
+
             // Request review using SKStoreReviewController
             if #available(iOS 14.0, *) {
                 SKStoreReviewController.requestReview(in: windowScene)
