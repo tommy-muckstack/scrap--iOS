@@ -465,7 +465,8 @@ class FirebaseDataManager: ObservableObject {
     
     func updateItem(_ item: SparkItem, newContent: String) {
         item.content = newContent
-        
+        item.updatedAt = Date()
+
         if let firebaseId = item.firebaseId {
             Task {
                 try? await firebaseManager.updateNote(noteId: firebaseId, newContent: newContent)
@@ -476,7 +477,8 @@ class FirebaseDataManager: ObservableObject {
     func updateItemWithRTF(_ item: SparkItem, rtfData: Data) {
         // Store RTF data in the item for persistence
         item.rtfData = rtfData
-        
+        item.updatedAt = Date()
+
         // Always extract plain text from RTF for local display/search to prevent showing raw RTF
         do {
             let attributedString = try NSAttributedString(
@@ -490,7 +492,7 @@ class FirebaseDataManager: ObservableObject {
             print("❌ Failed to extract plain text from RTF: \(error)")
             // Don't update content if RTF extraction fails to preserve existing content
         }
-        
+
         if let firebaseId = item.firebaseId {
             Task {
                 try? await firebaseManager.updateNoteWithRTF(noteId: firebaseId, rtfData: rtfData)
@@ -527,8 +529,8 @@ class FirebaseDataManager: ObservableObject {
                 }
             }
             
-            // Sort by creation date to maintain proper order
-            allItems.sort { $0.createdAt > $1.createdAt }
+            // Sort by last updated date to show most recently modified notes first
+            allItems.sort { $0.updatedAt > $1.updatedAt }
             
             self.items = allItems
             

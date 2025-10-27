@@ -34,10 +34,13 @@ class CheckboxTextAttachment: NSTextAttachment {
     
     /// Reference to the text view containing this attachment
     weak var textView: UITextView?
-    
+
     /// Character range of this attachment in the text storage
     var characterRange: NSRange = NSRange(location: NSNotFound, length: 0)
-    
+
+    /// Flag to indicate if keyboard is currently animating (prevents visual glitches)
+    var isKeyboardAnimating: Bool = false
+
     /// Size of the checkbox (optimized for easy touch targets)
     private let checkboxSize = CGSize(width: 28, height: 28)
     
@@ -57,10 +60,15 @@ class CheckboxTextAttachment: NSTextAttachment {
               characterRange.location != NSNotFound else {
             return
         }
-        
+
+        // CRITICAL: Skip updates during keyboard animation to prevent visual glitches
+        guard !isKeyboardAnimating else {
+            return
+        }
+
         // Save current cursor position to prevent jumping
         let savedSelectedRange = textView.selectedRange
-        
+
         let textStorage = textView.textStorage
         
         // Validate range bounds
@@ -90,7 +98,6 @@ class CheckboxTextAttachment: NSTextAttachment {
             // Restore cursor one more time after delegate notification
             textView.selectedRange = savedSelectedRange
             textView.delegate?.textViewDidChange?(textView)
-            print("📍 CheckboxTextAttachment.updateTextStorage: Restored cursor after delegate notification")
         }
     }
     
@@ -105,13 +112,10 @@ class CheckboxTextAttachment: NSTextAttachment {
         let lineRange = text.lineRange(for: characterRange)
         
         // Validate line range
-        guard lineRange.location >= 0 && 
+        guard lineRange.location >= 0 &&
               lineRange.location + lineRange.length <= textStorage.length else {
-            print("⚠️ CheckboxTextAttachment.applyStrikethroughToLine: Invalid line range")
             return
         }
-        
-        print("📝 CheckboxTextAttachment.applyStrikethroughToLine: Applying strikethrough=\(isChecked) to line range \(lineRange)")
         
         // Apply or remove strikethrough formatting to the entire line
         if isChecked {
@@ -285,10 +289,9 @@ class CheckboxTextAttachment: NSTextAttachment {
     /// Draw the checkmark for checked state
     private func drawCheckmark(in context: CGContext, bounds: CGRect) {
         // Validate bounds before drawing to prevent NaN errors
-        guard bounds.width > 0 && bounds.height > 0 && 
+        guard bounds.width > 0 && bounds.height > 0 &&
               bounds.width.isFinite && bounds.height.isFinite &&
               bounds.minX.isFinite && bounds.minY.isFinite else {
-            print("⚠️ CheckboxTextAttachment: Invalid bounds for checkmark, skipping draw")
             return
         }
         
@@ -372,7 +375,6 @@ class CheckboxManager {
                 
                 // Set up state change callback for proper synchronization
                 attachment.onStateChange = { newState in
-                    print("🔄 CheckboxManager: Plain text converted checkbox state changed to \(newState)")
                     // The actual text view delegate notification will be set up by toggleCheckbox when first toggled
                 }
                 
@@ -432,7 +434,6 @@ class CheckboxManager {
             // This ensures the checkbox state changes are properly synchronized with the text view
             // Note: The textView reference will be set up later by the RichTextCoordinator when toggled
             attachment.onStateChange = { newState in
-                print("🔄 CheckboxManager: Restored checkbox state changed to \(newState)")
                 // The actual text view delegate notification will be set up by toggleCheckbox when first toggled
             }
             
@@ -448,8 +449,7 @@ class CheckboxManager {
             // Replace marker with attachment
             mutableString.replaceCharacters(in: match.range, with: attachmentString)
         }
-        
-        print("✅ CheckboxManager: Converted \(matches.count) Unicode checkboxes to attachments")
+
         return mutableString
     }
     
@@ -490,8 +490,6 @@ class CheckboxManager {
             return
         }
         
-        print("📝 CheckboxManager: Inserting new checkbox at range \(range)")
-        
         let attachment = CheckboxTextAttachment(isChecked: isChecked)
         
         // CRITICAL: Set up text view reference and character range immediately
@@ -501,7 +499,6 @@ class CheckboxManager {
         // Set up immediate state change callback for future toggles
         attachment.onStateChange = { [weak textView] newState in
             guard let textView = textView else { return }
-            print("🔄 CheckboxManager: New checkbox state changed to \(newState)")
             // Notify delegate immediately for binding synchronization
             textView.delegate?.textViewDidChange?(textView)
         }
@@ -535,8 +532,6 @@ class CheckboxManager {
         // Get the character index at the tap location
         let charIndex = layoutManager.characterIndex(for: locationInTextContainer, in: textContainer, fractionOfDistanceBetweenInsertionPoints: nil)
         
-        print("🎯 CheckboxManager.findCheckboxAtLocation: Tap at location \(location), charIndex: \(charIndex)")
-        
         // Check direct tap on checkbox attachment only
         if charIndex < attributedText.length {
             if let attachment = attributedText.attribute(.attachment, at: charIndex, effectiveRange: nil) as? CheckboxTextAttachment {
@@ -553,34 +548,24 @@ class CheckboxManager {
                 
                 // Only respond if the tap is within the checkbox bounds (28x28 area)
                 if adjustedRect.contains(location) {
-                    print("✅ CheckboxManager.findCheckboxAtLocation: Direct tap within checkbox bounds at index \(charIndex)")
-                    
                     // Set up text view reference if missing
                     if attachment.textView == nil {
                         attachment.textView = textView
                         attachment.characterRange = NSRange(location: charIndex, length: 1)
-                        print("🔧 CheckboxManager.findCheckboxAtLocation: Set up missing textView reference for checkbox")
                     }
-                    
+
                     return (attachment, NSRange(location: charIndex, length: 1))
-                } else {
-                    print("❌ CheckboxManager.findCheckboxAtLocation: Tap outside checkbox bounds. Tap: \(location), Checkbox rect: \(adjustedRect)")
                 }
             }
         }
-        
-        // No checkbox found at precise tap location
-        print("❌ CheckboxManager.findCheckboxAtLocation: No checkbox found at tap location")
+
         return nil
     }
     
     /// Toggle checkbox state and update the text view using model-backed system
     static func toggleCheckbox(_ attachment: CheckboxTextAttachment, in textView: UITextView, at range: NSRange) {
-        print("🎯 CheckboxManager: Starting checkbox toggle for attachment at range \(range)")
-        
         // Save the current cursor position to restore it after toggle
         let originalSelectedRange = textView.selectedRange
-        print("📍 CheckboxManager: Saving original cursor position: \(originalSelectedRange)")
         
         // CRITICAL: Completely disable all touch handling during checkbox toggle
         // This prevents UITextView from processing ANY touches that could move the cursor
@@ -589,41 +574,33 @@ class CheckboxManager {
         // CRITICAL: Ensure text view reference and range are properly set
         if attachment.textView == nil {
             attachment.textView = textView
-            print("🔧 CheckboxManager: Set up missing textView reference")
         }
-        
+
         if attachment.characterRange.location == NSNotFound {
             attachment.characterRange = range
-            print("🔧 CheckboxManager: Set up missing characterRange: \(range)")
         }
         
         // Set up the state change callback to ensure immediate synchronization
         attachment.onStateChange = { [weak textView] newState in
             guard let textView = textView else { return }
-            
-            print("🔄 CheckboxManager: State change callback triggered - new state: \(newState)")
-            
+
             // Notify delegate for persistence
             DispatchQueue.main.async {
                 textView.delegate?.textViewDidChange?(textView)
-                print("✅ CheckboxManager: Notified delegate of checkbox state change")
             }
         }
         
         // Toggle the checkbox state immediately (this will trigger the onStateChange callback and updateTextStorage)
-        let oldState = attachment.isChecked
         attachment.isChecked.toggle()
-        print("🔄 CheckboxManager: Toggle from \(oldState) to \(attachment.isChecked)")
-        
+
         // Re-enable interaction and restore cursor position immediately
         DispatchQueue.main.async {
             // CRITICAL: Re-enable interaction first
             textView.isUserInteractionEnabled = true
-            
+
             // CRITICAL: Restore cursor position EXACTLY where it was
             textView.selectedRange = originalSelectedRange
-            print("📍 CheckboxManager: Restored cursor to original position: \(originalSelectedRange)")
-            
+
             // Force immediate redraw to show checkbox state change
             textView.setNeedsDisplay()
         }

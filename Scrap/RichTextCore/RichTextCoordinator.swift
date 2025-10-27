@@ -176,7 +176,24 @@ public class RichTextCoordinator: NSObject {
             }
             .store(in: &cancellables)
     }
-    
+
+    // MARK: - Checkbox Animation Management
+
+    /// Update keyboard animation flag for all checkboxes in the text view
+    /// This prevents visual glitches during keyboard show/hide transitions
+    private func setAllCheckboxesKeyboardAnimating(_ isAnimating: Bool) {
+        guard let attributedText = textView.attributedText else { return }
+
+        // Enumerate all checkbox attachments and update their animation flag
+        attributedText.enumerateAttribute(.attachment,
+                                         in: NSRange(location: 0, length: attributedText.length),
+                                         options: []) { value, _, _ in
+            if let checkbox = value as? CheckboxTextAttachment {
+                checkbox.isKeyboardAnimating = isAnimating
+            }
+        }
+    }
+
     private func setupKeyboardNotifications() {
         // Listen for keyboard events to restore interactive dismissal
         // This fixes the issue where swipe-to-dismiss stops working after the first use
@@ -210,26 +227,44 @@ public class RichTextCoordinator: NSObject {
     }
     
     @objc private func keyboardWillShow(_ notification: Notification) {
+        // Set checkbox animation flag to prevent visual glitches
+        setAllCheckboxesKeyboardAnimating(true)
         handleKeyboardNotification(notification)
     }
 
     @objc private func keyboardDidShow(_ notification: Notification) {
         // Double-check that interactive dismissal is still enabled
         DispatchQueue.main.async { [weak self] in
-            if self?.textView.keyboardDismissMode != .interactive {
-                self?.textView.keyboardDismissMode = .interactive
+            guard let self = self else { return }
+
+            if self.textView.keyboardDismissMode != .interactive {
+                self.textView.keyboardDismissMode = .interactive
             }
+
+            // Clear checkbox animation flag now that keyboard is visible
+            self.setAllCheckboxesKeyboardAnimating(false)
+
             // Ensure caret is visible after keyboard animation completes
-            self?.ensureCaretVisibleIfNeeded(reason: "keyboard_did_show")
+            self.ensureCaretVisibleIfNeeded(reason: "keyboard_did_show")
         }
     }
 
     @objc private func keyboardWillChangeFrame(_ notification: Notification) {
+        // Set checkbox animation flag during frame changes
+        setAllCheckboxesKeyboardAnimating(true)
         handleKeyboardNotification(notification)
+
+        // Clear flag after animation (with delay)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            self?.setAllCheckboxesKeyboardAnimating(false)
+        }
     }
 
     @objc private func keyboardWillHide(_ notification: Notification) {
+        // Set checkbox animation flag to prevent visual glitches
+        setAllCheckboxesKeyboardAnimating(true)
         handleKeyboardNotification(notification, isHiding: true)
+
         // Force reset inset and offset
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
@@ -238,10 +273,12 @@ public class RichTextCoordinator: NSObject {
             // Reset offset to top on keyboard hide
             textView.contentOffset = .zero
             if isScrollDebugLoggingEnabled {
-                print("🧭 Keyboard hidden: Reset inset.bottom=0, offset to zero")
             }
             // Reset flag for next keyboard show
             self.isInitialAdjustmentDone = false
+
+            // Clear checkbox animation flag after keyboard is hidden
+            self.setAllCheckboxesKeyboardAnimating(false)
         }
     }
 
@@ -269,7 +306,6 @@ public class RichTextCoordinator: NSObject {
                 if allowDefer {
                     if self.isScrollDebugLoggingEnabled {
                         let rawFrameDescription = frame.map { "\($0)" } ?? "nil"
-                        print("🧭 KeyboardAdjust: deferring (textView not ready) frame=\(rawFrameDescription) window=\(self.textView.window != nil) bounds=\(self.textView.bounds)")
                     }
                     self.pendingKeyboardAdjustment = (frame, duration, curveRaw ?? 0)
                     self.scheduleKeyboardAdjustmentRetry()
@@ -292,7 +328,6 @@ public class RichTextCoordinator: NSObject {
 
         if isScrollDebugLoggingEnabled {
             let rawFrameDescription = frame.map { "\($0)" } ?? "nil"
-            print("🧭 KeyboardAdjust: frame=\(rawFrameDescription) overlap=\(String(format: "%.2f", safeOverlap)) isVisible=\(isKeyboardNowVisible) duration=\(duration ?? -1) curve=\(curveRaw ?? 0)")
         }
 
         let animations = { [weak self] in
@@ -303,7 +338,6 @@ public class RichTextCoordinator: NSObject {
             self.textView.contentInset.bottom = bottomInset
 
             if self.isScrollDebugLoggingEnabled {
-                print("🧭 KeyboardAdjust: Set contentInset.bottom=\(bottomInset)")
                 self.logEditorMetrics(reason: "keyboard_adjust")
             }
 
@@ -317,10 +351,8 @@ public class RichTextCoordinator: NSObject {
                     let maxOffset = max(0, self.textView.contentSize.height - self.textView.bounds.height + bottomInset)
                     self.textView.contentOffset = CGPoint(x: 0, y: maxOffset)
                     if self.isScrollDebugLoggingEnabled {
-                        print("🧭 KeyboardAdjust: Initial scroll to maxOffset=\(String(format: "%.2f", maxOffset))")
                     }
                 } else if self.isScrollDebugLoggingEnabled {
-                    print("🧭 KeyboardAdjust: Skipping initial scroll - content fits on screen (contentSize: \(self.textView.contentSize.height), available: \(availableHeight))")
                 }
                 self.isInitialAdjustmentDone = true
             }
@@ -346,7 +378,6 @@ public class RichTextCoordinator: NSObject {
 
         guard let window = textView.window else {
             if isScrollDebugLoggingEnabled {
-                print("🧭 KeyboardOverlap(window=nil): deferring overlap computation")
             }
             return currentKeyboardHeight
         }
@@ -364,7 +395,6 @@ public class RichTextCoordinator: NSObject {
         // Guard against NaN in intersection rect
         if intersection.containsNaN {
             if isScrollDebugLoggingEnabled {
-                print("🧭 KeyboardOverlap SKIP: NaN in intersection rect")
             }
             return 0
         }
@@ -373,13 +403,11 @@ public class RichTextCoordinator: NSObject {
 
         guard overlap > 0 else {
             if isScrollDebugLoggingEnabled {
-                print("🧭 KeyboardOverlap(window): intersection=0 (tvFrame=\(textViewFrameInWindow) kbFrame=\(keyboardFrameInWindow))")
             }
             return 0
         }
 
         if isScrollDebugLoggingEnabled {
-            print("🧭 KeyboardOverlap(window): tvFrame=\(textViewFrameInWindow) kbFrame=\(keyboardFrameInWindow) intersectionHeight=\(String(format: "%.2f", overlap)) padding=\(keyboardPadding)")
         }
 
         return overlap + keyboardPadding
@@ -400,7 +428,6 @@ public class RichTextCoordinator: NSObject {
 
         if scrollableHeight <= 0 {
             if isScrollDebugLoggingEnabled {
-                print("🧭 KeyboardInset: content too short (contentHeight=\(String(format: "%.2f", contentHeight)) visibleHeight=\(String(format: "%.2f", visibleHeight))) -> inset=0")
             }
             return 0
         }
@@ -410,7 +437,6 @@ public class RichTextCoordinator: NSObject {
         let clamped = max(0, min(naturalInset, maxAllowedInset))
 
         if isScrollDebugLoggingEnabled {
-            print("🧭 KeyboardInset: requested=\(String(format: "%.2f", overlapHeight)) scrollable=\(String(format: "%.2f", scrollableHeight)) bounds=\(String(format: "%.2f", boundsHeight)) maxAllowed=\(String(format: "%.2f", maxAllowedInset)) clamped=\(String(format: "%.2f", clamped))")
         }
 
         return clamped
@@ -423,7 +449,6 @@ public class RichTextCoordinator: NSObject {
         if offset != textView.contentOffset {
             textView.contentOffset = offset
             if isScrollDebugLoggingEnabled {
-                print("🧭 ClampOffset: Clamped to y=\(String(format: "%.2f", offset.y)), maxY=\(String(format: "%.2f", maxY))")
             }
         }
     }
@@ -452,8 +477,6 @@ public class RichTextCoordinator: NSObject {
             }
         }
 
-        print("🧭 EditorState[\(reason)]: offset=\(offset) size=\(size) inset=\(inset) adjustedInset=\(adjusted) bounds=\(bounds) keyboardHeight=\(String(format: "%.2f", currentKeyboardHeight))")
-        print("🧭 EditorState[\(reason)] caret=\(caretDescription) metrics=\(caretVisibility)")
     }
 
     private var isTextViewReadyForKeyboardAdjustment: Bool {
@@ -486,7 +509,6 @@ public class RichTextCoordinator: NSObject {
         let timeSinceLast = Date().timeIntervalSince(lastCaretAdjustmentTime)
         if timeSinceLast < caretAdjustmentDebounce {
             if isScrollDebugLoggingEnabled {
-                print("🧭 CaretAdjust[\(reason)]: SKIP - debounced (time: \(timeSinceLast)s)")
             }
             return false
         }
@@ -503,7 +525,6 @@ public class RichTextCoordinator: NSObject {
         if caretRect.containsNaN {
             caretRect = CGRect(x: 0, y: textView.contentSize.height - 22, width: 2, height: 22)
             if isScrollDebugLoggingEnabled {
-                print("🧭 CaretAdjust[\(reason)]: Using fallback rect for NaN caretRect: \(caretRect)")
             }
         }
         if !caretRect.height.isFinite || caretRect.height.isNaN || caretRect.isInfinite || caretRect.isNull {
@@ -532,7 +553,6 @@ public class RichTextCoordinator: NSObject {
 
         if isScrollDebugLoggingEnabled {
             let newOffsetY = textView.contentOffset.y
-            print("🧭 CaretAdjust[\(reason)]: Scrolled to newOffset=\(newOffsetY), inset.bottom=\(textView.contentInset.bottom), delta=\(delta)")
             logEditorMetrics(reason: "caret_adjust_\(reason)")
         }
 
@@ -592,7 +612,6 @@ public class RichTextCoordinator: NSObject {
             applyStyleToggle(style)
             
         case .toggleBlockFormat(let format):
-            print("🎨 RichTextCoordinator: Received toggleBlockFormat action: \(format)")
             applyBlockFormat(format)
             
         case .indentIn:
@@ -884,7 +903,39 @@ public class RichTextCoordinator: NSObject {
     }
     
     // MARK: - Block Format Application
-    
+
+    /// Create a proper paragraph style for bullet lists with correct indentation
+    /// This ensures wrapped text aligns properly under the list content, not the bullet
+    private func createBulletParagraphStyle() -> NSParagraphStyle {
+        let paragraphStyle = NSMutableParagraphStyle()
+
+        // Calculate bullet width to know how much to indent
+        let bulletString = "• " as NSString
+        let bulletFont = UIFont.systemFont(ofSize: context.fontSize)
+        let bulletAttributes: [NSAttributedString.Key: Any] = [.font: bulletFont]
+        let bulletSize = bulletString.size(withAttributes: bulletAttributes)
+        let bulletWidth = bulletSize.width
+
+        // Add some padding for better readability
+        let indent = bulletWidth + 4.0
+
+        // firstLineHeadIndent = 0 means the first line (with bullet) starts at left margin
+        paragraphStyle.firstLineHeadIndent = 0
+
+        // headIndent applies to all lines EXCEPT the first, creating proper wrapped text alignment
+        paragraphStyle.headIndent = indent
+
+        // Add tab stop at the indent position for proper alignment
+        let tabStop = NSTextTab(textAlignment: .left, location: indent, options: [:])
+        paragraphStyle.tabStops = [tabStop]
+
+        // Set line spacing for better readability
+        paragraphStyle.lineSpacing = 4
+        paragraphStyle.paragraphSpacing = 8
+
+        return paragraphStyle
+    }
+
     private func applyBlockFormat(_ format: RichTextBlockFormat) {
         let selectedRange = textView.selectedRange
         let text = textView.text ?? ""
@@ -902,7 +953,6 @@ public class RichTextCoordinator: NSObject {
         case .codeBlock:
             applyCodeBlockFormat(mutableText, lineRange, lineText)
         case .drawing:
-            print("🎨 RichTextCoordinator: Handling .drawing block format at range \(selectedRange)")
             applyDrawingFormat(selectedRange)
         }
         
@@ -911,34 +961,31 @@ public class RichTextCoordinator: NSObject {
     
     private func applyBulletFormat(_ mutableText: NSMutableAttributedString, _ lineRange: NSRange, _ lineText: String) {
         let trimmedLine = lineText.trimmingCharacters(in: .whitespaces)
-        
+
         // Don't process lines that are only whitespace/newlines
         if trimmedLine.isEmpty {
             // Add bullet to empty line and position cursor after it
             let mutableLineText = "• "
             let newLine = mutableLineText + (lineText.hasSuffix("\n") ? "\n" : "")
-            mutableText.replaceCharacters(in: lineRange, with: newLine)
-            
-            // Clear formatting from bullet character only (first 2 characters: "• ")
-            let bulletRange = NSRange(location: lineRange.location, length: 2)
-            if bulletRange.location + bulletRange.length <= mutableText.length {
-                // Apply clean attributes to bullet point only
-                mutableText.removeAttribute(.font, range: bulletRange)
-                mutableText.removeAttribute(.foregroundColor, range: bulletRange)
-                mutableText.removeAttribute(.backgroundColor, range: bulletRange)
-                mutableText.removeAttribute(.underlineStyle, range: bulletRange)
-                mutableText.removeAttribute(.strikethroughStyle, range: bulletRange)
-                
-                // Set basic font for bullet
-                mutableText.addAttribute(.font, value: UIFont.systemFont(ofSize: 16), range: bulletRange)
-                mutableText.addAttribute(.foregroundColor, value: UIColor.label, range: bulletRange)
-            }
-            
+            let newAttributedLine = NSMutableAttributedString(string: newLine)
+
+            // Apply bullet paragraph style for proper wrapping
+            let bulletStyle = createBulletParagraphStyle()
+            let fullLineRange = NSRange(location: 0, length: newAttributedLine.length)
+            newAttributedLine.addAttribute(.paragraphStyle, value: bulletStyle, range: fullLineRange)
+
+            // Set basic font for bullet
+            let bulletFont = UIFont.systemFont(ofSize: context.fontSize)
+            newAttributedLine.addAttribute(.font, value: bulletFont, range: fullLineRange)
+            newAttributedLine.addAttribute(.foregroundColor, value: UIColor.label, range: fullLineRange)
+
+            mutableText.replaceCharacters(in: lineRange, with: newAttributedLine)
+
             textView.attributedText = mutableText
             let newCursorPosition = lineRange.location + 2 // Position after "• "
             let safePosition = min(newCursorPosition, mutableText.length)
             textView.selectedRange = NSRange(location: safePosition, length: 0)
-            print("🔸 RichTextCoordinator: Added bullet to empty line, cursor at position \(safePosition)")
+            print("🔸 RichTextCoordinator: Added bullet to empty line with paragraph style, cursor at position \(safePosition)")
             return
         }
         
@@ -975,21 +1022,38 @@ public class RichTextCoordinator: NSObject {
         }
         
         let newLine = mutableLineText + (lineText.hasSuffix("\n") ? "\n" : "")
-        mutableText.replaceCharacters(in: lineRange, with: newLine)
-        
-        // Clear formatting from bullet character only (first 2 characters: "• ")
+
+        // Create attributed string with proper paragraph style
+        let newAttributedLine = NSMutableAttributedString(string: newLine)
+
+        // Apply bullet paragraph style for proper wrapping if line has a bullet
+        if mutableLineText.hasPrefix("• ") {
+            let bulletStyle = createBulletParagraphStyle()
+            let fullLineRange = NSRange(location: 0, length: newAttributedLine.length)
+            newAttributedLine.addAttribute(.paragraphStyle, value: bulletStyle, range: fullLineRange)
+
+            // Set basic font for entire line
+            let bulletFont = UIFont(name: context.fontName, size: context.fontSize) ?? UIFont.systemFont(ofSize: context.fontSize)
+            newAttributedLine.addAttribute(.font, value: bulletFont, range: fullLineRange)
+            newAttributedLine.addAttribute(.foregroundColor, value: UIColor.label, range: fullLineRange)
+        } else {
+            // No bullet - remove paragraph style if present
+            // Just use default font
+            let defaultFont = UIFont(name: context.fontName, size: context.fontSize) ?? UIFont.systemFont(ofSize: context.fontSize)
+            let fullLineRange = NSRange(location: 0, length: newAttributedLine.length)
+            newAttributedLine.addAttribute(.font, value: defaultFont, range: fullLineRange)
+            newAttributedLine.addAttribute(.foregroundColor, value: UIColor.label, range: fullLineRange)
+        }
+
+        mutableText.replaceCharacters(in: lineRange, with: newAttributedLine)
+
+        // Apply attributes to bullet character only if present
         if mutableLineText.hasPrefix("• ") {
             let bulletRange = NSRange(location: lineRange.location, length: min(2, newLine.count))
             if bulletRange.location + bulletRange.length <= mutableText.length {
-                // Apply clean attributes to bullet point only
-                mutableText.removeAttribute(.font, range: bulletRange)
-                mutableText.removeAttribute(.foregroundColor, range: bulletRange)
-                mutableText.removeAttribute(.backgroundColor, range: bulletRange)
-                mutableText.removeAttribute(.underlineStyle, range: bulletRange)
-                mutableText.removeAttribute(.strikethroughStyle, range: bulletRange)
-                
-                // Set basic font for bullet
-                mutableText.addAttribute(.font, value: UIFont.systemFont(ofSize: 16), range: bulletRange)
+                // Set basic font for bullet specifically
+                let bulletFont = UIFont.systemFont(ofSize: context.fontSize)
+                mutableText.addAttribute(.font, value: bulletFont, range: bulletRange)
                 mutableText.addAttribute(.foregroundColor, value: UIColor.label, range: bulletRange)
             }
         }
@@ -1270,7 +1334,6 @@ public class RichTextCoordinator: NSObject {
         } else {
             // Turn ON code formatting - create new code block with cursor inside
             newCursorPosition = createCodeBlockAndMoveCursor(at: cursorPosition, in: mutableText)
-            print("🔸 RichTextCoordinator: Creating new code block with cursor inside")
             
             // Update text view and set cursor position
             textView.attributedText = mutableText
@@ -1295,7 +1358,6 @@ public class RichTextCoordinator: NSObject {
         // This will be called after the immediate state update above for creation
         updateContextFromTextView()
         
-        print("🎯 RichTextCoordinator: Code block format applied")
     }
     
     // MARK: - Code Block Helper Methods
@@ -1343,11 +1405,6 @@ public class RichTextCoordinator: NSObject {
         
         // Set monospaced font for code blocks
         let monospacedFont = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
-        print("🔧 createCodeBlockAndMoveCursor: Applied monospaced font:")
-        print("   - Font name: \(monospacedFont.fontName)")
-        print("   - Font family: \(monospacedFont.familyName)")
-        print("   - Symbolic traits: \(monospacedFont.fontDescriptor.symbolicTraits.rawValue)")
-        print("   - Has monospace trait: \(monospacedFont.fontDescriptor.symbolicTraits.contains(.traitMonoSpace))")
         mutableText.addAttribute(.font, value: monospacedFont, range: codeBlockRange)
         
         // Set grey background for the full width effect
@@ -1368,7 +1425,6 @@ public class RichTextCoordinator: NSObject {
         // Calculate cursor position at the end of the code block (after the spaces)
         let cursorPosition = position + codeBlockText.count
         
-        print("📦 Created code block with padding at position \(position), will set cursor at \(cursorPosition)")
         return cursorPosition
     }
     
@@ -1422,7 +1478,6 @@ public class RichTextCoordinator: NSObject {
         }
         
         let codeBlockRange = NSRange(location: codeBlockStart, length: codeBlockEnd - codeBlockStart)
-        print("🔄 exitCodeBlockAndMoveCursor: Found code block at range \(codeBlockRange)")
         
         // Remove code block formatting and replace with normal text formatting while preserving text attributes
         if codeBlockRange.length > 0 {
@@ -1484,7 +1539,6 @@ public class RichTextCoordinator: NSObject {
             
             mutableText.replaceCharacters(in: codeBlockRange, with: normalizedText)
             
-            print("✅ exitCodeBlockAndMoveCursor: Removed code block formatting from range \(codeBlockRange)")
         }
         
         // Position cursor at the end of the now-normal text
@@ -1547,9 +1601,7 @@ public class RichTextCoordinator: NSObject {
             self.context.isCodeBlockActive = false
         }
         
-        print("✅ exitCodeBlockAndMoveCursor: Cursor moved to position \(finalCursorPosition), code block mode disabled, added clean newline")
         
-        print("🗑️ Exited code block, cursor moved to position \(finalCursorPosition)")
     }
     
     /// Helper method to check if attributes indicate code block
@@ -1666,7 +1718,6 @@ public class RichTextCoordinator: NSObject {
         context.isCodeBlockActive = false
         hasExplicitlyExitedCodeBlock = true
         
-        print("✅ exitCodeBlockOnEnterKey: Added newline at position \(position), cursor moved to \(newCursorPosition), code mode disabled, preserved formatting: \(preservedAttributes.keys)")
     }
     
     /// Exit code block formatting at current cursor position without moving cursor (for button toggle)
@@ -1695,7 +1746,6 @@ public class RichTextCoordinator: NSObject {
             self.context.isCodeBlockActive = false
         }
         
-        print("✅ exitCodeBlockInPlace: Set normal typing attributes at position \(position), code mode disabled for future typing")
     }
     
     /// Exit code block formatting and move cursor to next line (for button toggle when in code block)
@@ -1733,7 +1783,6 @@ public class RichTextCoordinator: NSObject {
             self.context.isCodeBlockActive = false
         }
         
-        print("✅ exitCodeBlockAndMoveToNextLine: Added newline at position \(position), cursor moved to \(newCursorPosition), code mode disabled")
     }
     
     // MARK: - Indentation
@@ -1801,7 +1850,6 @@ public class RichTextCoordinator: NSObject {
         updateBindingFromTextView()
         updateContextFromTextView()
         
-        print("🔄 RichTextCoordinator: Applied indentation - increase: \(increase)")
     }
     
     // MARK: - Binding Updates
@@ -1961,7 +2009,6 @@ public class RichTextCoordinator: NSObject {
             self.context.isBulletListActive = trimmedLine.hasPrefix("•")
             self.context.isCheckboxActive = trimmedLine.hasPrefix("☐") || trimmedLine.hasPrefix("☑")
             
-            print("🔄 updateNonCodeBlockFormattingState: Updated other states, preserved code block active state")
         }
     }
     
@@ -2120,7 +2167,6 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         updateContextFromTextView()
 
         if isScrollDebugLoggingEnabled {
-            print("🔍 textViewDidChange: Offset before=\(preTypeOffset), after=\(textView.contentOffset); Size before=\(previousSize), after=\(textView.contentSize)")
             logEditorMetrics(reason: "text_did_change")
         }
 
@@ -2136,7 +2182,6 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
             if let noScrollView = self.textView as? NoScrollTextView {
                 noScrollView.isTyping = false
                 if self.isScrollDebugLoggingEnabled {
-                    print("🔍 Formatting timer: Reset isTyping = false after 0.5s delay")
                 }
             }
         }
@@ -2155,7 +2200,6 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         }
 
         if isScrollDebugLoggingEnabled {
-            print("🔍 textViewDidChange complete: Offset pre=\(preTypeOffset) post=\(textView.contentOffset); Size change=\(previousSize.height) to \(textView.contentSize.height)")
         }
     }
 
@@ -2257,7 +2301,6 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
             let isInCodeBlock = isPositionInCodeBlock(range.location, in: NSMutableAttributedString(attributedString: textView.attributedText))
             if isInCodeBlock {
                 // Ensure code block formatting is applied to new text
-                print("🔧 shouldChangeTextIn: Detected typing in code block at position \(range.location)")
                 
                 // Apply code block attributes directly to the new text
                 let monospacedFont = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
@@ -2269,7 +2312,6 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
                 
                 // Update typing attributes immediately
                 textView.typingAttributes = codeAttributes
-                print("✅ shouldChangeTextIn: Applied code block typing attributes")
                 
                 // Also ensure context knows we're in a code block
                 DispatchQueue.main.async {
@@ -2419,7 +2461,6 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
                 self.isHandlingNewlineInsertion = false
             }
             
-            print("🔚 handleNewlineInsertion: Auto-exited code block on enter key")
             return false
         }
         
@@ -2897,7 +2938,6 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
             attributedText.enumerateAttribute(.attachment, in: NSRange(location: 0, length: attributedText.length), options: []) { value, range, _ in
                 if let attachment = value as? NSTextAttachment {
                     let attachmentType = type(of: attachment)
-                    print("🔍 handleTap: Found attachment type \(attachmentType) at range \(range)")
 
                     // Calculate attachment bounds
                     // NOTE: Accessing layoutManager triggers TextKit 1 compatibility mode
@@ -2912,7 +2952,6 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
                         width: attachmentRect.width,
                         height: attachmentRect.height
                     )
-                    print("🔍 handleTap: Attachment frame: \(adjustedRect)")
                     
                     if adjustedRect.contains(location) {
                         print("✅ handleTap: Tap location \(location) IS within attachment bounds \(adjustedRect)")
@@ -2946,7 +2985,6 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         
         // Check for drawing attachments
         if let (drawingAttachment, range) = findDrawingAttachmentAtLocation(location, in: textView) {
-            print("🎨 handleTap: Found DrawingTextAttachment at location \(location)")
             openDrawingEditor(for: drawingAttachment, at: range)
             return
         }
@@ -3135,11 +3173,9 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
     
     /// Insert a new drawing overlay at the specified position
     private func applyDrawingFormat(_ selectedRange: NSRange) {
-        print("🎨 RichTextCoordinator: applyDrawingFormat called at range \(selectedRange)")
         
         // Use the new overlay approach instead of NSTextAttachment
         if let drawingManager = drawingManager {
-            print("🎨 RichTextCoordinator: Using overlay manager to insert drawing")
             drawingManager.insertDrawing(at: selectedRange)
         } else {
             print("❌ RichTextCoordinator: No drawing manager available, falling back to old method")
@@ -3150,10 +3186,8 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         // Reset drawing active state to prevent UI cycling
         DispatchQueue.main.async {
             self.context.isDrawingActive = false
-            print("🎨 RichTextCoordinator: Reset isDrawingActive to false after drawing action")
         }
         
-        print("🎨 RichTextCoordinator: Drawing handling complete at range \(selectedRange)")
     }
     
     // MARK: - UIGestureRecognizerDelegate
@@ -3161,18 +3195,14 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
     public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
         // Allow our tap gesture to work alongside UITextView's built-in gestures
         // BUT also allow SwiftUI drag gestures for keyboard dismissal
-        print("🖱️ shouldRecognizeSimultaneously: \(type(of: gestureRecognizer)) with \(type(of: otherGestureRecognizer))")
         return true
     }
     
     public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
         let location = touch.location(in: textView)
-        print("🖱️ gestureRecognizer shouldReceive touch at location: \(location)")
-        print("🖱️ gestureRecognizer: touch.view = \(String(describing: touch.view))")
         
         // Check if this touch might be on a checkbox
         if let (_, _) = CheckboxManager.findCheckboxAtLocation(location, in: textView) {
-            print("🖱️ gestureRecognizer: Detected touch on checkbox, preventing first responder")
             // CANCEL touches to prevent UITextView default tap behavior when checkbox is clicked
             gestureRecognizer.cancelsTouchesInView = true
             
@@ -3195,7 +3225,6 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
             // Check if this looks like a drawing attachment view
             let viewClassName = String(describing: type(of: touchView))
             if viewClassName.contains("Attachment") || touchView.frame.width > 200 {
-                print("🖱️ gestureRecognizer: Detected potential attachment view, ensuring recognition")
                 // CANCEL touches for drawing attachments too
                 gestureRecognizer.cancelsTouchesInView = true
                 return true
@@ -3214,12 +3243,10 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
     
     public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldBeRequiredToFailBy otherGestureRecognizer: UIGestureRecognizer) -> Bool {
         // Don't require our gesture to fail for other gestures (especially drag gestures for keyboard dismissal)
-        print("🖱️ shouldBeRequiredToFailBy: \(type(of: gestureRecognizer)) by \(type(of: otherGestureRecognizer))")
         return false
     }
     
     public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive event: UIEvent) -> Bool {
-        print("🖱️ gestureRecognizer shouldReceive event: \(event)")
         return true
     }
     
@@ -3362,7 +3389,6 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
     
     /// Find drawing attachment at the given tap location
     private func findDrawingAttachmentAtLocation(_ location: CGPoint, in textView: UITextView) -> (DrawingTextAttachment, NSRange)? {
-        print("🔍 findDrawingAttachmentAtLocation: Searching for drawing button at location \(location)")
         
         guard let textPosition = textView.closestPosition(to: location) else {
             print("❌ findDrawingAttachmentAtLocation: Could not get text position")
@@ -3375,7 +3401,6 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
             return nil
         }
         
-        print("🔍 findDrawingAttachmentAtLocation: Tap index \(tapIndex), text length \(attributedText.length)")
         
         // Function to check if tap is in the "Open" button area of a drawing attachment
         func isInOpenButtonArea(drawingAttachment: DrawingTextAttachment, characterIndex: Int) -> Bool {
@@ -3395,11 +3420,9 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
                 height: attachmentRect.height
             )
             
-            print("🔍 findDrawingAttachmentAtLocation: Attachment rect: \(adjustedRect)")
             
             // Check if tap is within the attachment bounds first
             guard adjustedRect.contains(location) else {
-                print("🔍 findDrawingAttachmentAtLocation: Tap not within attachment bounds")
                 return false
             }
             
@@ -3414,10 +3437,8 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
                 height: buttonHeight
             )
             
-            print("🔍 findDrawingAttachmentAtLocation: Open button rect: \(buttonRect)")
             
             let isInButton = buttonRect.contains(location)
-            print("🔍 findDrawingAttachmentAtLocation: Tap \(isInButton ? "IS" : "IS NOT") in Open button area")
             
             return isInButton
         }
@@ -3427,7 +3448,6 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
             let attachment = attributedText.attribute(.attachment, at: tapIndex, effectiveRange: nil)
             
             if let drawingAttachment = attachment as? DrawingTextAttachment {
-                print("🔍 findDrawingAttachmentAtLocation: Found DrawingTextAttachment at index \(tapIndex)")
                 
                 // Only return the attachment if the tap is specifically in the "Open" button area
                 if isInOpenButtonArea(drawingAttachment: drawingAttachment, characterIndex: tapIndex) {
@@ -3445,7 +3465,6 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
             let attachment = attributedText.attribute(.attachment, at: tapIndex - 1, effectiveRange: nil)
             
             if let drawingAttachment = attachment as? DrawingTextAttachment {
-                print("🔍 findDrawingAttachmentAtLocation: Found DrawingTextAttachment at index \(tapIndex - 1)")
                 
                 // Only return the attachment if the tap is specifically in the "Open" button area
                 if isInOpenButtonArea(drawingAttachment: drawingAttachment, characterIndex: tapIndex - 1) {
@@ -3463,7 +3482,6 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         // This is necessary for coordinate-to-glyph conversion
         let layoutManager = textView.layoutManager
         let textContainer = textView.textContainer
-        print("🔍 findDrawingAttachmentAtLocation: Trying layout manager approach")
         
         // Convert location to text container coordinates
         let containerLocation = CGPoint(
@@ -3475,11 +3493,9 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         let glyphIndex = layoutManager.glyphIndex(for: containerLocation, in: textContainer)
         let charIndex = layoutManager.characterIndexForGlyph(at: glyphIndex)
         
-        print("🔍 findDrawingAttachmentAtLocation: Layout manager - glyph index: \(glyphIndex), char index: \(charIndex)")
         
         if charIndex < attributedText.length {
             let attachment = attributedText.attribute(.attachment, at: charIndex, effectiveRange: nil)
-            print("🔍 findDrawingAttachmentAtLocation: Layout manager attachment at \(charIndex): \(String(describing: attachment))")
             
             if let drawingAttachment = attachment as? DrawingTextAttachment {
                 print("✅ findDrawingAttachmentAtLocation: Found DrawingTextAttachment via layout manager at \(charIndex)")

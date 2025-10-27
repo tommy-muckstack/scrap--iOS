@@ -12,6 +12,7 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
     @Published var isTask: Bool
     @Published var isCompleted: Bool
     let createdAt: Date
+    var updatedAt: Date
     var firebaseId: String?
     var rtfData: Data? // Stored RTF data for rich text formatting
     
@@ -29,6 +30,7 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
         self.isTask = isTask
         self.isCompleted = false
         self.createdAt = Date()
+        self.updatedAt = Date()
     }
     
     /// Clean content for display by removing drawing markers and other artifacts
@@ -80,6 +82,7 @@ class SparkItem: ObservableObject, Identifiable, Hashable {
         self.isTask = firebaseNote.isTask
         self.isCompleted = false
         self.createdAt = firebaseNote.createdAt
+        self.updatedAt = firebaseNote.updatedAt
         self.firebaseId = firebaseNote.id
         
         // Always preserve RTF data - content should maintain formatting

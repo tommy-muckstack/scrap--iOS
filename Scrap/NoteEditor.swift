@@ -451,8 +451,10 @@ struct NoteEditor: View {
     private func updateTitle(_ newTitle: String) {
         // Don't save if note is being deleted
         guard !isBeingDeleted else { return }
-        
+
         item.title = newTitle
+        item.updatedAt = Date()
+
         if let firebaseId = item.firebaseId {
             Task {
                 try? await dataManager.firebaseManager.updateNoteTitle(noteId: firebaseId, title: newTitle)
@@ -495,8 +497,10 @@ struct NoteEditor: View {
     private func updateCategories(_ categoryIds: [String]) {
         // Don't save if note is being deleted
         guard !isBeingDeleted else { return }
-        
+
         item.categoryIds = categoryIds
+        item.updatedAt = Date()
+
         if let firebaseId = item.firebaseId {
             Task {
                 try? await dataManager.firebaseManager.updateNoteCategories(noteId: firebaseId, categoryIds: categoryIds)

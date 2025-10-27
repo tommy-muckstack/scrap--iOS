@@ -22,8 +22,6 @@ class PasteHandlingTextView: UITextView {
     override func paste(_ sender: Any?) {
         // Get the pasteboard content
         if let pasteboardString = UIPasteboard.general.string {
-            print("📋 Custom paste: Stripping formatting from pasted text")
-
             // Create clean attributed string with default formatting
             let cleanString = NSMutableAttributedString(string: pasteboardString)
             let fullRange = NSRange(location: 0, length: cleanString.length)
@@ -50,7 +48,6 @@ class PasteHandlingTextView: UITextView {
 
     override func becomeFirstResponder() -> Bool {
         if preventFirstResponder {
-            print("🚫 PasteHandlingTextView: Prevented becomeFirstResponder due to checkbox tap")
             return false
         }
         return super.becomeFirstResponder()
@@ -65,7 +62,6 @@ class PasteHandlingTextView: UITextView {
         }
         set {
             if lockCursorPosition && lockedCursorRange != nil {
-                print("🔒 PasteHandlingTextView: Cursor locked, ignoring selectedRange change to \\(newValue)")
                 return
             }
             super.selectedRange = newValue
@@ -75,13 +71,11 @@ class PasteHandlingTextView: UITextView {
     func lockCursor(at range: NSRange) {
         lockedCursorRange = range
         lockCursorPosition = true
-        print("🔒 PasteHandlingTextView: Locked cursor at range \\(range)")
     }
 
     func unlockCursor() {
         lockCursorPosition = false
         lockedCursorRange = nil
-        print("🔓 PasteHandlingTextView: Unlocked cursor")
     }
 
     override func scrollRangeToVisible(_ range: NSRange) {
@@ -93,8 +87,6 @@ class PasteHandlingTextView: UITextView {
         // Also suppress scroll if content fits on screen without scrolling (accounting for keyboard)
         let availableHeight = bounds.height - adjustedContentInset.top - adjustedContentInset.bottom
         if contentSize.height <= availableHeight {
-            // Content fits on screen - no need to scroll
-            print("🔍 PasteHandlingTextView: Blocked scrollRangeToVisible - content fits on screen (contentSize: \(contentSize.height), available: \(availableHeight))")
             return
         }
 
@@ -110,22 +102,17 @@ class NoScrollTextView: PasteHandlingTextView {
             super.contentOffset
         }
         set {
-            let oldValue = super.contentOffset
-
             // Block ALL offset changes during typing
             if isTyping {
-                print("🔍 NoScrollTextView: Blocked contentOffset setter during typing")
                 return
             }
 
             // Also block vertical scrolling if content fits on screen (accounting for keyboard)
             let availableHeight = bounds.height - adjustedContentInset.top - adjustedContentInset.bottom
             if contentSize.height <= availableHeight && newValue.y > 0 {
-                print("🔍 NoScrollTextView: Blocked contentOffset setter - content fits on screen (contentSize: \(contentSize.height), available: \(availableHeight), attempted offset: \(newValue.y))")
                 return
             }
 
-            print("🔍 NoScrollTextView: ALLOWING contentOffset change from \(oldValue) to \(newValue), contentSize: \(contentSize), bounds: \(bounds), inset: \(adjustedContentInset)")
             super.contentOffset = newValue
         }
     }
@@ -133,18 +120,15 @@ class NoScrollTextView: PasteHandlingTextView {
     override func setContentOffset(_ contentOffset: CGPoint, animated: Bool) {
         // Block ALL offset changes during typing (including animated)
         if isTyping {
-            print("🔍 NoScrollTextView: Blocked setContentOffset(animated:) during typing")
             return
         }
 
         // Also block vertical scrolling if content fits on screen (accounting for keyboard)
         let availableHeight = bounds.height - adjustedContentInset.top - adjustedContentInset.bottom
         if contentSize.height <= availableHeight && contentOffset.y > 0 {
-            print("🔍 NoScrollTextView: Blocked setContentOffset(animated:\(animated)) - content fits on screen (contentSize: \(contentSize.height), available: \(availableHeight), attempted offset: \(contentOffset.y))")
             return
         }
 
-        print("🔍 NoScrollTextView: ALLOWING setContentOffset(animated:\(animated)) to \(contentOffset), contentSize: \(contentSize), bounds: \(bounds)")
         super.setContentOffset(contentOffset, animated: animated)
     }
 
@@ -154,13 +138,11 @@ class NoScrollTextView: PasteHandlingTextView {
 
         // Block scrolling if content fits on screen
         if contentSize.height <= availableHeight {
-            print("🔍 NoScrollTextView: Blocked scrollRectToVisible - content fits in available area (contentSize: \(contentSize.height), available: \(availableHeight), rect: \(rect))")
             return
         }
 
         // If available height is invalid (can happen during keyboard animation), skip
         if availableHeight <= 0 {
-            print("🔍 NoScrollTextView: Blocked scrollRectToVisible - invalid available height (\(availableHeight))")
             return
         }
 
@@ -170,7 +152,6 @@ class NoScrollTextView: PasteHandlingTextView {
 
         // Check if rect is already fully visible
         if rect.minY >= visibleMinY && rect.maxY <= visibleMaxY {
-            print("🔍 NoScrollTextView: Blocked scrollRectToVisible - rect already visible (rect: \(rect.minY)...\(rect.maxY), visible: \(visibleMinY)...\(visibleMaxY))")
             return
         }
 
@@ -190,7 +171,6 @@ class NoScrollTextView: PasteHandlingTextView {
         let maxOffset = max(0, contentSize.height - availableHeight)
         targetOffset.y = max(minOffset, min(maxOffset, targetOffset.y))
 
-        print("🔍 NoScrollTextView: Scrolling to make rect visible - from offset \(contentOffset.y) to \(targetOffset.y), rect: \(rect.minY)...\(rect.maxY), visible: \(visibleMinY)...\(visibleMaxY)")
         setContentOffset(targetOffset, animated: animated)
     }
 
@@ -317,18 +297,12 @@ public struct RichTextEditor: UIViewRepresentable {
 
         // CRITICAL FIX: Connect drawing manager to coordinator for overlay system
         coordinator.drawingManager = drawingManager
-        if drawingManager != nil {
-            print("✅ RichTextEditor: Successfully connected DrawingOverlayManager to coordinator")
-        } else {
-            print("⚠️ RichTextEditor: No DrawingOverlayManager available, will use fallback NSTextAttachment method")
-        }
 
         // Clean up any existing custom gesture recognizers first
         textView.gestureRecognizers?.forEach { recognizer in
             if let tapGR = recognizer as? UITapGestureRecognizer,
                tapGR.numberOfTapsRequired == 1,
                tapGR.delegate is RichTextCoordinator {
-                print("🧹 RichTextEditor: Removing existing tap gesture recognizer")
                 textView.removeGestureRecognizer(recognizer)
             }
         }
@@ -341,7 +315,6 @@ public struct RichTextEditor: UIViewRepresentable {
         tapGesture.delaysTouchesBegan = false // Don't delay touch delivery
         tapGesture.delaysTouchesEnded = false // Don't delay touch end
         textView.addGestureRecognizer(tapGesture)
-        print("🎯 RichTextEditor: Added tap gesture recognizer to textView with enhanced attachment detection")
 
         // REMOVED: Container gesture recognizer to prevent conflicts with keyboard dismiss gesture
         // The textView gesture should be sufficient for checkbox detection
@@ -508,7 +481,6 @@ public struct RichTextEditorWithDrawings: View {
             // Drawing overlays
             ForEach(Array(drawingManager.drawingMarkers.keys), id: \.self) { drawingId in
                 if let marker = drawingManager.drawingMarkers[drawingId] {
-                    let _ = print("🎨 RichTextEditorWithDrawings: Rendering overlay for drawing \(drawingId) at position \(marker.position)")
                     DrawingOverlayView(
                         marker: marker,
                         onEdit: {
