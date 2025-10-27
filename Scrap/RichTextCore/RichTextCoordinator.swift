@@ -39,10 +39,13 @@ public class RichTextCoordinator: NSObject {
     
     /// Prevents checkbox cursor detection during checkbox toggling
     private var isTogglingSelf = false
-    
+
+    /// Prevents recursive calls to preventCursorLeftOfListMarkers
+    private var isAdjustingCursorForMarkers = false
+
     /// Tracks when user has explicitly exited a code block to prevent automatic re-activation
     private var hasExplicitlyExitedCodeBlock = false
-    
+
     /// Tracks the timestamp of the last user tap for tap-to-left behavior detection
     private var lastUserTapTime = Date()
     
@@ -304,9 +307,6 @@ public class RichTextCoordinator: NSObject {
 
             guard self.isTextViewReadyForKeyboardAdjustment else {
                 if allowDefer {
-                    if self.isScrollDebugLoggingEnabled {
-                        let rawFrameDescription = frame.map { "\($0)" } ?? "nil"
-                    }
                     self.pendingKeyboardAdjustment = (frame, duration, curveRaw ?? 0)
                     self.scheduleKeyboardAdjustmentRetry()
                 }
@@ -326,9 +326,6 @@ public class RichTextCoordinator: NSObject {
         let isKeyboardNowVisible = safeOverlap > 0
         currentKeyboardHeight = safeOverlap
 
-        if isScrollDebugLoggingEnabled {
-            let rawFrameDescription = frame.map { "\($0)" } ?? "nil"
-        }
 
         let animations = { [weak self] in
             guard let self else { return }
@@ -454,29 +451,7 @@ public class RichTextCoordinator: NSObject {
     }
 
     private func logEditorMetrics(reason: String) {
-        let offset = textView.contentOffset
-        let size = textView.contentSize
-        let inset = textView.contentInset
-        let bounds = textView.bounds
-        let adjusted = textView.adjustedContentInset
-
-        var caretDescription = "none"
-        var caretVisibility = "caretUnavailable"
-
-        if let selectedRange = textView.selectedTextRange {
-            let caretRect = textView.caretRect(for: selectedRange.end)
-            if caretRect.containsNaN {
-                caretDescription = "invalid (NaN)"
-                caretVisibility = "invalid (NaN)"
-            } else {
-                let caretBottom = caretRect.maxY
-                let visibleTop = offset.y + inset.top
-                let visibleBottom = offset.y + bounds.height - inset.bottom
-                caretDescription = "rect=\(caretRect)"
-                caretVisibility = "visibleTop=\(String(format: "%.2f", visibleTop)) visibleBottom=\(String(format: "%.2f", visibleBottom)) caretMinY=\(String(format: "%.2f", caretRect.minY)) caretMaxY=\(String(format: "%.2f", caretBottom))"
-            }
-        }
-
+        // Logging disabled for performance
     }
 
     private var isTextViewReadyForKeyboardAdjustment: Bool {
@@ -552,7 +527,6 @@ public class RichTextCoordinator: NSObject {
         isAdjustingContentOffset = false
 
         if isScrollDebugLoggingEnabled {
-            let newOffsetY = textView.contentOffset.y
             logEditorMetrics(reason: "caret_adjust_\(reason)")
         }
 
@@ -2159,8 +2133,6 @@ public class RichTextCoordinator: NSObject {
 extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
     
     public func textViewDidChange(_ textView: UITextView) {
-        let previousSize = textView.contentSize
-
         // Skip updates if we're currently handling newline insertion to avoid race conditions
         guard !isHandlingNewlineInsertion else { return }
         updateBindingFromTextView()
@@ -2936,9 +2908,7 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
             print("👆 handleTap: Attributed text length: \(attributedText.length)")
             
             attributedText.enumerateAttribute(.attachment, in: NSRange(location: 0, length: attributedText.length), options: []) { value, range, _ in
-                if let attachment = value as? NSTextAttachment {
-                    let attachmentType = type(of: attachment)
-
+                if value as? NSTextAttachment != nil {
                     // Calculate attachment bounds
                     // NOTE: Accessing layoutManager triggers TextKit 1 compatibility mode
                     // This is necessary for precise glyph-level layout calculations
@@ -3255,8 +3225,13 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
     /// Prevent cursor from being placed to the left of checkboxes or bullets
     /// Also implements tap-to-left behavior for checkboxes per user requirements
     private func preventCursorLeftOfListMarkers(_ textView: UITextView) {
+        // Prevent re-entry to avoid infinite loops
+        guard !isAdjustingCursorForMarkers else { return }
+        isAdjustingCursorForMarkers = true
+        defer { isAdjustingCursorForMarkers = false }
+
         guard let attributedText = textView.attributedText else { return }
-        
+
         let currentPosition = textView.selectedRange.location
         let currentLine = (attributedText.string as NSString).lineRange(for: NSRange(location: min(currentPosition, attributedText.length), length: 0))
         

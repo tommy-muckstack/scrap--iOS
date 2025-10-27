@@ -572,13 +572,9 @@ class CheckboxManager {
         textView.isUserInteractionEnabled = false
         
         // CRITICAL: Ensure text view reference and range are properly set
-        if attachment.textView == nil {
-            attachment.textView = textView
-        }
-
-        if attachment.characterRange.location == NSNotFound {
-            attachment.characterRange = range
-        }
+        // Always update these as text positions can change due to edits
+        attachment.textView = textView
+        attachment.characterRange = range
         
         // Set up the state change callback to ensure immediate synchronization
         attachment.onStateChange = { [weak textView] newState in
