@@ -517,11 +517,15 @@ class FirebaseManager: ObservableObject {
     }
     
     func updateNoteTitle(noteId: String, title: String) async throws {
+        print("🔍 FirebaseManager.updateNoteTitle: Updating title for note \(noteId) to: '\(title)'")
+
         try await db.collection("notes").document(noteId).updateData([
             "title": title,
             "updatedAt": Date()
         ])
-        
+
+        print("✅ FirebaseManager.updateNoteTitle: Successfully updated title for note \(noteId)")
+
         // Schedule debounced vector indexing to prevent multiple operations
         scheduleVectorIndexing(for: noteId)
     }
@@ -592,30 +596,69 @@ class FirebaseManager: ObservableObject {
     
     func deleteNote(noteId: String) async throws {
         let noteRef = db.collection("notes").document(noteId)
-        
+
         // First, get the note data before deleting
         let noteSnapshot = try await noteRef.getDocument()
         guard let noteData = noteSnapshot.data() else {
             print("⚠️ FirebaseManager: Note \(noteId) not found, cannot archive")
             throw NSError(domain: "FirebaseManager", code: 404, userInfo: [NSLocalizedDescriptionKey: "Note not found"])
         }
-        
+
         // CRITICAL: Clean up any associated drawings before deletion
         await cleanupDrawingsForNote(noteData: noteData, noteId: noteId)
-        
+
         // Create archived version with additional metadata
         var archivedData = noteData
-        archivedData["archivedAt"] = Timestamp(date: Date()) // Use current timestamp instead of server timestamp
+        archivedData["archivedAt"] = Timestamp(date: Date())
         archivedData["originalId"] = noteId
-        
-        // Copy note to archived collection
-        try await db.collection("notes_archived").document(noteId).setData(archivedData)
-        print("✅ FirebaseManager: Note \(noteId) copied to archives")
-        
+
+        // Validate required fields for archiving
+        let requiredFields = ["userId", "content", "isTask", "categories", "createdAt", "updatedAt", "creationType"]
+        var missingFields: [String] = []
+        for field in requiredFields {
+            if archivedData[field] == nil {
+                missingFields.append(field)
+            }
+        }
+
+        if !missingFields.isEmpty {
+            print("⚠️ FirebaseManager: Cannot archive note \(noteId) - missing required fields: \(missingFields.joined(separator: ", "))")
+            print("📋 FirebaseManager: Available fields: \(archivedData.keys.sorted().joined(separator: ", "))")
+
+            // Still delete the note even if archiving fails
+            print("⚠️ FirebaseManager: Skipping archive, proceeding with delete only")
+            try await noteRef.delete()
+            print("✅ FirebaseManager: Note \(noteId) deleted from notes collection (not archived)")
+
+            // Remove from vector search index
+            Task {
+                do {
+                    try await VectorSearchService.shared.removeNoteFromIndex(noteId)
+                } catch {
+                    print("⚠️ FirebaseManager: Failed to remove note from vector index: \(error)")
+                }
+            }
+
+            // Track analytics
+            AnalyticsManager.shared.trackItemDeleted(isTask: noteData["isTask"] as? Bool ?? false)
+            return
+        }
+
+        print("📋 FirebaseManager: Archiving note \(noteId) with fields: \(archivedData.keys.sorted().joined(separator: ", "))")
+
+        // Try to copy note to archived collection
+        do {
+            try await db.collection("notes_archived").document(noteId).setData(archivedData)
+            print("✅ FirebaseManager: Note \(noteId) copied to archives")
+        } catch {
+            print("❌ FirebaseManager: Failed to archive note \(noteId): \(error.localizedDescription)")
+            print("⚠️ FirebaseManager: Proceeding with delete anyway to avoid leaving orphaned notes")
+        }
+
         // Now delete from original collection
         try await noteRef.delete()
         print("✅ FirebaseManager: Note \(noteId) deleted from notes collection")
-        
+
         // Remove from vector search index (async, don't block delete)
         Task {
             do {
@@ -624,7 +667,7 @@ class FirebaseManager: ObservableObject {
                 print("⚠️ FirebaseManager: Failed to remove note from vector index: \(error)")
             }
         }
-        
+
         // Track analytics
         AnalyticsManager.shared.trackItemDeleted(isTask: noteData["isTask"] as? Bool ?? false)
     }

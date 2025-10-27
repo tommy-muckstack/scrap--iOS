@@ -18,20 +18,30 @@ class AnalyticsManager: ObservableObject {
                              "693800f793945567021a62721d3713c9" // Fallback for development only
 
         let configuration = Configuration(
-            apiKey: amplitudeAPIKey
+            apiKey: amplitudeAPIKey,
+            autocapture: []  // DISABLE all autocapture (sessions, appLifecycles, screenViews, elementInteractions)
+                            // We only use explicit event tracking
         )
 
-        // Optimize storage to reduce I/O operations and disk health warnings
-        configuration.flushQueueSize = 50           // Batch more events before flushing (increased from 30)
-        configuration.flushIntervalMillis = 60000   // Flush less frequently - 60 seconds (increased from 30)
+        // AGGRESSIVE optimization to reduce I/O operations and disk health warnings
+        configuration.flushQueueSize = 100          // Batch many more events before flushing (increased from 50)
+        configuration.flushIntervalMillis = 120000  // Flush much less frequently - 2 minutes (increased from 60s)
         configuration.minIdLength = 5               // Reduce minimum ID length validation
         configuration.partnerId = nil               // Disable partner tracking
         configuration.plan = nil                    // Disable plan tracking
         configuration.ingestionMetadata = nil       // Disable ingestion metadata
 
-        // Session Replay with reduced sample rate to minimize I/O
+        // CRITICAL: Disable offline storage to prevent excessive directory creation
+        // This is the main cause of the I/O warning - Amplitude creates directories for offline event storage
+        configuration.offline = false               // Don't store events offline (reduces I/O significantly)
+
+        // Optimize session timing
+        configuration.minTimeBetweenSessionsMillis = 300000 // 5 minutes between sessions
+
+        // Session Replay with minimal sample rate to minimize I/O
         // This is the PRIMARY optimization to reduce disk writes
-        let sampleRate: Float = 0.1 // 10% of sessions (reduced from 100% to minimize disk I/O)
+        // Session Replay records screen interactions and stores them to disk, causing I/O warnings
+        let sampleRate: Float = 0.05 // 5% of sessions (reduced from 10% to minimize disk I/O even more)
         sessionReplayPlugin = AmplitudeSwiftSessionReplayPlugin(sampleRate: sampleRate, maskLevel: .light)
 
         amplitude = Amplitude(configuration: configuration)

@@ -26,7 +26,8 @@ struct NoteEditor: View {
     @State private var isBeingDeleted = false
     @State private var showingDrawingEditor = false
     @StateObject private var drawingManager = DrawingOverlayManager()
-    
+    @State private var noteCreationTime: Date?
+
     // MARK: - Animation States
     @State private var isContentVisible = false
     @State private var editorScale: CGFloat = 0.95
@@ -129,6 +130,14 @@ struct NoteEditor: View {
                     .padding(.horizontal, 16)
                     .focused($isTextFocused)
                     .onChange(of: editedText) { newText in
+                        // Skip autosave for newly created notes (first 5 seconds grace period)
+                        // This prevents race condition where autosave UPDATE fires before server-side CREATE completes
+                        if let creationTime = noteCreationTime,
+                           Date().timeIntervalSince(creationTime) < 5.0 {
+                            print("⏭️ NoteEditor: Skipping autosave - note within creation grace period")
+                            return
+                        }
+
                         // Autosave content changes with debouncing
                         autoSaveTimer?.invalidate()
                         autoSaveTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: false) { _ in
@@ -222,12 +231,25 @@ struct NoteEditor: View {
                 let timeSpent = Date().timeIntervalSince(noteOpenTime)
                 AnalyticsManager.shared.trackNoteClosed(noteId: item.firebaseId ?? item.id, timeSpent: timeSpent)
 
-                // CRITICAL: Save BEFORE dismissing to ensure note is persisted
+                // CRITICAL: Check if note is empty and delete if so, otherwise save
                 if !isBeingDeleted {
                     // Cancel any pending autosave timers
                     autoSaveTimer?.invalidate()
-                    // Save immediately (synchronously) before dismissal
-                    updateContent(editedText)
+
+                    // Check if note is completely empty (no title and no content)
+                    let plainText = editedText.string.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let trimmedTitle = editedTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+
+                    if plainText.isEmpty && trimmedTitle.isEmpty {
+                        // Note is empty - delete the shell note
+                        print("🗑️ NoteEditor: Empty note detected, deleting shell note")
+                        isBeingDeleted = true
+                        dataManager.deleteItem(item)
+                    } else {
+                        // Note has content - save title AND content immediately - bypass grace period
+                        updateTitle(editedTitle)
+                        updateContent(editedText, bypassGracePeriod: true)
+                    }
                 }
 
                 // Then dismiss
@@ -366,6 +388,11 @@ struct NoteEditor: View {
             // Check if this is a new note
             let isNewNote = editedTitle.isEmpty && item.content.isEmpty
 
+            // Set creation time for new notes to implement grace period
+            if isNewNote {
+                noteCreationTime = Date()
+            }
+
             // For existing notes, trigger entrance animation
             // (new notes already have isContentVisible=true from init)
             if !isNewNote {
@@ -421,9 +448,21 @@ struct NoteEditor: View {
             autoSaveTimer?.invalidate()
             autoSaveTimer = nil
 
-            // Save immediately before view disappears (unless being deleted)
+            // Check if note is empty and delete if so, otherwise save (unless being deleted)
             if !isBeingDeleted {
-                updateContent(editedText)
+                let plainText = editedText.string.trimmingCharacters(in: .whitespacesAndNewlines)
+                let trimmedTitle = editedTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+
+                if plainText.isEmpty && trimmedTitle.isEmpty {
+                    // Note is empty - delete the shell note
+                    print("🗑️ NoteEditor: Empty note detected on disappear, deleting shell note")
+                    isBeingDeleted = true
+                    dataManager.deleteItem(item)
+                } else {
+                    // Note has content - save title AND content immediately - bypass grace period
+                    updateTitle(editedTitle)
+                    updateContent(editedText, bypassGracePeriod: true)
+                }
             }
         }
         #if os(macOS)
@@ -474,9 +513,19 @@ struct NoteEditor: View {
         }
     }
     
-    private func updateContent(_ attributedText: NSAttributedString) {
+    private func updateContent(_ attributedText: NSAttributedString, bypassGracePeriod: Bool = false) {
         // Don't save if note is being deleted
         guard !isBeingDeleted else { return }
+
+        // Skip updates for newly created notes (first 5 seconds grace period)
+        // This prevents race condition where UPDATE fires before server-side CREATE completes
+        // UNLESS this is a user-initiated save (back button, onDisappear)
+        if !bypassGracePeriod,
+           let creationTime = noteCreationTime,
+           Date().timeIntervalSince(creationTime) < 5.0 {
+            print("⏭️ NoteEditor.updateContent: Skipping autosave - note within creation grace period")
+            return
+        }
 
         let plainText = attributedText.string.trimmingCharacters(in: .whitespacesAndNewlines)
 

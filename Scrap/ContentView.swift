@@ -2573,7 +2573,7 @@ struct ContentView: View {
                   hideMicrophone: isSearchExpanded, // Hide microphone when search is expanded
                   isSearchExpanded: isSearchExpanded, // Pass search state to InputField
                   onCreateNewNote: {
-            // Create a temporary empty item for editing
+            // Create an empty shell note for editing
             let newItem = SparkItem(
                 content: "",
                 title: "",
@@ -2582,11 +2582,43 @@ struct ContentView: View {
                 id: UUID().uuidString
             )
 
+            // Add to items array immediately (optimistic update)
+            withAnimation(GentleLightning.Animation.elastic) {
+                dataManager.items.insert(newItem, at: 0)
+            }
+
             // Track the event
             AnalyticsManager.shared.trackNewNoteStarted(method: "plus_button")
 
-            // Navigate to the editor
-            navigationPath.append(newItem)
+            // CRITICAL: Save shell note to Firebase BEFORE navigating
+            // This ensures firebaseId is available when user edits title/content
+            Task {
+                do {
+                    let firebaseId = try await dataManager.firebaseManager.createNote(
+                        content: "",
+                        title: "",
+                        categoryIds: [],
+                        isTask: false,
+                        categories: [],
+                        creationType: "rich_text",  // Use rich_text since it will have RTF content
+                        rtfData: nil
+                    )
+
+                    await MainActor.run {
+                        newItem.firebaseId = firebaseId
+                        print("✅ ContentView: Shell note created in Firebase with ID: \(firebaseId)")
+
+                        // Navigate AFTER firebaseId is set
+                        navigationPath.append(newItem)
+                    }
+                } catch {
+                    await MainActor.run {
+                        print("⚠️ ContentView: Failed to create shell note in Firebase: \(error)")
+                        // Still navigate even if creation failed (optimistic)
+                        navigationPath.append(newItem)
+                    }
+                }
+            }
         })
         .padding(.horizontal, GentleLightning.Layout.Padding.xl)
     }

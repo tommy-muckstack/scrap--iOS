@@ -71,46 +71,77 @@ class CheckboxTextAttachment: NSTextAttachment {
             return
         }
 
-        // CRITICAL: Skip updates during keyboard animation to prevent visual glitches
-        guard !isKeyboardAnimating else {
-            print("❌ updateTextStorage: Blocked - keyboard is animating")
+        // If keyboard is animating, defer the visual update but still apply strikethrough
+        if isKeyboardAnimating {
+            print("⏰ updateTextStorage: Keyboard animating - deferring visual update")
+            // Apply strikethrough to text storage immediately (data layer)
+            applyStrikethroughToLine()
+
+            // Defer visual update until animation completes
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self, weak textView] in
+                guard let self = self, let textView = textView else { return }
+                print("✅ updateTextStorage: Applying deferred visual update")
+                self.forceVisualUpdate(textView: textView)
+            }
             return
         }
 
-        print("✅ updateTextStorage: Proceeding with update")
+        print("✅ updateTextStorage: Proceeding with immediate update")
 
         // Save current cursor position to prevent jumping
         let savedSelectedRange = textView.selectedRange
 
         let textStorage = textView.textStorage
-        
+
         // Validate range bounds
-        guard characterRange.location >= 0 && 
+        guard characterRange.location >= 0 &&
               characterRange.location < textStorage.length &&
               characterRange.length > 0 &&
               characterRange.location + characterRange.length <= textStorage.length else {
             return
         }
-        
+
         // Apply strikethrough formatting to the entire line containing this checkbox
         applyStrikethroughToLine()
-        
-        // Force layout manager to update the display for this attachment
-        let layoutManager = textView.layoutManager
-        layoutManager.invalidateDisplay(forCharacterRange: characterRange)
-        layoutManager.invalidateLayout(forCharacterRange: characterRange, actualCharacterRange: nil)
-        
-        // Restore cursor position immediately to prevent jumping
+
+        // Force visual update immediately
+        forceVisualUpdate(textView: textView)
+
+        // Restore cursor position
         textView.selectedRange = savedSelectedRange
-        
-        // Force immediate redraw
-        textView.setNeedsDisplay()
-        
+
         // Notify text view delegate of content changes for state persistence
         DispatchQueue.main.async {
-            // Restore cursor one more time after delegate notification
             textView.selectedRange = savedSelectedRange
             textView.delegate?.textViewDidChange?(textView)
+        }
+    }
+
+    /// Force the visual update of strikethrough formatting
+    private func forceVisualUpdate(textView: UITextView) {
+        let layoutManager = textView.layoutManager
+        let textContainer = textView.textContainer
+        let textStorage = textView.textStorage
+
+        // Get the line range for invalidation
+        let text = textStorage.string as NSString
+        let lineRange = text.lineRange(for: characterRange)
+
+        // CRITICAL: Force immediate layout update even when keyboard is visible
+        // This ensures strikethrough appears immediately when checking boxes during editing
+        layoutManager.invalidateDisplay(forCharacterRange: lineRange)
+        layoutManager.invalidateLayout(forCharacterRange: lineRange, actualCharacterRange: nil)
+
+        // Force the layout manager to recalculate layout immediately
+        layoutManager.ensureLayout(for: textContainer)
+
+        // Force immediate redraw
+        textView.setNeedsDisplay()
+        textView.layoutIfNeeded()
+
+        // Additional async update to ensure visibility
+        DispatchQueue.main.async {
+            textView.setNeedsDisplay()
         }
     }
     
@@ -183,23 +214,33 @@ class CheckboxTextAttachment: NSTextAttachment {
     
     // MARK: - NSTextAttachment Overrides
     
-    override func attachmentBounds(for textContainer: NSTextContainer?, 
-                                 proposedLineFragment lineFrag: CGRect, 
-                                 glyphPosition position: CGPoint, 
+    override func attachmentBounds(for textContainer: NSTextContainer?,
+                                 proposedLineFragment lineFrag: CGRect,
+                                 glyphPosition position: CGPoint,
                                  characterIndex charIndex: Int) -> CGRect {
         // Store the character range for this attachment
         characterRange = NSRange(location: charIndex, length: 1)
-        
+
         // Validate and sanitize all values to prevent CoreGraphics NaN errors
         let safeOriginX: CGFloat = 0.0
+        let safeOriginY: CGFloat = -10.0
         let safeWidth = checkboxSize.width.isFinite ? checkboxSize.width : 24.0
         let safeHeight = checkboxSize.height.isFinite ? checkboxSize.height : 24.0
-        
+
         // Position checkbox to center-align with text baseline
-        return CGRect(
-            origin: CGPoint(x: safeOriginX, y: -10.0), 
+        let bounds = CGRect(
+            origin: CGPoint(x: safeOriginX, y: safeOriginY),
             size: CGSize(width: safeWidth, height: safeHeight)
         )
+
+        // CRITICAL: Final validation to ensure no NaN values in returned rect
+        // This prevents CoreGraphics errors even if calculations somehow produce NaN
+        guard bounds.isValid else {
+            // Fallback to safe default bounds if validation fails
+            return CGRect(x: 0, y: -10, width: 24, height: 24)
+        }
+
+        return bounds
     }
     
     override func image(forBounds imageBounds: CGRect, 
@@ -673,5 +714,19 @@ extension CheckboxTextAttachment {
                 return nil
             }
         }
+    }
+}
+
+// MARK: - CGRect Extension for NaN Validation
+extension CGRect {
+    /// Checks if the CGRect contains any NaN or Infinite values
+    /// This prevents CoreGraphics errors when rendering checkboxes
+    var isValid: Bool {
+        return origin.x.isFinite &&
+               origin.y.isFinite &&
+               size.width.isFinite &&
+               size.height.isFinite &&
+               size.width > 0 &&
+               size.height > 0
     }
 }

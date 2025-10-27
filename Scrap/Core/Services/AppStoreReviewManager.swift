@@ -211,28 +211,40 @@ class AppStoreReviewManager {
         
         // CRITICAL: Dismiss keyboard before showing rating modal to ensure user can interact with stars
         Task { @MainActor in
-            // Find any active text view and resign first responder - try multiple approaches
+            // ROUND 1: Aggressive first responder dismissal
             for window in windowScene.windows {
                 window.endEditing(true)
             }
-
-            // Also send resignFirstResponder to the entire responder chain
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
 
-            print("⌨️ AppStoreReviewManager: Dismissed keyboard and resigned all first responders")
+            print("⌨️ AppStoreReviewManager: Round 1 - Dismissed keyboard and resigned first responders")
 
-            // Longer delay to ensure keyboard dismissal animation completes AND all text views release focus
-            try? await Task.sleep(nanoseconds: 800_000_000) // 0.8 seconds
+            // Wait 0.5 seconds for initial dismissal
+            try? await Task.sleep(nanoseconds: 500_000_000)
 
-            // One more forced dismissal right before showing review
+            // ROUND 2: Second dismissal attempt
             for window in windowScene.windows {
                 window.endEditing(true)
             }
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+
+            print("⌨️ AppStoreReviewManager: Round 2 - Second dismissal attempt")
+
+            // LONGER delay to ensure keyboard dismissal animation fully completes
+            try? await Task.sleep(nanoseconds: 1_000_000_000) // 1.0 seconds
+
+            // ROUND 3: Final dismissal right before showing review
+            for window in windowScene.windows {
+                window.endEditing(true)
+            }
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+
+            print("⌨️ AppStoreReviewManager: Round 3 - Final dismissal before showing modal")
 
             // Request review using SKStoreReviewController
             if #available(iOS 14.0, *) {
                 SKStoreReviewController.requestReview(in: windowScene)
-                print("✅ AppStoreReviewManager: Showing rating modal after keyboard dismissal")
+                print("✅ AppStoreReviewManager: Showing rating modal after 1.5 second keyboard dismissal sequence")
             }
         }
         

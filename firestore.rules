@@ -3,17 +3,22 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // Security rules for notes collection
     match /notes/{noteId} {
-      // Users can only read/write their own notes (for existing documents)
-      allow read, write: if request.auth != null 
+      // Users can only read their own notes
+      allow read: if request.auth != null
         && request.auth.uid == resource.data.userId;
-      
+
       // Users can only create notes with their own userId
-      allow create: if request.auth != null 
+      allow create: if request.auth != null
         && request.auth.uid == request.resource.data.userId
         && validateNoteData(request.resource.data);
-      
-      // Allow updates if user owns the note (check existing document ownership only)
+
+      // Allow updates if user owns the note OR if updating a newly created note
       allow update: if request.auth != null
+        && (request.auth.uid == resource.data.userId
+            || request.auth.uid == request.resource.data.userId);
+
+      // Allow users to delete their own notes
+      allow delete: if request.auth != null
         && request.auth.uid == resource.data.userId;
     }
     

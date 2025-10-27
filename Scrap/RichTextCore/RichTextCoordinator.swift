@@ -111,16 +111,20 @@ public class RichTextCoordinator: NSObject {
             print("⚠️ RichTextCoordinator: Already connected to this text view, skipping")
             return
         }
-        
+
         // Clean up previous connection if exists
         if self.textView != textView {
             print("🧹 RichTextCoordinator: Disconnecting from previous text view \(self.textView)")
             self.textView.delegate = nil
         }
-        
+
         self.textView = textView
         setupTextView()
         syncInitialState()
+
+        // CRITICAL: Initialize all checkbox attachments with textView reference
+        // This ensures strikethrough is applied to checked checkboxes on initial load
+        initializeCheckboxAttachments()
 
         DispatchQueue.main.async { [weak self] in
             self?.applyPendingKeyboardAdjustmentIfNeeded()
@@ -184,6 +188,73 @@ public class RichTextCoordinator: NSObject {
     }
 
     // MARK: - Checkbox Animation Management
+
+    /// Initialize all checkbox attachments with textView reference and apply strikethrough
+    /// This ensures strikethrough is visible when notes are first loaded from Firebase
+    private func initializeCheckboxAttachments() {
+        guard let mutableText = textView.attributedText.mutableCopy() as? NSMutableAttributedString else { return }
+
+        print("🔧 RichTextCoordinator: Initializing checkbox attachments...")
+
+        var checkboxCount = 0
+        var checkedCount = 0
+
+        // Enumerate all checkbox attachments and set up their textView reference
+        mutableText.enumerateAttribute(.attachment,
+                                      in: NSRange(location: 0, length: mutableText.length),
+                                      options: []) { value, range, _ in
+            if let checkbox = value as? CheckboxTextAttachment {
+                checkboxCount += 1
+
+                // Set textView reference if not already set
+                if checkbox.textView == nil {
+                    checkbox.textView = self.textView
+                    checkbox.characterRange = range
+
+                    // Set up state change callback for future toggles
+                    checkbox.onStateChange = { [weak self] newState in
+                        guard let self = self else { return }
+                        // Notify delegate for persistence
+                        DispatchQueue.main.async {
+                            self.textView.delegate?.textViewDidChange?(self.textView)
+                        }
+                    }
+
+                    // Apply strikethrough formatting if checkbox is checked
+                    if checkbox.isChecked {
+                        checkedCount += 1
+
+                        // Find the line range containing this checkbox
+                        let text = mutableText.string as NSString
+                        let lineRange = text.lineRange(for: range)
+
+                        // Apply strikethrough and dimmed text color
+                        mutableText.addAttribute(.strikethroughStyle,
+                                               value: NSUnderlineStyle.single.rawValue,
+                                               range: lineRange)
+                        mutableText.addAttribute(.foregroundColor,
+                                               value: UIColor.secondaryLabel,
+                                               range: lineRange)
+
+                        print("✅ RichTextCoordinator: Applied strikethrough to checked checkbox at range \(range), lineRange=\(lineRange)")
+                    }
+
+                    print("✅ RichTextCoordinator: Initialized checkbox at range \(range), checked=\(checkbox.isChecked)")
+                }
+            }
+        }
+
+        if checkboxCount > 0 {
+            print("✅ RichTextCoordinator: Initialized \(checkboxCount) checkboxes (\(checkedCount) checked)")
+
+            // Apply the modified text back to the text view
+            textView.attributedText = mutableText
+
+            // Force a layout pass to ensure strikethrough is rendered
+            textView.layoutManager.invalidateDisplay(forCharacterRange: NSRange(location: 0, length: mutableText.length))
+            textView.setNeedsDisplay()
+        }
+    }
 
     /// Update keyboard animation flag for all checkboxes in the text view
     /// This prevents visual glitches during keyboard show/hide transitions
@@ -2557,11 +2628,13 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
                 textView.attributedText = mutableText
                 let newCursorPosition = range.location + 3 // Position after "\n" + checkbox + space
                 textView.selectedRange = NSRange(location: newCursorPosition, length: 0)
-                
-                // Update typing attributes to maintain current formatting state
-                updateTypingAttributes()
-                
-                // Don't reset text formatting state - let user continue with their selected formatting
+
+                // Clear typing attributes to prevent strikethrough from checked checkboxes
+                // New unchecked checkboxes should NOT inherit strikethrough formatting
+                textView.typingAttributes = [
+                    .font: UIFont.systemFont(ofSize: 16),
+                    .foregroundColor: UIColor.label
+                ]
                 
                 // Update binding and context after the change
                 updateBindingFromTextView()
