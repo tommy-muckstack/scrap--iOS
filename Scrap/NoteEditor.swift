@@ -69,6 +69,11 @@ struct NoteEditor: View {
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .focused($isTitleFocused)
+                        .onSubmit {
+                            // When user hits enter in title, move focus to note content
+                            isTitleFocused = false
+                            isTextFocused = true
+                        }
                         .onChange(of: editedTitle) { newTitle in
                             // Debounce title updates for better performance  
                             autoSaveTimer?.invalidate()
