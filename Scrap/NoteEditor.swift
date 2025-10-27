@@ -128,6 +128,13 @@ struct NoteEditor: View {
                     }
                     .padding(.horizontal, 16)
                     .focused($isTextFocused)
+                    .onChange(of: editedText) { newText in
+                        // Autosave content changes with debouncing
+                        autoSaveTimer?.invalidate()
+                        autoSaveTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: false) { _ in
+                            updateContent(newText)
+                        }
+                    }
                     .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
                         // Save when app goes to background (unless being deleted)
                         if !isBeingDeleted {
@@ -209,21 +216,22 @@ struct NoteEditor: View {
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
         .navigationBarItems(
-            leading: Button(action: { 
+            leading: Button(action: {
                 // Track back button and note closed time
                 AnalyticsManager.shared.trackBackButtonTapped(fromScreen: "note_editor")
                 let timeSpent = Date().timeIntervalSince(noteOpenTime)
                 AnalyticsManager.shared.trackNoteClosed(noteId: item.firebaseId ?? item.id, timeSpent: timeSpent)
-                
-                // Dismiss immediately for smooth animation, save content in background
-                dismiss()
-                
-                // Save content asynchronously in background (unless being deleted)
+
+                // CRITICAL: Save BEFORE dismissing to ensure note is persisted
                 if !isBeingDeleted {
-                    DispatchQueue.global(qos: .userInitiated).async {
-                        updateContent(editedText)
-                    }
+                    // Cancel any pending autosave timers
+                    autoSaveTimer?.invalidate()
+                    // Save immediately (synchronously) before dismissal
+                    updateContent(editedText)
                 }
+
+                // Then dismiss
+                dismiss()
             }) {
                 Image(systemName: GentleLightning.Icons.navigationBack)
                     .font(.system(size: 20, weight: .medium))
@@ -412,10 +420,9 @@ struct NoteEditor: View {
             // Clean up timer and save
             autoSaveTimer?.invalidate()
             autoSaveTimer = nil
-            
-            // Optimize dismissal by deferring save to background
-            DispatchQueue.global(qos: .userInitiated).async {
-                // Save when navigating away
+
+            // Save immediately before view disappears (unless being deleted)
+            if !isBeingDeleted {
                 updateContent(editedText)
             }
         }

@@ -15,16 +15,23 @@ class CheckboxTextAttachment: NSTextAttachment {
     /// The checkbox state - this is the source of truth
     var isChecked: Bool = false {
         didSet {
+            print("🔔 CHECKBOX didSet: isChecked=\(isChecked), oldValue=\(oldValue), changed=\(isChecked != oldValue)")
             if isChecked != oldValue {
+                print("✅ CHECKBOX didSet: State changed, proceeding with updates")
                 // Clear cached content to force redraw (only instance-specific cache)
                 contents = nil
                 image = nil
-                
+
                 // Notify about state change for persistence
+                print("📢 CHECKBOX didSet: Calling onStateChange callback")
                 onStateChange?(isChecked)
-                
+
                 // Update the text storage to reflect the change
+                print("📢 CHECKBOX didSet: About to call updateTextStorage()")
                 updateTextStorage()
+                print("✅ CHECKBOX didSet: Called updateTextStorage()")
+            } else {
+                print("⏭️ CHECKBOX didSet: State unchanged, skipping updates")
             }
         }
     }
@@ -56,15 +63,21 @@ class CheckboxTextAttachment: NSTextAttachment {
     /// Update the text storage to reflect the current checkbox state
     /// This ensures the checkbox state persists in the document and applies strikethrough formatting
     private func updateTextStorage() {
+        print("🔧 updateTextStorage: Called for checkbox (checked=\(isChecked))")
+
         guard let textView = textView,
               characterRange.location != NSNotFound else {
+            print("❌ updateTextStorage: Blocked - textView=\(textView != nil), characterRange.location=\(characterRange.location)")
             return
         }
 
         // CRITICAL: Skip updates during keyboard animation to prevent visual glitches
         guard !isKeyboardAnimating else {
+            print("❌ updateTextStorage: Blocked - keyboard is animating")
             return
         }
+
+        print("✅ updateTextStorage: Proceeding with update")
 
         // Save current cursor position to prevent jumping
         let savedSelectedRange = textView.selectedRange
@@ -103,19 +116,31 @@ class CheckboxTextAttachment: NSTextAttachment {
     
     /// Apply or remove strikethrough formatting to the entire line containing this checkbox
     private func applyStrikethroughToLine() {
-        guard let textView = textView else { return }
-        
+        print("📝 applyStrikethroughToLine: Called for checkbox (checked=\(isChecked))")
+
+        guard let textView = textView else {
+            print("❌ applyStrikethroughToLine: No textView")
+            return
+        }
+
         let textStorage = textView.textStorage
         let text = textStorage.string as NSString
-        
+
+        print("📝 applyStrikethroughToLine: characterRange=\(characterRange), textLength=\(textStorage.length)")
+
         // Find the line range containing this checkbox
         let lineRange = text.lineRange(for: characterRange)
-        
+
+        print("📝 applyStrikethroughToLine: lineRange=\(lineRange)")
+
         // Validate line range
         guard lineRange.location >= 0 &&
               lineRange.location + lineRange.length <= textStorage.length else {
+            print("❌ applyStrikethroughToLine: Invalid line range")
             return
         }
+
+        print("✅ applyStrikethroughToLine: Applying strikethrough=\(isChecked) to line")
         
         // Apply or remove strikethrough formatting to the entire line
         if isChecked {
@@ -564,20 +589,24 @@ class CheckboxManager {
     
     /// Toggle checkbox state and update the text view using model-backed system
     static func toggleCheckbox(_ attachment: CheckboxTextAttachment, in textView: UITextView, at range: NSRange) {
+        print("🎯 toggleCheckbox: START - attachment.isChecked=\(attachment.isChecked), range=\(range)")
+
         // Save the current cursor position to restore it after toggle
         let originalSelectedRange = textView.selectedRange
-        
+
         // CRITICAL: Completely disable all touch handling during checkbox toggle
         // This prevents UITextView from processing ANY touches that could move the cursor
         textView.isUserInteractionEnabled = false
-        
+
         // CRITICAL: Ensure text view reference and range are properly set
         // Always update these as text positions can change due to edits
         attachment.textView = textView
         attachment.characterRange = range
-        
+        print("🎯 toggleCheckbox: Set textView, characterRange=\(range)")
+
         // Set up the state change callback to ensure immediate synchronization
         attachment.onStateChange = { [weak textView] newState in
+            print("📢 toggleCheckbox onStateChange callback: newState=\(newState)")
             guard let textView = textView else { return }
 
             // Notify delegate for persistence
@@ -585,9 +614,12 @@ class CheckboxManager {
                 textView.delegate?.textViewDidChange?(textView)
             }
         }
-        
+        print("🎯 toggleCheckbox: Set up onStateChange callback")
+
         // Toggle the checkbox state immediately (this will trigger the onStateChange callback and updateTextStorage)
+        print("🎯 toggleCheckbox: About to call attachment.isChecked.toggle() - current value=\(attachment.isChecked)")
         attachment.isChecked.toggle()
+        print("🎯 toggleCheckbox: AFTER toggle - new value=\(attachment.isChecked)")
 
         // Re-enable interaction and restore cursor position immediately
         DispatchQueue.main.async {
