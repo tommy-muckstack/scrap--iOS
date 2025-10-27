@@ -43,6 +43,9 @@ public class RichTextCoordinator: NSObject {
     /// Prevents recursive calls to preventCursorLeftOfListMarkers
     private var isAdjustingCursorForMarkers = false
 
+    /// Tracks when we're actively handling a tap gesture to prevent duplicate processing
+    private var isHandlingTapGesture = false
+
     /// Tracks when user has explicitly exited a code block to prevent automatic re-activation
     private var hasExplicitlyExitedCodeBlock = false
 
@@ -2887,21 +2890,30 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         let location = gesture.location(in: textView)
         print("🎯 handleTap: METHOD CALLED! Gesture state: \(gesture.state)")
         print("👆 handleTap: Tap detected at location \(location) in textView bounds \(textView.bounds)")
-        
+
         // Validate tap location is within bounds
         guard location.x.isFinite && location.y.isFinite else {
             print("⚠️ handleTap: Invalid tap location \(location)")
             return
         }
-        
-        // Record the timestamp for tap-to-left behavior detection
-        lastUserTapTime = Date()
-        
+
         // Check if we're at the end state
         guard gesture.state == .ended else {
             print("⚠️ handleTap: Gesture state is not .ended, it's \(gesture.state)")
             return
         }
+
+        // Set flag to prevent duplicate processing during tap handling
+        isHandlingTapGesture = true
+        defer {
+            // Reset flag after a delay to allow all selection changes to process
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                self.isHandlingTapGesture = false
+            }
+        }
+
+        // Record the timestamp for tap-to-left behavior detection
+        lastUserTapTime = Date()
         
         // Debug: Log all attachments in the text
         if let attributedText = textView.attributedText {
@@ -3266,36 +3278,40 @@ extension RichTextCoordinator: UITextViewDelegate, UIGestureRecognizerDelegate {
         if let checkboxPos = foundCheckboxPosition,
            let checkboxAttachment = foundCheckboxAttachment,
            currentPosition <= checkboxPos {
-            
-            // Check if this was a recent user tap that should toggle the checkbox
-            // (as opposed to programmatic cursor movement)
-            let timeSinceLastTap = Date().timeIntervalSince(lastUserTapTime)
-            let isRecentUserTap = timeSinceLastTap < 0.5 // Within 500ms of user tap
-            
-            if isRecentUserTap {
-                print("🎯 preventCursorLeftOfListMarkers: Detected tap-to-left of checkbox - toggling instead of moving cursor")
-                
-                // Toggle the checkbox without moving the cursor
-                let range = NSRange(location: checkboxPos, length: 1)
-                CheckboxManager.toggleCheckbox(checkboxAttachment, in: textView, at: range)
-                
-                // For tap-to-left behavior, position cursor after the checkbox (not where they tapped)
-                // This prevents the cursor from being left of the checkbox after toggling
-                let newPosition = checkboxPos + 2  // Checkbox + space
-                if newPosition <= attributedText.length {
-                    textView.selectedRange = NSRange(location: newPosition, length: 0)
-                    print("📍 preventCursorLeftOfListMarkers: Toggled checkbox and positioned cursor after checkbox at \(newPosition)")
+
+            // Skip tap-to-left toggle logic if handleTap is already processing the tap
+            // (handleTap handles the toggle directly, so we shouldn't duplicate it here)
+            if !isHandlingTapGesture {
+                // Check if this was a recent user tap that should toggle the checkbox
+                // (as opposed to programmatic cursor movement)
+                let timeSinceLastTap = Date().timeIntervalSince(lastUserTapTime)
+                let isRecentUserTap = timeSinceLastTap < 0.5 // Within 500ms of user tap
+
+                if isRecentUserTap {
+                    print("🎯 preventCursorLeftOfListMarkers: Detected tap-to-left of checkbox - toggling instead of moving cursor")
+
+                    // Toggle the checkbox without moving the cursor
+                    let range = NSRange(location: checkboxPos, length: 1)
+                    CheckboxManager.toggleCheckbox(checkboxAttachment, in: textView, at: range)
+
+                    // For tap-to-left behavior, position cursor after the checkbox (not where they tapped)
+                    // This prevents the cursor from being left of the checkbox after toggling
+                    let newPosition = checkboxPos + 2  // Checkbox + space
+                    if newPosition <= attributedText.length {
+                        textView.selectedRange = NSRange(location: newPosition, length: 0)
+                        print("📍 preventCursorLeftOfListMarkers: Toggled checkbox and positioned cursor after checkbox at \(newPosition)")
+                    }
+
+                    // Return early to avoid the normal cursor repositioning logic below
+                    return
                 }
-                
-                // Return early to avoid the normal cursor repositioning logic below
-                return
-            } else {
-                // Regular cursor movement - just reposition after checkbox
-                let newPosition = checkboxPos + 2  // Checkbox + space
-                if newPosition <= attributedText.length {
-                    textView.selectedRange = NSRange(location: newPosition, length: 0)
-                    print("📍 preventCursorLeftOfListMarkers: Moved cursor from \(currentPosition) to \(newPosition) (after checkbox)")
-                }
+            }
+
+            // Regular cursor movement - just reposition after checkbox
+            let newPosition = checkboxPos + 2  // Checkbox + space
+            if newPosition <= attributedText.length {
+                textView.selectedRange = NSRange(location: newPosition, length: 0)
+                print("📍 preventCursorLeftOfListMarkers: Moved cursor from \(currentPosition) to \(newPosition) (after checkbox)")
             }
         } else if let bulletPos = foundBulletPosition, currentPosition < bulletPos + 2 {
             // Move cursor after bullet and space (bullets don't toggle)
