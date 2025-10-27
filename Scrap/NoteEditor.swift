@@ -470,9 +470,20 @@ struct NoteEditor: View {
     private func updateContent(_ attributedText: NSAttributedString) {
         // Don't save if note is being deleted
         guard !isBeingDeleted else { return }
-        
+
         let plainText = attributedText.string.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !plainText.isEmpty else { return }
+
+        // Check if there's any content (text or attachments like checkboxes)
+        var hasAttachments = false
+        if attributedText.length > 0 {
+            attributedText.enumerateAttribute(.attachment, in: NSRange(location: 0, length: attributedText.length), options: []) { value, _, stop in
+                if value != nil {
+                    hasAttachments = true
+                    stop.pointee = true
+                }
+            }
+        }
+        guard !plainText.isEmpty || hasAttachments else { return }
         
         // Track content changes
         AnalyticsManager.shared.trackContentChanged(noteId: item.firebaseId ?? item.id, contentLength: plainText.count, changeType: "editing")
